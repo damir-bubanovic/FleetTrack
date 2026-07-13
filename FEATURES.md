@@ -1,0 +1,391 @@
+# FleetTrack — Features Overview
+
+## Goal
+
+FleetTrack is a modern fleet management and GPS tracking platform designed for logistics companies to monitor vehicles, drivers, trips, and live GPS locations through a centralized dashboard and mobile application.
+
+Built using:
+
+- Laravel
+- Vue.js
+- Flutter
+- Traccar
+- MySQL
+- Redis
+- Docker (Laravel Sail)
+
+---
+
+# Current Development Phase
+
+FleetTrack is currently in the architecture and foundation phase.
+
+Current focus:
+
+- Design the system architecture
+- Build the database structure
+- Implement core fleet management features
+- Integrate Traccar
+- Develop the web dashboard
+- Develop the mobile application
+
+---
+
+# Chapter 1: Authentication & User Management 🟡
+
+## Planned
+
+- User authentication
+- Role-based authorization
+- User profile management
+- Password management
+- Session management
+
+## Roles
+
+- Administrator
+- Fleet Manager
+- Driver
+
+---
+
+# Chapter 2: Company Management 🟡
+
+## Planned
+
+- Company CRUD
+- Company settings
+- Contact information
+- Company logo
+- Active / inactive status
+
+---
+
+# Chapter 3: Driver Management 🟡
+
+## Planned
+
+- Driver CRUD
+- Driver profile
+- License information
+- Contact information
+- Driver status
+- Driver assignment history
+
+---
+
+# Chapter 4: Vehicle Management 🟡
+
+## Planned
+
+- Vehicle CRUD
+- License plate
+- VIN
+- Vehicle type
+- Fuel type
+- Vehicle status
+- Vehicle assignment
+- Vehicle image
+
+---
+
+# Chapter 5: GPS Device Management 🟡
+
+## Planned
+
+- GPS device registration
+- Device assignment
+- Device status
+- Device synchronization
+- Traccar device mapping
+
+---
+
+# Chapter 6: Fleet Dashboard 🟡
+
+## Planned
+
+- Dashboard overview
+- Fleet statistics
+- Vehicle status summary
+- Driver summary
+- Live map
+- Recent activity
+- Alerts overview
+
+---
+
+# Chapter 7: Live GPS Tracking 🟡
+
+## Planned
+
+- Real-time vehicle locations
+- Live vehicle markers
+- Current speed
+- Heading
+- Online / offline status
+- Last communication time
+- Automatic map refresh
+
+---
+
+# Chapter 8: Trip Management 🟡
+
+## Planned
+
+- Trip history
+- Trip details
+- Distance travelled
+- Start location
+- End location
+- Duration
+- Average speed
+
+---
+
+# Chapter 9: Geofencing 🟡
+
+## Planned
+
+- Geofence CRUD
+- Circular geofences
+- Polygon geofences
+- Entry events
+- Exit events
+
+---
+
+# Chapter 10: Alerts & Notifications 🟡
+
+## Planned
+
+- Overspeed alerts
+- Device offline alerts
+- Geofence alerts
+- Low battery alerts
+- Alert history
+
+---
+
+# Chapter 11: Reports 🟡
+
+## Planned
+
+- Distance reports
+- Driver reports
+- Vehicle reports
+- Trip reports
+- Export to PDF
+- Export to Excel
+
+---
+
+# Chapter 12: Mobile Application 🟡
+
+## Planned
+
+### Driver Features
+
+- Login
+- Background GPS tracking
+- Start tracking
+- Stop tracking
+- Assigned vehicle
+- Trip history
+- Report vehicle issue
+
+---
+
+# Chapter 13: Traccar Integration 🟡
+
+## Planned
+
+- Traccar REST API integration
+- Device synchronization
+- Position synchronization
+- Event synchronization
+- Live location updates
+- Background processing
+
+---
+
+# Chapter 14: API 🟡
+
+## Planned
+
+- REST API
+- Laravel Sanctum authentication
+- Mobile endpoints
+- Vehicle endpoints
+- Driver endpoints
+- Trip endpoints
+- Device endpoints
+
+---
+
+# Chapter 15: Administration 🟡
+
+## Planned
+
+- User management
+- System settings
+- Activity logs
+- Queue monitoring
+- Application logs
+
+---
+
+# Chapter 16: Architecture 🟡
+
+## Planned
+
+### Backend
+
+- Service layer
+- Repository pattern (where appropriate)
+- Form Request validation
+- Policies
+- Jobs
+- Events
+- Notifications
+- API Resources
+
+### Frontend
+
+- Vue components
+- Reusable layouts
+- Dashboard widgets
+- Responsive design
+
+---
+
+# Chapter 17: Docker Environment 🟡
+
+## Planned
+
+Development environment using:
+
+- Laravel Sail
+- MySQL
+- Redis
+- Mailpit
+- Traccar Server
+
+---
+
+# Chapter 18: Testing 🟡
+
+## Planned
+
+- Feature tests
+- Unit tests
+- API testing
+- Authentication testing
+- Integration testing
+
+---
+
+# Chapter 19: Documentation 🟡
+
+## Planned
+
+- README
+- Features documentation
+- Architecture documentation
+- API documentation
+- Database diagram
+- Deployment guide
+
+---
+
+# Version 1 Scope
+
+## Planned Features
+
+- Authentication
+- Driver Management
+- Vehicle Management
+- GPS Device Management
+- Live GPS Tracking
+- Fleet Dashboard
+- Trip History
+- Traccar Integration
+- Mobile Application
+- REST API
+- Docker Environment
+- Documentation
+
+---
+
+# Recommended Development Order
+
+## Phase 1
+
+- Project architecture
+- Database design
+- Authentication
+- User roles
+
+## Phase 2
+
+- Company management
+- Driver management
+- Vehicle management
+
+## Phase 3
+
+- GPS device management
+- Traccar integration
+
+## Phase 4
+
+- Live tracking
+- Fleet dashboard
+- Maps
+
+## Phase 5
+
+- Trip management
+- Reports
+- Alerts
+
+## Phase 6
+
+- Mobile application
+
+## Phase 7
+
+- Testing
+- Documentation
+- Performance optimization
+
+---
+
+# Current Status
+
+FleetTrack is currently in the initial architecture and development phase.
+
+The primary objective is to build a scalable, maintainable fleet management platform using modern Laravel development practices while demonstrating clean architecture, Docker-based development, API-first design, and Traccar integration.
+
+---
+
+# Summary
+
+FleetTrack aims to become a portfolio-quality fleet management platform featuring:
+
+- Fleet management
+- Driver management
+- Vehicle management
+- GPS device management
+- Live GPS tracking
+- Trip management
+- Geofencing
+- Alerts & notifications
+- Reporting
+- Mobile application
+- REST API
+- Docker-based development
+- Traccar integration
+- Modern Laravel architecture
+- Automated testing
+- Comprehensive documentation
