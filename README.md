@@ -36,9 +36,25 @@ This application is being developed as a portfolio project based on a real-world
 - Node.js (NVM)
 - Composer
 
-## Project Status
+## Current Status
 
-🚧 Under active development.
+FleetTrack is currently in active development.
+
+### Completed
+
+- Laravel project setup
+- Docker (Laravel Sail)
+- Company model and database structure
+- User model and authentication foundation
+- Multi-company architecture
+- Spatie Permission integration
+- Role & Permission system
+- Database seeders
+- Project architecture documentation
+
+### In Progress
+
+- Company Management Module
 
 ## License
 
