@@ -4,19 +4,16 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+class TestingRoleSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * Seed only the global data required for tests.
      */
     public function run(): void
     {
         $this->call([
             PermissionSeeder::class,
-            CompanySeeder::class,
             RoleSeeder::class,
-            CompanyRoleSeeder::class,
-            UserSeeder::class,
         ]);
     }
 }

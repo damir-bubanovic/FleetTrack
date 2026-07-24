@@ -14,7 +14,7 @@ class CompanySeeder extends Seeder
     {
         Company::factory()->create([
             'name' => 'FleetTrack Logistics',
-            'slug' => 'fleettrack-logistics',
+            'slug' => config('fleettrack.system_company_slug'),
         ]);
 
         Company::factory()

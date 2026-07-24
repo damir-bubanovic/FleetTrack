@@ -36,14 +36,19 @@ Current focus:
 - Multi-company user architecture
 - User authentication foundation
 - Spatie Laravel Permission integration
+- Spatie Teams integration using `company_id`
 - Role-based authorization
 - Permission-based authorization
 - User ↔ Company relationship
+- Internal system company architecture
 - Super Admin role
 - Company Admin role
 - Fleet Manager role
 - Driver role
-- Database seeders
+- Role and permission seeders
+- Company-scoped role assignments
+- Authentication test helpers
+- Feature testing foundation
 
 ## Roles
 
@@ -56,13 +61,32 @@ Current focus:
 
 # Chapter 2: Company Management 🟡
 
-## Planned
+## In Progress
 
-- Company CRUD
+### Completed
+
+- Company model and database structure
+- Company API foundation
+- Versioned company API route
+- Company authorization foundation
+- Company API Resource
+- Company index feature test
+- Super Admin company listing
+- Company-scoped listing behavior
+- Internal FleetTrack system company excluded from Company Management
+- System company slug centralized in `config/fleettrack.php`
+
+### Planned
+
+- Complete Company CRUD
 - Company settings
 - Contact information
 - Company logo
 - Active / inactive status
+- Company Form Requests
+- Company policies
+- Additional Company API Resources
+- Complete Company feature tests
 
 ---
 
@@ -216,9 +240,17 @@ Current focus:
 
 # Chapter 14: API 🟡
 
-## Planned
+## In Progress
 
-- REST API
+### Completed
+
+- Versioned REST API foundation
+- `/api/v1/companies` endpoint
+- Company API Resource
+- Company endpoint feature testing
+
+### Planned
+
 - Laravel Sanctum authentication
 - Mobile endpoints
 - Vehicle endpoints
@@ -240,35 +272,35 @@ Current focus:
 
 ---
 
-# Chapter 16: Architecture 🟡
+# Chapter 16: Architecture 🟢
 
-## Planned
+## Completed
 
 ### Backend
 
-- Service layer
-- Repository pattern (where appropriate)
-- Form Request validation
-- Policies
-- Jobs
-- Events
-- Notifications
-- API Resources
+- Laravel standard project structure
+- Multi-company architecture
+- Company ownership model
+- Spatie Laravel Permission integration
+- Spatie Teams using `company_id`
+- Internal system company for Super Admin role context
+- Role hierarchy
+- Permission-based authorization
+- Company-scoped authorization
+- API Resources foundation
+- Form Request architecture
+- Policy architecture
+- Actions and Services conventions
+- Centralized FleetTrack configuration
 
 ### Frontend
+
+Planned:
 
 - Vue components
 - Reusable layouts
 - Dashboard widgets
 - Responsive design
-
-## Completed
-
-- Multi-company architecture
-- Company ownership model
-- Spatie Laravel Permission integration
-- Role hierarchy
-- Permission-based authorization
 
 ---
 
@@ -288,13 +320,33 @@ Development environment using:
 
 # Chapter 18: Testing 🟡
 
-## Planned
+## In Progress
 
-- Feature tests
+### Completed
+
+- Laravel testing infrastructure
+- Database refresh workflow
+- Authentication test helpers
+- Multi-company test helpers
+- Super Admin test helper
+- Company factory usage in tests
+- Company API feature test
+- Company listing count verification
+- System company exclusion verification
+- Passing test suite
+
+### Planned
+
+- Complete Company CRUD tests
+- Company authorization tests
+- Company isolation tests
+- Driver tests
+- Vehicle tests
+- Authentication tests
+- API integration tests
+- Traccar integration tests
+- Queue job tests
 - Unit tests
-- API testing
-- Authentication testing
-- Integration testing
 
 ---
 
@@ -305,6 +357,8 @@ Development environment using:
 - README
 - Features documentation
 - Architecture documentation
+- Internal system company architecture documentation
+- Spatie Teams authorization documentation
 
 ## Planned
 
@@ -320,8 +374,17 @@ Development environment using:
 
 - Authentication foundation
 - Authorization system
+- Multi-company architecture
+- Company isolation foundation
+- Internal system company architecture
 - Docker environment
 - Project architecture
+- Company API foundation
+- Feature testing foundation
+
+## In Progress
+
+- Company Management
 
 ## Planned
 
@@ -333,7 +396,7 @@ Development environment using:
 - Trip History
 - Traccar Integration
 - Mobile Application
-- REST API
+- Complete REST API
 
 ---
 
@@ -345,10 +408,13 @@ Development environment using:
 - Database design
 - Authentication foundation
 - Authorization system
-- User roles & permissions
+- User roles and permissions
+- Spatie Teams configuration
+- Internal system company architecture
 - Docker environment
+- Testing foundation
 
-## Phase 2
+## Phase 2 🟡 In Progress
 
 - Company management
 - Driver management
@@ -392,15 +458,23 @@ Completed:
 - Multi-company database architecture
 - Authentication foundation
 - Authorization system
-- Roles & permissions
+- Spatie Permission with Teams
+- Company-scoped roles and permissions
+- Internal FleetTrack system company
+- Centralized system company configuration
 - Company model
 - User model
+- Company API foundation
+- Company API Resource
+- Company index feature test
+- Testing helpers
 - Docker development environment
 - Project documentation
+- Passing tests
 
 Current milestone:
 
-- Company Management (CRUD)
+- Company Management CRUD
 
 ---
 

@@ -137,7 +137,17 @@ Responsibilities include:
 * Supporting client companies
 * Accessing application and activity logs
 
-A Super Admin may exist without a `company_id`.
+A Super Admin belongs to FleetTrack's internal system company.
+
+This system company exists to provide the required `company_id` team context for Spatie Laravel Permission. It is an internal platform record and must not be exposed through the standard Company Management module.
+
+The system company slug is configured through:
+
+```php
+config('fleettrack.system_company_slug')
+```
+
+Super Admin users may access platform-wide resources where explicitly permitted by policies and application queries.
 
 ## Company Admin
 
@@ -234,6 +244,16 @@ company_id
 ```
 
 Roles are stored in the database rather than directly in the `users` table.
+
+## Team Context
+
+FleetTrack uses the `company_id` column as the Spatie Laravel Permission team identifier.
+
+Every role assignment belongs to a company context. Global platform administration is implemented through FleetTrack's internal system company rather than by omitting the team context.
+
+The application must never assign roles using a `null` team context.
+
+When assigning or checking roles programmatically, the appropriate company context must first be established using Spatie's team APIs.
 
 Main authorization tables include:
 
@@ -1000,7 +1020,9 @@ The following decisions are currently active:
 
 - Laravel standard folder structure
 - Multi-company architecture
-- Nullable `company_id` for global Super Admin users
+- Super Admin belongs to the internal FleetTrack system company
+- Internal system company is hidden from the Company Management module
+- System company slug is configured via `config/fleettrack.php`
 - Spatie Laravel Permission with Teams
 - Laravel Policies for record-level authorization
 - Laravel Sanctum (planned for API authentication)
@@ -1064,7 +1086,13 @@ The following foundation has been successfully implemented:
 - Role & Permission system
 - Company-scoped authorization
 - Database factories
-- Database seeders
+- Multi-company user architecture
+- Spatie Permission (Teams) integration
+- Company-scoped roles
+- Company-scoped permissions
+- Role & Permission seeders
+- Testing infrastructure
+- Feature testing foundation
 - Project documentation
 - Code formatting with Laravel Pint
 - Passing migrations

@@ -11,7 +11,7 @@ use Spatie\Permission\PermissionRegistrar;
 class UserSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed the application's users.
      */
     public function run(): void
     {
@@ -19,35 +19,54 @@ class UserSeeder extends Seeder
 
         $permissionRegistrar->forgetCachedPermissions();
 
-        $primaryCompany = Company::query()
-            ->where('slug', 'fleettrack-logistics')
+        /*
+         |--------------------------------------------------------------------------
+         | System Company
+         |--------------------------------------------------------------------------
+         */
+
+        $systemCompany = Company::query()
+            ->where('slug', config('fleettrack.system_company_slug'))
             ->firstOrFail();
 
-        setPermissionsTeamId($primaryCompany->id);
+        /*
+         |--------------------------------------------------------------------------
+         | Global Administrator
+         |--------------------------------------------------------------------------
+         */
+
+        setPermissionsTeamId($systemCompany->id);
 
         $superAdmin = User::factory()->create([
-            'company_id' => null,
-            'name' => 'System Administrator',
-            'email' => 'admin@fleettrack.test',
+            'company_id' => $systemCompany->id,
+            'name'       => 'System Administrator',
+            'email'      => 'admin@fleettrack.test',
         ]);
 
         $superAdmin->assignRole(UserRole::SuperAdmin->value);
 
+        /*
+         |--------------------------------------------------------------------------
+         | Company Users
+         |--------------------------------------------------------------------------
+         */
+
         Company::query()->each(function (Company $company): void {
+
             setPermissionsTeamId($company->id);
 
             $companyAdmin = User::factory()->create([
                 'company_id' => $company->id,
-                'name' => "{$company->name} Administrator",
-                'email' => "admin.{$company->id}@fleettrack.test",
+                'name'       => "{$company->name} Administrator",
+                'email'      => "admin.{$company->id}@fleettrack.test",
             ]);
 
             $companyAdmin->assignRole(UserRole::CompanyAdmin->value);
 
             $fleetManager = User::factory()->create([
                 'company_id' => $company->id,
-                'name' => "{$company->name} Fleet Manager",
-                'email' => "manager.{$company->id}@fleettrack.test",
+                'name'       => "{$company->name} Fleet Manager",
+                'email'      => "manager.{$company->id}@fleettrack.test",
             ]);
 
             $fleetManager->assignRole(UserRole::FleetManager->value);
