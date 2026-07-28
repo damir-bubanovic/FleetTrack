@@ -63,4 +63,12 @@ class Company extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    /**
+     * Fleets that belong to this company.
+     */
+    public function fleets(): HasMany
+    {
+        return $this->hasMany(Fleet::class);
+    }
 }
