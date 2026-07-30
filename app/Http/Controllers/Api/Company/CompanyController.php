@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Company;
 
+
+use App\Http\Controllers\Controller;
 use App\Actions\Company\CreateCompany;
 use App\Actions\Company\UpdateCompany;
 use App\Enums\UserRole;
 use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
-use App\Http\Resources\CompanyResource;
+use App\Http\Resources\Company\CompanyResource;
 use App\Models\Company;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
