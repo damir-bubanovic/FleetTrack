@@ -19,6 +19,12 @@ class Fleet extends Model
         'company_id',
         'name',
         'code',
+        'email',
+        'phone',
+        'address',
+        'latitude',
+        'longitude',
+        'timezone',
         'description',
         'is_active',
     ];
@@ -29,10 +35,12 @@ class Fleet extends Model
     protected function casts(): array
     {
         return [
+            'latitude' => 'decimal:8',
+            'longitude' => 'decimal:8',
             'is_active' => 'boolean',
         ];
     }
-
+    
     /**
      * Company that owns this fleet.
      */
