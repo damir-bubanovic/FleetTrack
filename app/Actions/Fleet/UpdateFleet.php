@@ -15,14 +15,8 @@ class UpdateFleet
     public function handle(User $user, Fleet $fleet, array $data): Fleet
     {
         return DB::transaction(function () use ($user, $fleet, $data): Fleet {
-            $isSuperAdmin = $user->role === UserRole::SuperAdmin
-                && $user->company_id === null;
 
-            /*
-             * Company administrators cannot move fleets
-             * to another company.
-             */
-            if (! $isSuperAdmin) {
+            if (! $user->hasRole(UserRole::SuperAdmin->value)) {
                 unset($data['company_id']);
             }
 

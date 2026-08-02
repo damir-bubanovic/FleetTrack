@@ -15,10 +15,8 @@ class CreateFleet
     public function handle(User $user, array $data): Fleet
     {
         return DB::transaction(function () use ($user, $data): Fleet {
-            $isSuperAdmin = $user->role === UserRole::SuperAdmin
-                && $user->company_id === null;
 
-            if (! $isSuperAdmin) {
+            if (! $user->hasRole(UserRole::SuperAdmin->value)) {
                 $data['company_id'] = $user->company_id;
             }
 

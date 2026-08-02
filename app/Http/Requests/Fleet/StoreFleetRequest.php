@@ -5,7 +5,7 @@ namespace App\Http\Requests\Fleet;
 use App\Models\Fleet;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+
 
 class StoreFleetRequest extends FormRequest
 {
@@ -25,12 +25,6 @@ class StoreFleetRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'company_id' => [
-                'required',
-                'integer',
-                Rule::exists('companies', 'id'),
-            ],
-
             'name' => [
                 'required',
                 'string',

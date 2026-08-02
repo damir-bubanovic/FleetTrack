@@ -32,12 +32,6 @@ class UpdateFleetRequest extends FormRequest
         $fleet = $this->route('fleet');
 
         return [
-            'company_id' => [
-                'required',
-                'integer',
-                Rule::exists('companies', 'id'),
-            ],
-
             'name' => [
                 'required',
                 'string',
