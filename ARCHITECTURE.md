@@ -1,1111 +1,274 @@
-# FleetTrack — Architecture
-
-## 1. Purpose
-
-This document defines the technical architecture, development conventions, authorization model, and structural guidelines for FleetTrack.
-
-FleetTrack is designed as a scalable multi-company fleet management and GPS tracking platform built with Laravel, Vue.js, Flutter, Traccar, MySQL, Redis, and Docker.
+# FleetTrack Architecture
 
-The architecture should remain:
+## Overview
 
-* Maintainable
-* Testable
-* Secure
-* Scalable
-* Familiar to Laravel developers
-* Suitable for both single-client deployments and future SaaS operation
-
----
-
-# 2. System Overview
+FleetTrack is a multi-tenant fleet management and GPS tracking platform
+built with Laravel, Vue.js, Flutter, and Traccar. The backend follows an
+API-first architecture with a strong emphasis on separation of concerns,
+automated testing, and reusable components.
 
-FleetTrack consists of the following primary components:
+------------------------------------------------------------------------
 
-```text
-Web Dashboard
-    │
-    ▼
-Laravel Application
-    │
-    ├── MySQL
-    ├── Redis
-    ├── Queue Workers
-    ├── REST API
-    └── Traccar Integration
-            │
-            ▼
-       Traccar Server
-            │
-            ▼
-     GPS Devices / Mobile Apps
-```
+# 1. Architectural Principles
 
-## Main applications
+## API-first
 
-### Laravel Backend
+All business functionality is exposed through versioned REST endpoints
+(`/api/v1`) and consumed by both the web frontend and future Flutter
+mobile application.
 
-Responsible for:
+## Multi-tenancy
 
-* Authentication
-* Authorization
-* Company management
-* User management
-* Driver management
-* Vehicle management
-* GPS device management
-* Trip management
-* Alerts
-* Reports
-* API endpoints
-* Traccar synchronization
-* Background jobs
-* Notifications
+Each logistics company owns its own business data. Tenant isolation is
+enforced throughout the application using:
 
-### Vue.js Web Dashboard
+-   `company_id`
+-   Laravel Policies
+-   Spatie Permission Teams
+-   Query scopes
 
-Responsible for:
+## Thin Controllers
 
-* Administrative interface
-* Fleet management
-* Live maps
-* Vehicle and driver management
-* Reports
-* Alerts
-* Company settings
+Controllers are responsible only for:
 
-### Flutter Mobile Application
+-   Authorization
+-   Delegating business logic to Actions
+-   Returning API Resources
 
-Responsible for:
+They do not contain business rules.
 
-* Driver authentication
-* Assigned vehicle information
-* Background GPS tracking
-* Start and stop tracking
-* Trip history
-* Vehicle issue reporting
-* Driver notifications
+## Action-based Business Logic
 
-### Traccar Server
+Business logic is encapsulated in dedicated Action classes.
 
-Responsible for:
+Example:
 
-* GPS device communication
-* Position collection
-* Device events
-* Geofence events
-* Tracking protocol support
-* Real-time location data
+-   CreateFleet
+-   UpdateFleet
+-   DeleteFleet
 
----
+This keeps controllers small and makes business logic reusable and
+testable.
 
-# 3. Application Type
+------------------------------------------------------------------------
 
-FleetTrack is designed as a multi-company platform.
+# 2. Technology Stack
 
-Multiple logistics companies may use the same FleetTrack installation while keeping their data isolated.
+-   Laravel 12
+-   PHP 8.5
+-   Vue.js
+-   Flutter
+-   Traccar
+-   MySQL
+-   Redis
+-   Docker (Laravel Sail)
+-   Pest
 
-Each company owns its own:
+------------------------------------------------------------------------
 
-* Users
-* Drivers
-* Vehicles
-* GPS devices
-* Trips
-* Geofences
-* Alerts
-* Reports
-* Settings
+# 3. Project Structure
 
-A company must never access another company's data.
-
----
-
-# 4. User Hierarchy
-
-FleetTrack supports four primary roles.
-
-## Super Admin
-
-A global platform administrator.
-
-Responsibilities include:
-
-* Managing all companies
-* Managing platform-level users
-* Viewing platform-wide information
-* Managing system configuration
-* Supporting client companies
-* Accessing application and activity logs
-
-A Super Admin belongs to FleetTrack's internal system company.
-
-This system company exists to provide the required `company_id` team context for Spatie Laravel Permission. It is an internal platform record and must not be exposed through the standard Company Management module.
-
-The system company slug is configured through:
-
-```php
-config('fleettrack.system_company_slug')
-```
-
-Super Admin users may access platform-wide resources where explicitly permitted by policies and application queries.
-
-## Company Admin
-
-An administrator belonging to one company.
-
-Responsibilities include:
-
-* Managing company details
-* Managing company users
-* Managing fleet managers
-* Managing drivers
-* Managing vehicles
-* Managing GPS devices
-* Managing company settings
-* Viewing reports and alerts
-
-## Fleet Manager
-
-An operational user belonging to one company.
-
-Responsibilities include:
-
-* Managing drivers
-* Managing vehicles
-* Managing GPS devices
-* Managing trips
-* Managing geofences
-* Monitoring live tracking
-* Reviewing alerts
-* Viewing and exporting reports
-
-## Driver
-
-A mobile-focused user belonging to one company.
-
-Responsibilities include:
-
-* Viewing the assigned vehicle
-* Starting and stopping tracking
-* Viewing personal trip history
-* Reporting vehicle issues
-* Receiving relevant notifications
-
----
-
-# 5. Authentication
-
-Laravel authentication will be used for the web application.
-
-Laravel Sanctum will be used for API and mobile authentication.
-
-Authentication responsibilities include:
-
-* Login
-* Logout
-* Password reset
-* Email verification
-* Session management
-* API token management
-* Active account validation
-
-Inactive users must not be allowed to authenticate.
-
-The `last_login_at` field should be updated after successful authentication.
-
----
-
-# 6. Authorization
-
-FleetTrack uses three authorization layers.
-
-```text
-Roles
-    ↓
-Permissions
-    ↓
-Policies and Company Isolation
-```
-
-## Roles and Permissions
-
-The project uses:
-
-```text
-spatie/laravel-permission
-```
-
-Spatie team support is enabled.
-
-The team foreign key is:
-
-```text
-company_id
-```
-
-Roles are stored in the database rather than directly in the `users` table.
-
-## Team Context
-
-FleetTrack uses the `company_id` column as the Spatie Laravel Permission team identifier.
-
-Every role assignment belongs to a company context. Global platform administration is implemented through FleetTrack's internal system company rather than by omitting the team context.
-
-The application must never assign roles using a `null` team context.
-
-When assigning or checking roles programmatically, the appropriate company context must first be established using Spatie's team APIs.
-
-Main authorization tables include:
-
-```text
-roles
-permissions
-model_has_roles
-model_has_permissions
-role_has_permissions
-```
-
-## Permission naming
-
-Permissions use the following convention:
-
-```text
-resource.action
-```
-
-Examples:
-
-```text
-vehicles.view
-vehicles.create
-vehicles.update
-vehicles.delete
-
-drivers.view
-drivers.create
-drivers.update
-drivers.delete
-
-reports.view
-reports.export
-```
-
-Application code should check permissions rather than hard-coding role names.
-
-Preferred:
-
-```php
-$user->can('vehicles.update');
-```
-
-Avoid:
-
-```php
-$user->hasRole('fleet_manager');
-```
-
-Role checks should only be used when behavior is explicitly tied to a role rather than a capability.
-
----
-
-# 7. Company Isolation
-
-Permissions determine what a user is allowed to do.
-
-Policies determine which records the user is allowed to access.
-
-A user may have the `vehicles.update` permission but may only update vehicles belonging to the same company.
-
-Example policy rule:
-
-```php
-public function update(User $user, Vehicle $vehicle): bool
-{
-    return $user->can('vehicles.update')
-        && $user->company_id === $vehicle->company_id;
-}
-```
-
-Super Admin access may bypass company isolation where explicitly required.
-
-Global scopes should not be used blindly for all company filtering because they can hide data unexpectedly in administrative tasks, queues, console commands, and tests.
-
-Company restrictions should be enforced through:
-
-* Policies
-* Query scopes
-* Service methods
-* Form Requests
-* Explicit repository or query conditions
-
----
-
-# 8. Laravel Project Structure
-
-FleetTrack stays close to Laravel's standard structure.
-
-```text
+``` text
 app/
 ├── Actions/
-├── DTOs/
 ├── Enums/
-├── Events/
-├── Exceptions/
 ├── Http/
-│   ├── Controllers/
-│   ├── Middleware/
+│   ├── Controllers/Api/
 │   ├── Requests/
 │   └── Resources/
-├── Jobs/
 ├── Models/
-├── Notifications/
-├── Observers/
+│   └── Concerns/
 ├── Policies/
-├── Providers/
-├── Services/
-└── ValueObjects/
+└── Providers/
 ```
 
-Folders should only be introduced when they contain real application code.
+Each business module follows the same structure.
 
-Empty architectural folders should not be created prematurely.
+------------------------------------------------------------------------
 
----
+# 4. Multi-Tenant Architecture
 
-# 9. Models
+## Company Ownership
 
-Models represent database entities and define:
+Business entities belong to a company using `company_id`.
 
-* Relationships
-* Attribute casts
-* Query scopes
-* Simple domain helpers
+## System Company
 
-Models should not contain large workflows or complex business logic.
+FleetTrack maintains an internal system company used for Super
+Administrator role assignments.
 
-Examples of appropriate model methods:
+## Spatie Teams
 
-```php
-$user->isActive();
+Spatie Permission Teams uses `company_id` as the team context.
 
-$vehicle->isAvailable();
+## Tenant Isolation
 
-$trip->isCompleted();
+Tenant isolation is enforced through:
+
+-   Policies
+-   Model query scopes
+-   Actions
+-   Authorization checks
+
+------------------------------------------------------------------------
+
+# 5. Authorization
+
+FleetTrack uses Laravel Policies together with Spatie Permission.
+
+## Roles
+
+-   Super Admin
+-   Company Admin
+-   Fleet Manager
+-   Driver
+
+## Permissions
+
+Permissions are assigned through roles. Company-specific roles are
+provisioned using the `ProvisionCompanyRoles` service.
+
+------------------------------------------------------------------------
+
+# 6. Backend Layers
+
+## Models
+
+Represent business entities and relationships.
+
+## Requests
+
+Validate incoming API requests.
+
+## Policies
+
+Determine authorization.
+
+## Actions
+
+Contain business rules.
+
+## API Resources
+
+Transform models into JSON responses.
+
+## Controllers
+
+Coordinate requests, authorization, actions, and resources.
+
+------------------------------------------------------------------------
+
+# 7. Module Structure
+
+Every module follows the same pattern.
+
+``` text
+Module
+├── Model
+├── Policy
+├── StoreRequest
+├── UpdateRequest
+├── CreateAction
+├── UpdateAction
+├── DeleteAction
+├── Resource
+├── API Controller
+└── Feature Tests
 ```
 
-Examples of logic that should not live in a model:
+The Fleet module is the reference implementation for all future modules.
 
-* Multi-step Traccar synchronization
-* Complex report generation
-* Vehicle assignment workflows
-* External API requests
-* Large transactional operations
+------------------------------------------------------------------------
 
-That logic belongs in Actions or Services.
+# 8. Reusable Components
 
----
+## BelongsToCompany
 
-# 10. Enums
+Reusable trait providing:
 
-Enums are stored in:
+-   Company relationship
+-   Company query scope
 
-```text
-app/Enums
-```
+## ProvisionCompanyRoles
 
-Enums should be used for stable domain values such as:
+Creates company-scoped roles and synchronizes permissions.
 
-* User roles
-* Vehicle status
-* Driver status
-* Device status
-* Trip status
-* Fuel type
-* Alert type
-* Alert severity
+------------------------------------------------------------------------
 
-Example:
+# 9. Testing Strategy
 
-```php
-enum VehicleStatus: string
-{
-    case Active = 'active';
-    case Inactive = 'inactive';
-    case Maintenance = 'maintenance';
-}
-```
+FleetTrack follows a Test-Driven Development workflow.
 
-Enum cases should use PascalCase.
+## Testing Framework
 
-Database values should use lowercase snake case.
+-   Pest
+-   Laravel Feature Tests
 
----
+## Principles
 
-# 11. Controllers
+-   Write feature tests for every endpoint.
+-   Refactor only after all tests pass.
+-   Commit only after meaningful milestones.
 
-Controllers should remain small.
+Reusable testing helpers exist for:
 
-Controllers are responsible for:
+-   Users
+-   Companies
+-   Fleets
 
-* Receiving HTTP requests
-* Authorizing actions
-* Calling Actions or Services
-* Returning views or API responses
+------------------------------------------------------------------------
 
-Controllers should not contain:
+# 10. Development Workflow
 
-* Large database queries
-* External API integrations
-* Complex validation
-* Multi-step business workflows
+1.  Design the module.
+2.  Implement file by file.
+3.  Write feature tests.
+4.  Make all tests pass.
+5.  Refactor.
+6.  Commit milestone.
+7.  Push to GitHub.
 
-Example:
+------------------------------------------------------------------------
 
-```php
-public function store(StoreVehicleRequest $request, CreateVehicle $action)
-{
-    $vehicle = $action->handle(
-        $request->user(),
-        $request->validated(),
-    );
+# 11. Current Reference Module
 
-    return new VehicleResource($vehicle);
-}
-```
+Fleet Management is the completed reference module.
 
----
+It demonstrates:
 
-# 12. Form Requests
+-   CRUD API
+-   Multi-tenant authorization
+-   Policies
+-   Form Requests
+-   Actions
+-   API Resources
+-   Soft Deletes
+-   Reusable model traits
+-   Automated feature testing
 
-Validation and request-level authorization belong in Form Request classes.
+Future modules (Drivers, Vehicles, Devices, Trips, Geofences, Alerts)
+will follow the same architecture.
 
-Stored in:
+------------------------------------------------------------------------
 
-```text
-app/Http/Requests
-```
+# 12. Future Roadmap
 
-Responsibilities include:
+Upcoming modules:
 
-* Validating incoming data
-* Normalizing request values
-* Performing request-level permission checks
-* Returning clear validation messages
+-   Driver Management
+-   Vehicle Management
+-   GPS Device Management
+-   Trip Management
+-   Geofencing
+-   Alerts
+-   Reports
+-   Traccar Integration
+-   Flutter Mobile Application
 
-Controllers should use validated data only.
+------------------------------------------------------------------------
 
----
+# Conclusion
 
-# 13. Actions
-
-Actions represent a single business operation.
-
-Stored in:
-
-```text
-app/Actions
-```
-
-Examples:
-
-```text
-CreateCompany
-CreateVehicle
-AssignDriverToVehicle
-RegisterGpsDevice
-StartTrip
-CompleteTrip
-SynchronizeTraccarDevice
-```
-
-An Action should usually expose one public method:
-
-```php
-public function handle(...): mixed
-```
-
-Actions are preferred for focused use cases and transactional workflows.
-
----
-
-# 14. Services
-
-Services handle broader reusable domain or integration logic.
-
-Stored in:
-
-```text
-app/Services
-```
-
-Examples:
-
-```text
-TraccarService
-TrackingService
-ReportService
-NotificationService
-FileUploadService
-```
-
-Services may be called by:
-
-* Actions
-* Jobs
-* Controllers
-* Console commands
-
-Services should not depend directly on HTTP requests.
-
----
-
-# 15. DTOs
-
-Data Transfer Objects may be used when passing structured data between layers.
-
-Stored in:
-
-```text
-app/DTOs
-```
-
-DTOs are recommended when:
-
-* An Action accepts many related values
-* Data comes from an external API
-* Traccar payloads require normalization
-* Strong typing improves clarity
-
-DTOs should not replace simple validated arrays unless they provide clear value.
-
----
-
-# 16. Policies
-
-Policies are stored in:
-
-```text
-app/Policies
-```
-
-Every company-owned resource should eventually have a policy.
-
-Examples:
-
-```text
-CompanyPolicy
-UserPolicy
-DriverPolicy
-VehiclePolicy
-DevicePolicy
-TripPolicy
-GeofencePolicy
-AlertPolicy
-```
-
-Policies should enforce:
-
-* Permission checks
-* Company ownership
-* Record-level restrictions
-* Super Admin exceptions
-
----
-
-# 17. API Design
-
-FleetTrack uses a REST API.
-
-API routes should be versioned.
-
-Example:
-
-```text
-/api/v1/vehicles
-/api/v1/drivers
-/api/v1/trips
-/api/v1/devices
-```
-
-API responses should use Laravel API Resources.
-
-Stored in:
-
-```text
-app/Http/Resources
-```
-
-API Resources provide:
-
-* Consistent response structures
-* Controlled field exposure
-* Relationship formatting
-* Date formatting
-* Future API compatibility
-
----
-
-# 18. Database Conventions
-
-## Naming
-
-Database tables use plural snake case:
-
-```text
-companies
-users
-vehicles
-gps_devices
-vehicle_assignments
-```
-
-Foreign keys use singular snake case:
-
-```text
-company_id
-user_id
-vehicle_id
-driver_id
-```
-
-## Company ownership
-
-Company-owned tables should normally contain:
-
-```text
-company_id
-```
-
-This makes data isolation explicit and improves query performance.
-
-## Status fields
-
-Stable status fields should use string-backed enums.
-
-## Timestamps
-
-Standard business tables should contain:
-
-```text
-created_at
-updated_at
-```
-
-Entities requiring recoverability should use soft deletes.
-
-## Foreign keys
-
-Foreign keys should use explicit delete behavior.
-
-Examples:
-
-```php
-->cascadeOnDelete();
-->restrictOnDelete();
-->nullOnDelete();
-```
-
-Delete behavior should be selected according to business rules rather than applied automatically.
-
-## Indexes
-
-Indexes should be added for frequently queried columns such as:
-
-```text
-company_id
-status
-is_active
-device_id
-vehicle_id
-driver_id
-started_at
-completed_at
-```
-
-Composite indexes should reflect real query patterns.
-
----
-
-# 19. Traccar Integration
-
-Traccar integration should be isolated from controllers and models.
-
-Recommended structure:
-
-```text
-app/
-├── DTOs/
-│   └── Traccar/
-├── Jobs/
-│   └── Traccar/
-├── Services/
-│   └── TraccarService.php
-└── Actions/
-    └── Traccar/
-```
-
-Traccar responsibilities include:
-
-* Device synchronization
-* Position synchronization
-* Event synchronization
-* Geofence synchronization
-* Live position retrieval
-* Device status updates
-
-External Traccar identifiers should be stored separately from FleetTrack primary keys.
-
-Example:
-
-```text
-id
-company_id
-traccar_device_id
-unique_identifier
-```
-
-Traccar API calls should use:
-
-* Timeouts
-* Error handling
-* Logging
-* Retry strategies
-* Queue jobs where appropriate
-
----
-
-# 20. Queues and Background Jobs
-
-Long-running work should be processed asynchronously.
-
-Examples:
-
-* Position synchronization
-* Traccar event imports
-* Report generation
-* Email notifications
-* Bulk data exports
-* Device synchronization
-* Alert processing
-
-Jobs are stored in:
-
-```text
-app/Jobs
-```
-
-Jobs should be:
-
-* Idempotent where possible
-* Retry-safe
-* Logged on failure
-* Scoped to the correct company
-
-Redis will be used as the queue backend.
-
----
-
-# 21. Events and Notifications
-
-Events should represent meaningful application occurrences.
-
-Examples:
-
-```text
-VehicleAssigned
-DriverAssigned
-TripStarted
-TripCompleted
-DeviceWentOffline
-GeofenceEntered
-OverspeedDetected
-```
-
-Listeners may trigger:
-
-* Notifications
-* Logging
-* Alert creation
-* WebSocket broadcasts
-* External synchronization
-
-Notifications may be delivered through:
-
-* Database
-* Email
-* Push notifications
-* In-app notifications
-
----
-
-# 22. Caching
-
-Redis may be used for:
-
-* Permission caching
-* Session storage
-* Queue storage
-* Frequently accessed dashboard data
-* Live location snapshots
-* Traccar synchronization locks
-
-Company-specific cache keys must include the company identifier.
-
-Example:
-
-```text
-company:15:dashboard:statistics
-```
-
----
-
-# 23. Logging
-
-Important system activity should be logged.
-
-Examples:
-
-* Authentication attempts
-* Company changes
-* User changes
-* Vehicle assignments
-* Device registration
-* Traccar synchronization failures
-* Administrative actions
-
-Sensitive values must not be logged.
-
-Examples include:
-
-* Passwords
-* API tokens
-* Personal access tokens
-* Traccar credentials
-* Session identifiers
-
----
-
-# 24. Testing
-
-FleetTrack should include:
-
-* Unit tests
-* Feature tests
-* API tests
-* Authorization tests
-* Company isolation tests
-* Traccar integration tests
-* Queue job tests
-
-Critical authorization scenarios must be tested explicitly.
-
-Examples:
-
-```text
-Company A user cannot view Company B vehicle
-Driver cannot delete a vehicle
-Fleet Manager can update a company vehicle
-Super Admin can view all companies
-Inactive user cannot authenticate
-```
-
-Factories should provide realistic test data.
-
-Tests should not depend on seeded production-style data unless explicitly designed as integration tests.
-
----
-
-# 25. Code Style
-
-FleetTrack follows Laravel and PSR conventions.
-
-Formatting should be handled with Laravel Pint.
-
-Run:
-
-```bash
-sail pint
-```
-
-Before committing major changes, run:
-
-```bash
-sail artisan test
-sail pint --test
-```
-
-Naming conventions:
-
-```text
-Models: singular PascalCase
-Controllers: ResourceController
-Requests: StoreResourceRequest
-Policies: ResourcePolicy
-Actions: VerbResource
-Services: DomainService
-Enums: Singular PascalCase
-Permissions: plural-resource.action
-```
-
----
-
-# 26. Git Conventions
-
-Commits should represent completed, working units of functionality.
-
-Recommended commit format:
-
-```text
-type(scope): description
-```
-
-Examples:
-
-```text
-feat(auth): implement company-scoped role authorization
-feat(company): add company management module
-feat(vehicle): implement vehicle CRUD
-fix(traccar): handle unavailable device responses
-test(auth): add company isolation tests
-docs(architecture): document application architecture
-```
-
-Avoid committing broken or partially migrated features unless using a dedicated development branch.
-
----
-
-# 27. Development Workflow
-
-For each feature:
-
-```text
-Database design
-    ↓
-Migration
-    ↓
-Model and relationships
-    ↓
-Factory and seeder
-    ↓
-Permissions and policy
-    ↓
-Form Requests
-    ↓
-Action or Service
-    ↓
-Controller and routes
-    ↓
-API Resource or frontend integration
-    ↓
-Tests
-    ↓
-Documentation
-    ↓
-Git commit
-```
-
-Major milestones should be committed only after:
-
-* Migrations succeed
-* Seeders succeed
-* Tests pass
-* Formatting passes
-* Main workflows are manually verified
-
----
-
-# 28. Current Architecture Decisions
-
-The following decisions are currently active:
-
-- Laravel standard folder structure
-- Multi-company architecture
-- Super Admin belongs to the internal FleetTrack system company
-- Internal system company is hidden from the Company Management module
-- System company slug is configured via `config/fleettrack.php`
-- Spatie Laravel Permission with Teams
-- Laravel Policies for record-level authorization
-- Laravel Sanctum (planned for API authentication)
-- Redis for queues and caching
-- Traccar integration through Services and Jobs (planned)
-- PHP Enums for domain states
-- Company ownership via `company_id`
-- Docker development with Laravel Sail
-
----
-
-# 29. Future Considerations
-
-Potential future capabilities include:
-
-* Subscription plans
-* Billing
-* Company self-registration
-* White-label branding
-* Multiple depots per company
-* Multiple user memberships across companies
-* Advanced permission customization
-* WebSocket live tracking
-* Route optimization
-* Maintenance scheduling
-* Fuel management
-* Driver behavior scoring
-* Internationalization
-* Audit log package integration
-
-These capabilities should not be implemented until required, but current architecture should avoid blocking them.
-
----
-
-# 30. Guiding Principle
-
-FleetTrack should favor clear, conventional Laravel code over unnecessary abstraction.
-
-Architecture should grow in response to real requirements.
-
-The objective is not to create the largest possible structure.
-
-The objective is to create a secure, understandable, testable, and maintainable fleet management platform.
-
-
----
-
-# 31. Current Project Milestone
-
-## ✅ Milestone 1 Completed
-
-The following foundation has been successfully implemented:
-
-- Laravel project initialization
-- Docker (Laravel Sail) development environment
-- Multi-company database architecture
-- Company model
-- User model
-- User ↔ Company relationship
-- Spatie Laravel Permission integration
-- Role & Permission system
-- Company-scoped authorization
-- Database factories
-- Multi-company user architecture
-- Spatie Permission (Teams) integration
-- Company-scoped roles
-- Company-scoped permissions
-- Role & Permission seeders
-- Testing infrastructure
-- Feature testing foundation
-- Project documentation
-- Code formatting with Laravel Pint
-- Passing migrations
-- Passing tests
-
-## Next Milestone
-
-Chapter 2 – Company Management
-
-- Company CRUD
-- Company settings
-- Company logo
-- Company policies
-- Company Form Requests
-- Company API Resources
-- Company tests
+FleetTrack is designed around clean architecture, reusable components,
+multi-tenant security, and automated testing. The completed Fleet module
+establishes the implementation standard for all future development.

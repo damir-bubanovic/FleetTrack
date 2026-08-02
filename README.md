@@ -50,14 +50,17 @@ This application is being developed as a portfolio-quality project based on a re
 
 - Multi-company architecture
 - Company data isolation
-- Spatie Laravel Permission with Teams
-- `company_id` used as the team context
-- Internal FleetTrack system company for Super Admin role assignments
 - Versioned REST API (`/api/v1`)
 - Laravel API Resources
 - Form Requests
-- Policies
-- Actions and Services architecture
+- Laravel Policies
+- Action-based business logic
+- Thin API Controllers
+- Company ownership via reusable BelongsToCompany trait
+- Spatie Laravel Permission with Teams
+- `company_id` used as the team context
+- Internal FleetTrack system company for Super Admin role assignments
+- Feature-test-first development workflow
 - PHP Enums
 - Redis queues and caching
 - Docker-based local development
@@ -66,7 +69,7 @@ This application is being developed as a portfolio-quality project based on a re
 
 # Current Status
 
-FleetTrack is currently in active development.
+FleetTrack is currently in active development. The Fleet Management module serves as the reference implementation for future modules, establishing the project's architecture for actions, policies, form requests, API resources, and feature testing.
 
 ## Completed
 
@@ -88,17 +91,27 @@ FleetTrack is currently in active development.
 - Database seeders
 - Company API foundation
 - Company API Resource
+- Fleet Management module
+- Fleet CRUD API
+- Fleet Actions
+- Fleet Policies
+- Fleet Form Requests
+- Fleet API Resources
+- Fleet feature test suite (11 passing tests)
+- BelongsToCompany reusable model trait
+- ProvisionCompanyRoles provisioning service
+- Multi-tenant query scoping
 - Company feature testing foundation
 - Project architecture documentation
-- Passing test suite
+- Automated feature testing with Pest
+- Passing Fleet and Company feature tests
 
 ## In Progress
 
-- Company CRUD module
+- Driver Management module
 
 ## Planned
 
-- Driver Management
 - Vehicle Management
 - GPS Device Management
 - Traccar Integration
