@@ -12,6 +12,8 @@ use App\Http\Resources\Fleet\FleetResource;
 use App\Models\Fleet;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use App\Enums\UserRole;
+
 
 class FleetController extends Controller
 {
@@ -29,7 +31,15 @@ class FleetController extends Controller
     {
         $this->authorize('viewAny', Fleet::class);
 
-        $fleets = Fleet::query()
+        $user = $request->user();
+
+        $query = Fleet::query();
+
+        if (! $user->hasRole(UserRole::SuperAdmin->value)) {
+            $query->forCompany($user->company_id);
+        }
+
+        $fleets = $query
             ->latest()
             ->paginate();
 
