@@ -24,6 +24,11 @@ class PermissionSeeder extends Seeder
             'companies.update',
             'companies.delete',
 
+            'fleets.view',
+            'fleets.create',
+            'fleets.update',
+            'fleets.delete',
+
             'users.view',
             'users.create',
             'users.update',

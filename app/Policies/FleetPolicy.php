@@ -90,7 +90,6 @@ class FleetPolicy
      */
     private function isSuperAdmin(User $user): bool
     {
-        return $user->role === UserRole::SuperAdmin
-            && $user->company_id === null;
+        return $user->hasRole(UserRole::SuperAdmin->value);
     }
 }

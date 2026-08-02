@@ -51,35 +51,37 @@ class UserSeeder extends Seeder
          |--------------------------------------------------------------------------
          */
 
-        Company::query()->each(function (Company $company): void {
+        Company::query()
+            ->where('slug', '!=', config('fleettrack.system_company_slug'))
+            ->each(function (Company $company): void {
 
-            setPermissionsTeamId($company->id);
+                setPermissionsTeamId($company->id);
 
-            $companyAdmin = User::factory()->create([
-                'company_id' => $company->id,
-                'name'       => "{$company->name} Administrator",
-                'email'      => "admin.{$company->id}@fleettrack.test",
-            ]);
-
-            $companyAdmin->assignRole(UserRole::CompanyAdmin->value);
-
-            $fleetManager = User::factory()->create([
-                'company_id' => $company->id,
-                'name'       => "{$company->name} Fleet Manager",
-                'email'      => "manager.{$company->id}@fleettrack.test",
-            ]);
-
-            $fleetManager->assignRole(UserRole::FleetManager->value);
-
-            User::factory()
-                ->count(5)
-                ->create([
+                $companyAdmin = User::factory()->create([
                     'company_id' => $company->id,
-                ])
-                ->each(function (User $driver): void {
-                    $driver->assignRole(UserRole::Driver->value);
-                });
-        });
+                    'name'       => "{$company->name} Administrator",
+                    'email'      => "admin.{$company->id}@fleettrack.test",
+                ]);
+
+                $companyAdmin->assignRole(UserRole::CompanyAdmin->value);
+
+                $fleetManager = User::factory()->create([
+                    'company_id' => $company->id,
+                    'name'       => "{$company->name} Fleet Manager",
+                    'email'      => "manager.{$company->id}@fleettrack.test",
+                ]);
+
+                $fleetManager->assignRole(UserRole::FleetManager->value);
+
+                User::factory()
+                    ->count(5)
+                    ->create([
+                        'company_id' => $company->id,
+                    ])
+                    ->each(function (User $driver): void {
+                        $driver->assignRole(UserRole::Driver->value);
+                    });
+            });
 
         setPermissionsTeamId(null);
 

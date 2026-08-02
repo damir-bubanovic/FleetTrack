@@ -42,6 +42,11 @@ class CompanyRoleSeeder extends Seeder
                 'companies.view',
                 'companies.update',
 
+                'fleets.view',
+                'fleets.create',
+                'fleets.update',
+                'fleets.delete',
+
                 'users.view',
                 'users.create',
                 'users.update',
@@ -87,6 +92,10 @@ class CompanyRoleSeeder extends Seeder
             ]);
 
             $fleetManager->syncPermissions([
+                'fleets.view',
+                'fleets.create',
+                'fleets.update',
+
                 'users.view',
 
                 'drivers.view',
