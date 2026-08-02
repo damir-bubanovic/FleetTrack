@@ -245,3 +245,42 @@ test('company admin cannot update fleet from another company', function (): void
         ->assertForbidden();
 });
 
+
+test('company admin can delete own fleet', function (): void {
+
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $fleet = $this->createFleet($company);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->deleteJson("/api/v1/fleets/{$fleet->id}")
+        ->assertNoContent();
+
+    $this->assertSoftDeleted('fleets', [
+        'id' => $fleet->id,
+    ]);
+});
+
+test('company admin cannot delete fleet from another company', function (): void {
+
+    $companyA = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $companyB = $this->createCompany([
+        'name' => 'Company B',
+        'slug' => 'company-b',
+    ]);
+
+    $fleet = $this->createFleet($companyB);
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->deleteJson("/api/v1/fleets/{$fleet->id}")
+        ->assertForbidden();
+});
