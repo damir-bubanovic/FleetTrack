@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Enums\UserRole;
+use App\Actions\Company\ProvisionCompanyRoles;
 use App\Models\Company;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class CompanyRoleSeeder extends Seeder
@@ -19,7 +18,7 @@ class CompanyRoleSeeder extends Seeder
 
         $permissionRegistrar->forgetCachedPermissions();
 
-        $provisionCompanyRoles = app(\App\Actions\Company\ProvisionCompanyRoles::class);
+        $provisionCompanyRoles = app(ProvisionCompanyRoles::class);
 
         Company::query()->each(function (Company $company) use ($provisionCompanyRoles): void {
             $provisionCompanyRoles->handle($company);
@@ -29,5 +28,4 @@ class CompanyRoleSeeder extends Seeder
 
         $permissionRegistrar->forgetCachedPermissions();
     }
-    
 }

@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Api\Company;
 
-
-use App\Http\Controllers\Controller;
 use App\Actions\Company\CreateCompany;
 use App\Actions\Company\UpdateCompany;
 use App\Enums\UserRole;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
 use App\Http\Resources\Company\CompanyResource;

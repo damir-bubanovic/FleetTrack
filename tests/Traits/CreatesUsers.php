@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\TestCase;
 
 trait CreatesUsers
 {
@@ -16,16 +17,16 @@ trait CreatesUsers
         $systemCompany = Company::firstOrCreate(
             ['slug' => config('fleettrack.system_company_slug')],
             [
-                'name'        => 'FleetTrack Logistics',
-                'email'       => 'admin@fleettrack.test',
-                'phone'       => '+385000000000',
-                'address'     => 'FleetTrack HQ',
-                'city'        => 'Zagreb',
-                'state'       => 'Zagreb',
+                'name' => 'FleetTrack Logistics',
+                'email' => 'admin@fleettrack.test',
+                'phone' => '+385000000000',
+                'address' => 'FleetTrack HQ',
+                'city' => 'Zagreb',
+                'state' => 'Zagreb',
                 'postal_code' => '10000',
-                'country'     => 'Croatia',
-                'is_active'   => true,
-                'settings'    => [
+                'country' => 'Croatia',
+                'is_active' => true,
+                'settings' => [
                     'timezone' => 'Europe/Zagreb',
                     'language' => 'en',
                 ],
@@ -60,7 +61,7 @@ trait CreatesUsers
 
     protected function actingAsSuperAdmin(): User
     {
-        /** @var \Tests\TestCase $this */
+        /** @var TestCase $this */
         $user = $this->createSuperAdmin();
 
         $this->actingAs($user);
@@ -70,7 +71,7 @@ trait CreatesUsers
 
     protected function actingAsCompanyAdmin(Company $company): User
     {
-        /** @var \Tests\TestCase $this */
+        /** @var TestCase $this */
         $user = $this->createCompanyAdmin($company);
 
         $this->actingAs($user);

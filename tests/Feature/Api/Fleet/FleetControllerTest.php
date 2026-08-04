@@ -13,7 +13,6 @@ uses(
 );
 
 test('super admin can list fleets', function (): void {
-
     $companyA = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -27,7 +26,7 @@ test('super admin can list fleets', function (): void {
     $this->createFleets($companyA, 3);
     $this->createFleets($companyB, 2);
 
-    $user = $this->actingAsSuperAdmin();
+    $this->actingAsSuperAdmin();
 
     $response = $this->getJson('/api/v1/fleets');
 
@@ -36,9 +35,7 @@ test('super admin can list fleets', function (): void {
         ->assertJsonCount(5, 'data');
 });
 
-
 test('company admin only sees fleets from own company', function (): void {
-
     $companyA = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -50,7 +47,6 @@ test('company admin only sees fleets from own company', function (): void {
     ]);
 
     $this->createFleets($companyA, 3);
-
     $this->createFleets($companyB, 2);
 
     $this->actingAsCompanyAdmin($companyA);
@@ -62,10 +58,7 @@ test('company admin only sees fleets from own company', function (): void {
         ->assertJsonCount(3, 'data');
 });
 
-
-
 test('company admin can view own fleet', function (): void {
-
     $company = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -75,9 +68,7 @@ test('company admin can view own fleet', function (): void {
 
     $this->actingAsCompanyAdmin($company);
 
-    $response = $this->getJson(
-        "/api/v1/fleets/{$fleet->id}"
-    );
+    $response = $this->getJson("/api/v1/fleets/{$fleet->id}");
 
     $response
         ->assertOk()
@@ -85,10 +76,7 @@ test('company admin can view own fleet', function (): void {
         ->assertJsonPath('data.company_id', $company->id);
 });
 
-
-
 test('company admin cannot view fleet from another company', function (): void {
-
     $companyA = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -107,9 +95,7 @@ test('company admin cannot view fleet from another company', function (): void {
         ->assertForbidden();
 });
 
-
 test('company admin can create fleet', function (): void {
-
     $company = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -136,9 +122,7 @@ test('company admin can create fleet', function (): void {
     ]);
 });
 
-
 test('company admin cannot create fleet for another company', function (): void {
-
     $companyA = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -169,10 +153,7 @@ test('company admin cannot create fleet for another company', function (): void 
     ]);
 });
 
-
-
 test('fleet name is required', function (): void {
-
     $company = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -184,14 +165,10 @@ test('fleet name is required', function (): void {
         'code' => 'OPS',
     ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors([
-            'name',
-        ]);
+        ->assertJsonValidationErrors(['name']);
 });
 
-
 test('company admin can update own fleet', function (): void {
-
     $company = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -221,9 +198,7 @@ test('company admin can update own fleet', function (): void {
     ]);
 });
 
-
 test('company admin cannot update fleet from another company', function (): void {
-
     $companyA = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -245,9 +220,7 @@ test('company admin cannot update fleet from another company', function (): void
         ->assertForbidden();
 });
 
-
 test('company admin can delete own fleet', function (): void {
-
     $company = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',
@@ -266,7 +239,6 @@ test('company admin can delete own fleet', function (): void {
 });
 
 test('company admin cannot delete fleet from another company', function (): void {
-
     $companyA = $this->createCompany([
         'name' => 'Company A',
         'slug' => 'company-a',

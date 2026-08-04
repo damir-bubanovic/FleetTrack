@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Concerns\BelongsToCompany;
-
 
 class Fleet extends Model
 {
@@ -42,5 +41,4 @@ class Fleet extends Model
             'is_active' => 'boolean',
         ];
     }
-    
 }

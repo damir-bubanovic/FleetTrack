@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Fleet;
 use App\Actions\Fleet\CreateFleet;
 use App\Actions\Fleet\DeleteFleet;
 use App\Actions\Fleet\UpdateFleet;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Fleet\StoreFleetRequest;
 use App\Http\Requests\Fleet\UpdateFleetRequest;
@@ -12,8 +13,7 @@ use App\Http\Resources\Fleet\FleetResource;
 use App\Models\Fleet;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use App\Enums\UserRole;
-
+use Illuminate\Http\Response;
 
 class FleetController extends Controller
 {
@@ -21,8 +21,7 @@ class FleetController extends Controller
         private readonly CreateFleet $createFleet,
         private readonly UpdateFleet $updateFleet,
         private readonly DeleteFleet $deleteFleet,
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of fleets.
@@ -92,7 +91,7 @@ class FleetController extends Controller
     /**
      * Remove the specified fleet.
      */
-    public function destroy(Fleet $fleet): \Illuminate\Http\Response
+    public function destroy(Fleet $fleet): Response
     {
         $this->authorize('delete', $fleet);
 

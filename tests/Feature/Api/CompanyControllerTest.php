@@ -1,8 +1,7 @@
 <?php
 
-use App\Models\Company;
-use Tests\Traits\CreatesUsers;
 use Tests\Traits\CreatesCompanies;
+use Tests\Traits\CreatesUsers;
 
 uses(CreatesUsers::class, CreatesCompanies::class);
 

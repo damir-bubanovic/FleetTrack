@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\DriverStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,10 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('drivers', function (Blueprint $table) {
+        Schema::create('drivers', function (Blueprint $table): void {
+
             $table->id();
 
+            /*
+             |--------------------------------------------------------------------------
+             | Relationships
+             |--------------------------------------------------------------------------
+             */
+
             $table->foreignId('company_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->foreignId('fleet_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
@@ -24,26 +34,78 @@ return new class extends Migration
                 ->constrained()
                 ->nullOnDelete();
 
-            $table->string('employee_number')->nullable();
+            /*
+             |--------------------------------------------------------------------------
+             | Driver Information
+             |--------------------------------------------------------------------------
+             */
+
+            $table->string('employee_number');
 
             $table->string('first_name');
             $table->string('last_name');
 
-            $table->string('phone')->nullable();
-            $table->string('email')->nullable();
+            $table->string('phone')
+                ->nullable();
 
-            $table->string('license_number')->nullable();
-            $table->date('license_expiry')->nullable();
+            $table->string('email')
+                ->nullable();
 
-            $table->string('status')->default('active');
+            /*
+             |--------------------------------------------------------------------------
+             | Driving Licence
+             |--------------------------------------------------------------------------
+             */
 
-            $table->text('notes')->nullable();
+            $table->string('license_number');
+
+            $table->string('license_category');
+
+            $table->date('license_expiry_date');
+
+            /*
+             |--------------------------------------------------------------------------
+             | Employment
+             |--------------------------------------------------------------------------
+             */
+
+            $table->date('employment_date');
+
+            /*
+             |--------------------------------------------------------------------------
+             | Additional Information
+             |--------------------------------------------------------------------------
+             */
+
+            $table->text('notes')
+                ->nullable();
+
+            $table->boolean('is_active')
+                ->default(true);
 
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['company_id', 'status']);
-            $table->unique(['company_id', 'employee_number']);
+            /*
+             |--------------------------------------------------------------------------
+             | Unique Constraints
+             |--------------------------------------------------------------------------
+             */
+
+            $table->unique([
+                'company_id',
+                'employee_number',
+            ]);
+
+            $table->unique([
+                'company_id',
+                'license_number',
+            ]);
+
+            $table->unique([
+                'company_id',
+                'email',
+            ]);
         });
     }
 

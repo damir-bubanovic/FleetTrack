@@ -6,7 +6,6 @@ use App\Models\Fleet;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-
 class StoreFleetRequest extends FormRequest
 {
     /**
@@ -92,5 +91,4 @@ class StoreFleetRequest extends FormRequest
             ]);
         }
     }
-    
 }

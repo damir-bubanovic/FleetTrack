@@ -39,8 +39,8 @@ class UserSeeder extends Seeder
 
         $superAdmin = User::factory()->create([
             'company_id' => $systemCompany->id,
-            'name'       => 'System Administrator',
-            'email'      => 'admin@fleettrack.test',
+            'name' => 'System Administrator',
+            'email' => 'admin@fleettrack.test',
         ]);
 
         $superAdmin->assignRole(UserRole::SuperAdmin->value);
@@ -59,16 +59,16 @@ class UserSeeder extends Seeder
 
                 $companyAdmin = User::factory()->create([
                     'company_id' => $company->id,
-                    'name'       => "{$company->name} Administrator",
-                    'email'      => "admin.{$company->id}@fleettrack.test",
+                    'name' => "{$company->name} Administrator",
+                    'email' => "admin.{$company->id}@fleettrack.test",
                 ]);
 
                 $companyAdmin->assignRole(UserRole::CompanyAdmin->value);
 
                 $fleetManager = User::factory()->create([
                     'company_id' => $company->id,
-                    'name'       => "{$company->name} Fleet Manager",
-                    'email'      => "manager.{$company->id}@fleettrack.test",
+                    'name' => "{$company->name} Fleet Manager",
+                    'email' => "manager.{$company->id}@fleettrack.test",
                 ]);
 
                 $fleetManager->assignRole(UserRole::FleetManager->value);
