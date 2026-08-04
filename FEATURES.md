@@ -1,166 +1,200 @@
-# FleetTrack --- Features Overview
+# FleetTrack Features
 
-## Goal
-
-FleetTrack is a modern fleet management and GPS tracking platform
-designed for logistics companies to monitor vehicles, drivers, trips,
-fleets, and live GPS locations through a centralized dashboard and
-mobile application.
-
-Built using:
-
--   Laravel
--   Vue.js
--   Flutter
--   Traccar
--   MySQL
--   Redis
--   Docker (Laravel Sail)
+This document provides an overview of FleetTrack's implemented,
+in-progress, and planned functionality.
 
 ------------------------------------------------------------------------
 
-# Current Development Phase
+# Development Status
 
-FleetTrack has successfully completed its foundational architecture and
-the Fleet Management module.
-
-Current focus:
-
--   Driver Management
--   Vehicle Management
--   Preparing Traccar integration
-
-Fleet Management now serves as the reference implementation for future
-modules, establishing the project's architecture for Actions, Policies,
-Form Requests, API Resources, and feature testing.
+  Module                                   Status
+  -------------------------------- -----------------------
+  Foundation                             ✅ Complete
+  Authentication & Authorization         ✅ Complete
+  Company Management                     ✅ Complete
+  Fleet Management                       ✅ Complete
+  Driver Management                      ✅ Complete
+  Vehicle Management                🚧 In Progress (Next)
+  GPS Device Management                  ⏳ Planned
+  Trip Management                        ⏳ Planned
+  Geofencing                             ⏳ Planned
+  Alerts                                 ⏳ Planned
+  Reporting                              ⏳ Planned
+  Flutter Mobile Application             ⏳ Planned
 
 ------------------------------------------------------------------------
 
-# Chapter 1: Authentication & User Management 🟢
+# Foundation
 
 ## Completed
 
--   Multi-company user architecture
--   User authentication foundation
--   Spatie Laravel Permission integration
--   Spatie Teams integration using `company_id`
--   Role-based authorization
--   Permission-based authorization
--   User ↔ Company relationship
--   Internal system company architecture
+-   Laravel 12 project
+-   Docker (Laravel Sail)
+-   Multi-company architecture
+-   Versioned REST API (`/api/v1`)
+-   Redis integration
+-   Database factories
+-   Database seeders
+-   Pest testing infrastructure
+-   Architecture documentation
+
+------------------------------------------------------------------------
+
+# Authentication & Authorization
+
+## Completed
+
+-   Multi-company users
+-   Spatie Laravel Permission
+-   Spatie Teams using `company_id`
 -   Super Admin role
 -   Company Admin role
 -   Fleet Manager role
 -   Driver role
--   Role and permission seeders
--   Company-scoped role assignments
+-   Company-scoped permissions
 -   Authentication test helpers
--   Feature testing foundation
 
 ------------------------------------------------------------------------
 
-# Chapter 2: Company Management 🟢
+# Company Management
 
-## Foundation Completed
+## Completed
 
-### Completed
-
--   Company model and database structure
--   Company API foundation
+-   Company model
+-   Company API
 -   Company authorization
--   Company API Resources
--   Company Policies
--   Company Form Requests
--   Company feature testing foundation
--   System company exclusion
--   Centralized FleetTrack configuration
+-   API Resources
+-   Policies
+-   Seeders
+-   Feature tests
+-   Internal FleetTrack system company
 
-### Remaining Work
+## Planned
 
--   Complete Company CRUD
 -   Company settings
 -   Company logo
--   Contact information
--   Additional feature tests
+-   Contact profile
 
 ------------------------------------------------------------------------
 
-# Chapter 3: Fleet Management 🟢
+# Fleet Management
 
 ## Completed
 
 -   Fleet CRUD API
--   Fleet Actions
--   Fleet Policies
--   Fleet Form Requests
--   Fleet API Resources
--   Tenant isolation
--   Company ownership enforcement
--   Soft deletes
--   Reusable `BelongsToCompany` trait
--   11 passing Fleet feature tests
-
-Fleet Management serves as the reference implementation for future
-modules.
+-   Create / Update / Delete Actions
+-   Policies
+-   Form Requests
+-   API Resources
+-   Soft Deletes
+-   Multi-company isolation
+-   Feature test suite
 
 ------------------------------------------------------------------------
 
-# Chapter 4: Driver Management 🟡
+# Driver Management
 
-## Current Milestone
+## Completed
 
--   Driver CRUD
--   Driver profile
+-   Driver CRUD API
 -   Fleet assignment
--   License information
 -   Driver status
+-   License management
+-   Create / Update / Delete Actions
+-   Policies
+-   Form Requests
+-   API Resources
+-   Feature test suite
+
+------------------------------------------------------------------------
+
+# Vehicle Management
+
+## Planned Next
+
+-   Vehicle CRUD
+-   Fleet assignment
+-   Registration details
+-   VIN
+-   Fuel type
+-   Odometer
+-   Vehicle status
 -   Feature tests
 
 ------------------------------------------------------------------------
 
-# Architecture
+# GPS Device Management
 
-## Completed
+## Planned
 
--   Multi-company architecture
--   Thin API Controllers
+-   Device registration
+-   Vehicle assignment
+-   Traccar synchronization
+-   Connectivity status
+
+------------------------------------------------------------------------
+
+# Trip Management
+
+## Planned
+
+-   Automatic trip detection
+-   Driver assignment
+-   Distance tracking
+-   Trip history
+-   Route information
+
+------------------------------------------------------------------------
+
+# Technical Features
+
+-   Thin Controllers
 -   Action-based business logic
 -   Laravel Policies
 -   Form Requests
 -   API Resources
--   Reusable `BelongsToCompany` trait
--   ProvisionCompanyRoles service
--   Fleet module as reference implementation
+-   `BelongsToCompany` reusable trait
+-   `visibleTo()` and `forCompany()` model scopes
+-   PHP Enums
+-   Automated feature testing
 
 ------------------------------------------------------------------------
 
 # Testing
 
-## Completed
+Current automated coverage includes:
 
--   Pest testing infrastructure
--   Authentication helpers
--   Company helpers
--   Fleet helpers
--   Company feature tests
--   Fleet CRUD feature tests
--   Multi-tenant authorization tests
--   11 passing Fleet feature tests
+-   Company module
+-   Fleet module
+-   Driver module
+-   Multi-company authorization
+-   CRUD operations
+-   Validation rules
+-   Business rules
+
+All new modules follow the same implementation workflow:
+
+1.  Migration
+2.  Model
+3.  Factory
+4.  Seeder
+5.  Policy
+6.  Form Requests
+7.  Actions
+8.  API Resource
+9.  Controller
+10. Feature Tests
+11. Refactor
+12. Commit
 
 ------------------------------------------------------------------------
 
-# Current Status
+# Long-Term Roadmap
 
-## Completed
-
--   Project foundation
--   Authentication
--   Authorization
--   Company Management foundation
--   Fleet Management module
--   Testing foundation
--   Documentation
-
-## Current Milestone
-
--   Driver Management
+-   Vehicle Management
+-   GPS Device Management
+-   Traccar Integration
+-   Live Tracking
+-   Dashboard
+-   Reports
+-   Flutter Mobile Application
