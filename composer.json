@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/blank-vue-starter-kit",
+    "name": "damir-bubanovic/fleettrack",
+    "description": "Enterprise-inspired fleet management and GPS tracking platform built with Laravel.",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
     "keywords": [
         "laravel",
         "framework"
