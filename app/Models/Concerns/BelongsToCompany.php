@@ -2,7 +2,9 @@
 
 namespace App\Models\Concerns;
 
+use App\Enums\UserRole;
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,11 +23,25 @@ trait BelongsToCompany
      */
     public function scopeForCompany(
         Builder $query,
-        int $companyId
+        int $companyId,
     ): Builder {
         return $query->where(
             $this->getTable().'.company_id',
-            $companyId
+            $companyId,
         );
+    }
+
+    /**
+     * Scope records visible to the given user.
+     */
+    public function scopeVisibleTo(
+        Builder $query,
+        User $user,
+    ): Builder {
+        if ($user->hasRole(UserRole::SuperAdmin->value)) {
+            return $query;
+        }
+
+        return $query->forCompany($user->company_id);
     }
 }

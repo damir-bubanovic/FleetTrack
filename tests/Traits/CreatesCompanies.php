@@ -4,6 +4,7 @@ namespace Tests\Traits;
 
 use App\Actions\Company\ProvisionCompanyRoles;
 use App\Models\Company;
+use App\Models\Fleet;
 use Illuminate\Database\Eloquent\Collection;
 
 trait CreatesCompanies
@@ -30,5 +31,34 @@ trait CreatesCompanies
         });
 
         return $companies;
+    }
+
+    /**
+     * Create a company with a fleet for feature tests.
+     *
+     * @return array{
+     *     company: Company,
+     *     fleet: Fleet
+     * }
+     */
+    protected function createCompanyWithFleet(
+        array $companyAttributes = [],
+        array $fleetAttributes = [],
+    ): array {
+        $company = $this->createCompany($companyAttributes);
+
+        $fleet = Fleet::factory()->create(
+            array_merge(
+                [
+                    'company_id' => $company->id,
+                ],
+                $fleetAttributes
+            )
+        );
+
+        return [
+            'company' => $company,
+            'fleet' => $fleet,
+        ];
     }
 }

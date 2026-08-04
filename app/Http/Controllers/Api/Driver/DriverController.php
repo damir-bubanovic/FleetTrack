@@ -13,7 +13,7 @@ use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
-use App\Enums\UserRole;
+
 
 
 class DriverController extends Controller
@@ -25,6 +25,7 @@ class DriverController extends Controller
     ) {
     }
 
+
     /**
      * Display a listing of drivers.
      */
@@ -32,19 +33,12 @@ class DriverController extends Controller
     {
         $this->authorize('viewAny', Driver::class);
 
-        $query = Driver::query();
+        $drivers = Driver::query()
+            ->visibleTo($request->user())
+            ->latest()
+            ->paginate();
 
-        $isSuperAdmin = $request->user()->hasRole(
-            UserRole::SuperAdmin->value
-        );
-
-        if (! $isSuperAdmin) {
-            $query->forCompany($request->user()->company_id);
-        }
-
-        return DriverResource::collection(
-            $query->latest()->paginate()
-        );
+        return DriverResource::collection($drivers);
     }
 
     /**

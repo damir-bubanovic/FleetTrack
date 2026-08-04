@@ -30,15 +30,8 @@ class FleetController extends Controller
     {
         $this->authorize('viewAny', Fleet::class);
 
-        $user = $request->user();
-
-        $query = Fleet::query();
-
-        if (! $user->hasRole(UserRole::SuperAdmin->value)) {
-            $query->forCompany($user->company_id);
-        }
-
-        $fleets = $query
+        $fleets = Fleet::query()
+            ->visibleTo($request->user())
             ->latest()
             ->paginate();
 
