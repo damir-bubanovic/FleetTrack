@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Company\CompanyController;
 use App\Http\Controllers\Api\Fleet\FleetController;
 use App\Http\Controllers\Api\Driver\DriverController;
+use App\Http\Controllers\Api\Vehicle\VehicleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -16,4 +17,5 @@ Route::prefix('v1')
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('fleets', FleetController::class);
         Route::apiResource('drivers', DriverController::class);
+        Route::apiResource('vehicles', VehicleController::class);
     });

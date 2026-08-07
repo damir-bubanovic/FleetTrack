@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\BelongsToCompany;
+use Database\Factories\VehicleFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * @property int $id
+ * @property int $company_id
+ * @property int $fleet_id
+ * @property string $registration_number
+ * @property string $vin
+ * @property string $manufacturer
+ * @property string $model
+ * @property int $year
+ * @property string|null $color
+ * @property string $fuel_type
+ * @property string $transmission
+ * @property int $odometer
+ * @property string|null $notes
+ * @property bool $is_active
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
+ *
+ * @property-read Company $company
+ * @property-read Fleet $fleet
+ */
+#[Fillable([
+    'company_id',
+    'fleet_id',
+    'registration_number',
+    'vin',
+    'manufacturer',
+    'model',
+    'year',
+    'color',
+    'fuel_type',
+    'transmission',
+    'odometer',
+    'notes',
+    'is_active',
+])]
+class Vehicle extends Model
+{
+    /** @use HasFactory<VehicleFactory> */
+    use BelongsToCompany, HasFactory, SoftDeletes;
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'year' => 'integer',
+            'odometer' => 'integer',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    /**
+     * Get the fleet that owns the vehicle.
+     */
+    public function fleet(): BelongsTo
+    {
+        return $this->belongsTo(Fleet::class);
+    }
+
+    /**
+     * Get the vehicle display name.
+     */
+    public function displayName(): string
+    {
+        return "{$this->manufacturer} {$this->model}";
+    }
+}

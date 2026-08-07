@@ -71,4 +71,13 @@ class Company extends Model
     {
         return $this->hasMany(Fleet::class);
     }
+
+    /**
+     * Vehicles that belong to this company.
+     */
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
 }

@@ -6,6 +6,8 @@ use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class Fleet extends Model
 {
@@ -41,4 +43,13 @@ class Fleet extends Model
             'is_active' => 'boolean',
         ];
     }
+
+    /**
+     * Vehicles that belong to this fleet.
+     */
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
 }
