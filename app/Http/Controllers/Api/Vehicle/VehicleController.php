@@ -20,8 +20,7 @@ class VehicleController extends Controller
         private readonly CreateVehicle $createVehicle,
         private readonly UpdateVehicle $updateVehicle,
         private readonly DeleteVehicle $deleteVehicle,
-    ) {
-    }
+    ) {}
 
     /**
      * Display a listing of vehicles.

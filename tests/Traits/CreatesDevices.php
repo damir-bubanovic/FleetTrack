@@ -3,38 +3,38 @@
 namespace Tests\Traits;
 
 use App\Models\Company;
-use App\Models\Fleet;
+use App\Models\Device;
 use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Collection;
 
-trait CreatesVehicles
+trait CreatesDevices
 {
-    protected function createVehicle(
+    protected function createDevice(
         Company $company,
-        Fleet $fleet,
+        ?Vehicle $vehicle = null,
         array $attributes = []
-    ): Vehicle {
-        return Vehicle::factory()->create(
+    ): Device {
+        return Device::factory()->create(
             array_merge(
                 [
                     'company_id' => $company->id,
-                    'fleet_id' => $fleet->id,
+                    'vehicle_id' => $vehicle?->id,
                 ],
                 $attributes
             )
         );
     }
 
-    protected function createVehicles(
+    protected function createDevices(
         Company $company,
-        Fleet $fleet,
+        ?Vehicle $vehicle = null,
         int $count = 3
     ): Collection {
-        return Vehicle::factory()
+        return Device::factory()
             ->count($count)
             ->create([
                 'company_id' => $company->id,
-                'fleet_id' => $fleet->id,
+                'vehicle_id' => $vehicle?->id,
             ]);
     }
 }

@@ -12,7 +12,7 @@ class UpdateVehicle
     /**
      * Update an existing vehicle.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      *
      * @throws AuthorizationException
      */

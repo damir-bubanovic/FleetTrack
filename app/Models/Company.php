@@ -80,4 +80,8 @@ class Company extends Model
         return $this->hasMany(Vehicle::class);
     }
 
+    public function devices(): HasMany
+    {
+        return $this->hasMany(Device::class);
+    }
 }

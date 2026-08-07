@@ -32,7 +32,6 @@ test('super admin can list vehicles', function (): void {
         ->assertJsonCount(3, 'data');
 });
 
-
 test('company admin only sees vehicles from own company', function (): void {
 
     $companyA = $this->createCompany();
@@ -62,7 +61,6 @@ test('company admin only sees vehicles from own company', function (): void {
     ]);
 });
 
-
 test('company admin can view own vehicle', function (): void {
 
     $company = $this->createCompany();
@@ -83,7 +81,6 @@ test('company admin can view own vehicle', function (): void {
         ->assertJsonPath('data.company_id', $company->id);
 });
 
-
 test('company admin cannot view vehicle from another company', function (): void {
 
     $companyA = $this->createCompany();
@@ -100,7 +97,6 @@ test('company admin cannot view vehicle from another company', function (): void
     $this->getJson("/api/v1/vehicles/{$vehicle->id}")
         ->assertForbidden();
 });
-
 
 test('company admin can create vehicle', function (): void {
 
@@ -141,7 +137,6 @@ test('company admin can create vehicle', function (): void {
     ]);
 });
 
-
 test('company admin cannot create vehicle in another company fleet', function (): void {
 
     $companyA = $this->createCompany();
@@ -169,8 +164,6 @@ test('company admin cannot create vehicle in another company fleet', function ()
     ]);
 });
 
-
-
 test('registration number is required', function (): void {
 
     $company = $this->createCompany();
@@ -195,7 +188,6 @@ test('registration number is required', function (): void {
             'registration_number',
         ]);
 });
-
 
 test('vin must be unique', function (): void {
 
@@ -226,7 +218,6 @@ test('vin must be unique', function (): void {
             'vin',
         ]);
 });
-
 
 test('company admin can update own vehicle', function (): void {
 
@@ -268,8 +259,6 @@ test('company admin can update own vehicle', function (): void {
     ]);
 });
 
-
-
 test('company admin cannot update vehicle from another company', function (): void {
 
     $companyA = $this->createCompany();
@@ -295,8 +284,6 @@ test('company admin cannot update vehicle from another company', function (): vo
     ])->assertForbidden();
 });
 
-
-
 test('company admin can delete own vehicle', function (): void {
 
     $company = $this->createCompany();
@@ -316,8 +303,6 @@ test('company admin can delete own vehicle', function (): void {
         'id' => $vehicle->id,
     ]);
 });
-
-
 
 test('company admin cannot delete vehicle from another company', function (): void {
 

@@ -14,17 +14,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
-
-
 class DriverController extends Controller
 {
     public function __construct(
         private readonly CreateDriver $createDriver,
         private readonly UpdateDriver $updateDriver,
         private readonly DeleteDriver $deleteDriver,
-    ) {
-    }
-
+    ) {}
 
     /**
      * Display a listing of drivers.

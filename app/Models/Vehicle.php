@@ -6,10 +6,11 @@ use App\Models\Concerns\BelongsToCompany;
 use Database\Factories\VehicleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int $id
@@ -29,7 +30,6 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
- *
  * @property-read Company $company
  * @property-read Fleet $fleet
  */
@@ -81,5 +81,10 @@ class Vehicle extends Model
     public function displayName(): string
     {
         return "{$this->manufacturer} {$this->model}";
+    }
+
+    public function device(): HasOne
+    {
+        return $this->hasOne(Device::class);
     }
 }

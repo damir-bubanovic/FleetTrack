@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources\Vehicle;
 
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Vehicle
+ * @mixin Vehicle
  */
 class VehicleResource extends JsonResource
 {

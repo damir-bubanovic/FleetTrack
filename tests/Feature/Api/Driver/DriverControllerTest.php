@@ -94,7 +94,6 @@ test('company admin cannot view driver from another company', function (): void 
         ->assertForbidden();
 });
 
-
 test('company admin can create driver', function (): void {
 
     $company = $this->createCompany();
@@ -137,7 +136,6 @@ test('company admin can create driver', function (): void {
     ]);
 });
 
-
 test('company admin cannot create driver for another company', function (): void {
 
     $companyA = $this->createCompany();
@@ -173,8 +171,6 @@ test('company admin cannot create driver for another company', function (): void
     ]);
 });
 
-
-
 test('employee number is required', function (): void {
 
     $company = $this->createCompany();
@@ -200,8 +196,6 @@ test('employee number is required', function (): void {
         ]);
 });
 
-
-
 test('license number is required', function (): void {
 
     $company = $this->createCompany();
@@ -226,8 +220,6 @@ test('license number is required', function (): void {
             'license_number',
         ]);
 });
-
-
 
 test('company admin can update own driver', function (): void {
 
@@ -271,9 +263,6 @@ test('company admin can update own driver', function (): void {
     ]);
 });
 
-
-
-
 test('company admin cannot update driver from another company', function (): void {
 
     $companyA = $this->createCompany();
@@ -301,9 +290,6 @@ test('company admin cannot update driver from another company', function (): voi
         ->assertForbidden();
 });
 
-
-
-
 test('company admin can delete own driver', function (): void {
 
     $company = $this->createCompany();
@@ -323,9 +309,6 @@ test('company admin can delete own driver', function (): void {
         'id' => $driver->id,
     ]);
 });
-
-
-
 
 test('company admin cannot delete driver from another company', function (): void {
 

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\Fleet;
 use App\Actions\Fleet\CreateFleet;
 use App\Actions\Fleet\DeleteFleet;
 use App\Actions\Fleet\UpdateFleet;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Fleet\StoreFleetRequest;
 use App\Http\Requests\Fleet\UpdateFleetRequest;

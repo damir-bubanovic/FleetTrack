@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources\Driver;
 
+use App\Models\Driver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Driver
+ * @mixin Driver
  */
 class DriverResource extends JsonResource
 {
