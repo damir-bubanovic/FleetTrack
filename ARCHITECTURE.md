@@ -1,218 +1,379 @@
 # FleetTrack Architecture
 
-FleetTrack follows a modular, API-first architecture designed around
-Laravel best practices, multi-company data isolation, and long-term
-maintainability.
+## Overview
 
-------------------------------------------------------------------------
+FleetTrack is a modern multi-tenant fleet management and GPS tracking platform built with Laravel 12.
 
-# Core Principles
+The application follows an API-first architecture with strong separation of concerns, reusable business components, automated testing, and secure tenant isolation.
 
--   API-first development
--   Thin Controllers
--   Action-based business logic
--   Form Request validation
--   Laravel Policies for authorization
--   API Resources for responses
--   Multi-company architecture
--   Automated Feature Testing
--   Incremental refactoring
+The Fleet, Driver, and Vehicle modules establish the architectural reference implementation for all future business modules.
 
-------------------------------------------------------------------------
+---
 
-# Request Lifecycle
+# Architectural Principles
 
-``` text
-HTTP Request
-      │
-      ▼
-Form Request
-      │
-      ▼
-Policy
-      │
-      ▼
-Action
-      │
-      ▼
-Model
-      │
-      ▼
-API Resource
-      │
-      ▼
-JSON Response
+## API-First
+
+All business functionality is exposed through versioned REST endpoints.
+
+```
+/api/v1
 ```
 
-------------------------------------------------------------------------
+The API is consumed by:
 
-# Multi-Company Architecture
+- Vue.js web application
+- Flutter mobile application
+- Third-party integrations
+- Future public API
 
-FleetTrack is a multi-company application.
+---
 
-Business entities belong to a company using `company_id`.
+## Multi-Tenant Architecture
+
+FleetTrack supports multiple logistics companies within a single application.
+
+Each business entity belongs to a company through:
+
+```
+company_id
+```
 
 Tenant isolation is enforced through:
 
--   Laravel Policies
--   `BelongsToCompany` trait
--   `visibleTo()` scope
--   `forCompany()` scope
--   Spatie Permission Teams
+- Laravel Policies
+- Spatie Permission Teams
+- Query scopes
+- Business Actions
+- Authorization checks
 
-A dedicated internal FleetTrack company is used for global Super Admin
-role assignments.
+---
 
-------------------------------------------------------------------------
+## Thin Controllers
 
-# Backend Layers
+Controllers have a single responsibility:
 
-## Models
+- Authorize requests
+- Delegate work to Actions
+- Return API Resources
 
-Represent business entities and relationships.
+Controllers never contain business logic.
 
-## Form Requests
+Example flow:
 
-Validate incoming requests.
-
-## Policies
-
-Authorize user access.
-
-## Actions
-
-Contain business logic.
-
-Examples:
-
--   CreateFleet
--   UpdateFleet
--   DeleteFleet
--   CreateDriver
--   UpdateDriver
--   DeleteDriver
-
-## API Resources
-
-Transform models into consistent JSON responses.
-
-## Controllers
-
-Coordinate requests, authorization, actions and resources.
-
-Controllers intentionally avoid business logic.
-
-------------------------------------------------------------------------
-
-# Module Structure
-
-Each CRUD module follows the same structure.
-
-``` text
-Migration
-    ↓
-Model
-    ↓
-Factory
-    ↓
-Seeder
-    ↓
-Policy
-    ↓
-StoreRequest
-UpdateRequest
-    ↓
-CreateAction
-UpdateAction
-DeleteAction
-    ↓
-API Resource
+```
+Request
     ↓
 Controller
     ↓
-Feature Tests
+Policy
+    ↓
+Action
+    ↓
+Model
+    ↓
+API Resource
+    ↓
+JSON Response
 ```
 
-Current completed reference modules:
+---
 
--   Company
--   Fleet
--   Driver
+## Action-Based Business Logic
 
-------------------------------------------------------------------------
+Business rules live inside dedicated Action classes.
 
-# Shared Components
+Example:
+
+```
+CreateFleet
+UpdateFleet
+DeleteFleet
+
+CreateDriver
+UpdateDriver
+DeleteDriver
+
+CreateVehicle
+UpdateVehicle
+DeleteVehicle
+```
+
+Advantages:
+
+- Small controllers
+- Reusable business logic
+- Easier testing
+- Better separation of concerns
+
+---
+
+# Project Structure
+
+```
+app/
+
+├── Actions/
+│
+├── Enums/
+│
+├── Http/
+│   ├── Controllers/
+│   ├── Requests/
+│   └── Resources/
+│
+├── Models/
+│   └── Concerns/
+│
+├── Policies/
+│
+├── Providers/
+│
+└── Support/
+```
+
+Every business module follows the same structure.
+
+---
+
+# Domain Model
+
+```
+Company
+│
+├── Users
+│
+├── Fleets
+│   │
+│   ├── Drivers
+│   │
+│   └── Vehicles
+│
+└── Future
+    ├── Devices
+    ├── Trips
+    ├── Alerts
+    └── Geofences
+```
+
+---
+
+# Authorization
+
+FleetTrack combines Laravel Policies with Spatie Permission.
+
+## Roles
+
+- Super Admin
+- Company Admin
+- Fleet Manager
+- Driver
+
+Permissions are assigned through roles.
+
+Company-specific permissions are provisioned automatically.
+
+---
+
+# Reusable Components
 
 ## BelongsToCompany
 
-Provides:
+Shared model trait providing:
 
--   Company relationship
--   `forCompany()` scope
--   `visibleTo()` scope
+- Company relationship
+- Tenant query scope
+- Shared ownership behavior
 
-## ProvisionCompanyRoles
+---
 
-Creates company-scoped roles and synchronizes permissions.
+## visibleTo()
 
-------------------------------------------------------------------------
+Reusable query scope used by controllers.
+
+Responsibilities:
+
+- Super Admin sees all records
+- Company Admin sees only company records
+
+This removes duplicated tenant filtering logic.
+
+---
+
+## Shared Testing Traits
+
+Reusable testing helpers include:
+
+- CreatesCompanies
+- CreatesUsers
+- CreatesFleets
+- CreatesDrivers
+- CreatesVehicles
+
+These eliminate duplicated setup code across feature tests.
+
+---
+
+# Request Validation
+
+Every write endpoint uses Form Requests.
+
+Responsibilities:
+
+- Validation
+- Sanitization
+- Request authorization
+
+Business rules remain inside Actions.
+
+---
+
+# API Resources
+
+Every endpoint returns dedicated API Resources.
+
+Benefits:
+
+- Consistent JSON
+- Stable API contracts
+- Easier frontend development
+
+---
 
 # Testing Strategy
 
-FleetTrack uses Pest and Laravel Feature Tests.
+FleetTrack follows a feature-test-first workflow.
 
-Every module follows:
+Each completed module includes automated tests covering:
 
-1.  Build functionality
-2.  Write Feature Tests
-3.  Make tests pass
-4.  Refactor
-5.  Commit
+- CRUD operations
+- Authorization
+- Validation
+- Multi-tenant isolation
+- Business rules
 
-Reusable testing traits currently include:
+Current completed test suites:
 
--   CreatesCompanies
--   CreatesFleets
--   CreatesDrivers
--   CreatesUsers
+- Company
+- Fleet
+- Driver
+- Vehicle
 
-------------------------------------------------------------------------
+---
 
-# Development Philosophy
+# Development Workflow
 
-FleetTrack follows these engineering principles:
+Every module follows the same implementation process.
 
--   Prefer Laravel conventions.
--   Keep controllers thin.
--   Place business rules in Actions.
--   Keep authorization in Policies.
--   Validate with Form Requests.
--   Return API Resources.
--   Extract reusable abstractions only after repeated use.
--   Refactor continuously while keeping all tests green.
+```
+Migration
+↓
 
-For the reasoning behind these choices, see `ARCHITECTURE_DECISIONS.md`.
+Model
+↓
 
-------------------------------------------------------------------------
+Factory
+↓
 
-# Current Architecture Status
+Seeder
+↓
 
-Completed:
+Policy
+↓
 
--   Multi-company foundation
--   Authentication & authorization
--   Company module
--   Fleet module
--   Driver module
--   Company visibility scopes
--   Shared testing infrastructure
+Form Requests
+↓
 
-Next:
+Actions
+↓
 
--   Vehicle module
--   GPS Devices
--   Trips
--   Geofencing
--   Alerts
--   Reporting
--   Flutter application
+API Resource
+↓
+
+Controller
+↓
+
+Routes
+↓
+
+Feature Tests
+↓
+
+Refactoring
+↓
+
+Documentation
+↓
+
+Git Commit
+```
+
+This workflow ensures every module is implemented consistently.
+
+---
+
+# Current Reference Modules
+
+The following modules are complete and serve as implementation references:
+
+## Fleet
+
+Reference for:
+
+- CRUD
+- Policies
+- Actions
+- Resources
+- Requests
+- Testing
+
+## Driver
+
+Reference for:
+
+- Fleet relationships
+- Company ownership
+- Authorization
+
+## Vehicle
+
+Reference for:
+
+- Fleet ownership validation
+- Business rule enforcement
+- CRUD testing
+- Resource consistency
+
+Future modules should follow these established patterns.
+
+---
+
+# Future Architecture
+
+Upcoming modules:
+
+- GPS Device Management
+- Traccar Integration
+- Live Tracking
+- Trip Management
+- Geofencing
+- Alerts
+- Dashboard
+- Reports
+
+Each will follow the same architecture established by the Fleet, Driver, and Vehicle modules.
+
+---
+
+# Conclusion
+
+FleetTrack is designed around:
+
+- Clean Architecture
+- API-First Development
+- Multi-Tenant Security
+- Reusable Components
+- Automated Testing
+- Incremental Refactoring
+
+The architecture intentionally favors consistency over complexity, making future modules faster to implement while maintaining high code quality.

@@ -1,241 +1,294 @@
 # FleetTrack
 
-> **Enterprise-inspired Fleet Management & GPS Tracking Platform built
-> with Laravel, Vue.js, Flutter and Traccar**
+FleetTrack is a modern multi-tenant fleet management and GPS tracking platform built with **Laravel 12**, **Vue.js**, **Flutter**, and **Traccar**.
 
-FleetTrack is a portfolio-quality fleet management platform designed to
-demonstrate modern Laravel architecture, multi-company (multi-tenant)
-application design, clean code practices, API-first development,
-automated testing, and real-world fleet operations.
+The project demonstrates how to build a scalable enterprise fleet management platform using modern Laravel architecture, automated testing, clean code principles, and API-first development.
 
-The project models how logistics companies manage fleets, drivers,
-vehicles, GPS devices and trips while maintaining strict tenant
-isolation and a scalable architecture.
+FleetTrack is being developed as a production-quality portfolio project inspired by real-world logistics and transportation management systems.
 
-------------------------------------------------------------------------
-
-# Why FleetTrack?
-
-FleetTrack is more than a CRUD application.
-
-The project was created to demonstrate:
-
--   Enterprise-inspired Laravel architecture
--   Multi-company data isolation
--   REST API-first development
--   Thin Controllers
--   Action-based business logic
--   Laravel Policies & Form Requests
--   Automated Feature Testing with Pest
--   Incremental refactoring
--   Docker-based development
--   Production-ready coding standards
-
-------------------------------------------------------------------------
+---
 
 # Technology Stack
 
 ## Backend
 
--   Laravel 12
--   PHP 8.5
--   MySQL
--   Redis
--   Pest
--   Laravel Sail (Docker)
+- Laravel 12
+- PHP 8.5
+- MySQL
+- Redis
+- Laravel Sail (Docker)
+- Pest
+- PHPUnit
 
 ## Frontend
 
--   Vue.js
--   Vite
+- Vue.js
+- Vite
 
 ## Mobile
 
--   Flutter
+- Flutter
 
 ## GPS Platform
 
--   Traccar
+- Traccar
 
-------------------------------------------------------------------------
+---
 
-# Architecture Overview
+# Project Goals
 
-    HTTP Request
-          │
-          ▼
-    Form Request
-          │
-          ▼
-    Policy
-          │
-          ▼
-    Action
-          │
-          ▼
-    Model
-          │
-          ▼
-    API Resource
-          │
-          ▼
-    JSON Response
+FleetTrack aims to provide a complete fleet management solution supporting multiple logistics companies.
 
-### Key Principles
+Core goals include:
 
--   API-first architecture
--   Multi-company security
--   Thin Controllers
--   Action-based business logic
--   Form Request validation
--   Laravel Policies
--   API Resources
--   PHP Enums
--   Reusable `BelongsToCompany` trait
--   `visibleTo()` / `forCompany()` model scopes
--   Feature-test-driven development
+- Multi-company architecture
+- Fleet management
+- Driver management
+- Vehicle management
+- GPS device management
+- Real-time vehicle tracking
+- Trip management
+- Geofencing
+- Alerts
+- Reporting
+- Mobile application
+- REST API
 
-------------------------------------------------------------------------
+---
 
-# Current Project Status
+# Architecture
 
-  Module                            Status
-  -------------------------------- ---------
-  Project Foundation                  ✅
-  Authentication & Authorization      ✅
-  Company Management                  ✅
-  Fleet Management                    ✅
-  Driver Management                   ✅
-  Vehicle Management                🚧 Next
-  GPS Devices                         ⏳
-  Trips                               ⏳
-  Geofencing                          ⏳
-  Alerts                              ⏳
-  Reports                             ⏳
-  Flutter Mobile App                  ⏳
+FleetTrack follows an API-first architecture.
 
-------------------------------------------------------------------------
+Every business module follows the same implementation pattern:
 
-# Completed
+- Model
+- Policy
+- Form Requests
+- Actions
+- API Resource
+- API Controller
+- Feature Tests
 
--   Multi-company architecture
--   Authentication foundation
--   Authorization foundation
--   Company module
--   Fleet module
--   Driver module
--   REST API v1
--   Docker development environment
--   Architecture documentation
--   Automated Feature Tests
--   Refactored company visibility using model scopes
+Business logic is intentionally separated from controllers using Action classes, while authorization is handled through Laravel Policies.
 
-------------------------------------------------------------------------
+Reusable components are extracted whenever a common pattern emerges.
+
+Current reusable components include:
+
+- BelongsToCompany trait
+- visibleTo() tenant scope
+- Company ownership architecture
+- Shared testing traits
+
+---
+
+# Multi-Tenant Design
+
+FleetTrack is designed as a multi-company platform.
+
+Each company owns its own:
+
+- Users
+- Fleets
+- Drivers
+- Vehicles
+- Devices
+- Trips
+
+Tenant isolation is enforced through:
+
+- company_id ownership
+- Laravel Policies
+- Spatie Permission Teams
+- Query scopes
+- Business Actions
+
+---
+
+# Completed Modules
+
+## Foundation
+
+- Laravel project
+- Docker environment
+- Authentication
+- Authorization
+- Multi-company architecture
+- Spatie Permission
+- Spatie Teams
+- Database seeders
+- Database factories
+- Automated testing foundation
+
+## Company Management
+
+Completed:
+
+- Company model
+- Company API foundation
+- Authorization
+- API Resources
+- Feature tests
+
+## Fleet Management
+
+Completed:
+
+- Full CRUD API
+- Policies
+- Actions
+- Form Requests
+- API Resources
+- Feature tests
+
+## Driver Management
+
+Completed:
+
+- Full CRUD API
+- Policies
+- Actions
+- Form Requests
+- API Resources
+- Feature tests
+
+## Vehicle Management
+
+Completed:
+
+- Full CRUD API
+- Policies
+- Actions
+- Form Requests
+- API Resources
+- Feature tests
+
+---
+
+# Development Principles
+
+FleetTrack follows several architectural principles:
+
+- API-first development
+- Thin Controllers
+- Action-based business logic
+- Policy-based authorization
+- Feature-test-first development
+- Multi-tenant security
+- Reusable components
+- Incremental refactoring
+
+Every module is implemented file-by-file, fully tested, and refactored before moving to the next module.
+
+---
 
 # Testing
 
-FleetTrack uses **Pest** for feature testing.
+FleetTrack uses:
 
-Current automated coverage includes:
+- Pest
+- Laravel Feature Tests
 
--   Company module
--   Fleet CRUD
--   Driver CRUD
--   Multi-company authorization
--   Validation rules
--   Business rules
+Current automated tests cover:
 
-Run the test suite:
+- Company module
+- Fleet module
+- Driver module
+- Vehicle module
+- Authorization
+- Validation
+- Multi-tenant isolation
+- CRUD operations
 
-``` bash
-./vendor/bin/sail artisan test
+Every completed module includes a complete feature test suite.
+
+---
+
+# Current Roadmap
+
+Completed:
+
+- Foundation
+- Company
+- Fleet
+- Driver
+- Vehicle
+
+Upcoming:
+
+- GPS Device Management
+- Traccar Integration
+- Live Tracking
+- Trip Management
+- Geofencing
+- Alerts
+- Dashboard
+- Reports
+- Flutter Mobile Application
+
+---
+
+# Local Development
+
+Clone the repository:
+
+```bash
+git clone <repository-url>
+
+cd FleetTrack
 ```
 
-------------------------------------------------------------------------
+Start Laravel Sail:
 
-# Running the Project
-
-``` bash
-cp .env.example .env
-
+```bash
 ./vendor/bin/sail up -d
+```
 
+Install dependencies:
+
+```bash
 ./vendor/bin/sail composer install
+```
 
+Generate the application key:
+
+```bash
 ./vendor/bin/sail artisan key:generate
+```
 
+Run migrations and seeders:
+
+```bash
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-------------------------------------------------------------------------
+Run the test suite:
 
-# Project Structure
-
-``` text
-app/
-├── Actions/
-├── Enums/
-├── Http/
-│   ├── Controllers/
-│   ├── Requests/
-│   └── Resources/
-├── Models/
-│   └── Concerns/
-├── Policies/
-└── Providers/
-
-database/
-routes/
-tests/
+```bash
+./vendor/bin/sail artisan test
 ```
 
-------------------------------------------------------------------------
+Run Laravel Pint:
+
+```bash
+./vendor/bin/sail pint
+```
+
+---
 
 # Documentation
 
--   README.md
--   FEATURES.md
--   ARCHITECTURE.md
--   ARCHITECTURE_DECISIONS.md
+Project documentation includes:
 
-------------------------------------------------------------------------
+- README.md
+- FEATURES.md
+- ARCHITECTURE.md
+- docs/architecture-decisions.md
+- docs/module-development-checklist.md
 
-# Development Workflow
-
-Every module follows the same process:
-
-1.  Migration
-2.  Model
-3.  Factory
-4.  Seeder
-5.  Policy
-6.  Form Requests
-7.  Actions
-8.  API Resource
-9.  Controller
-10. Feature Tests
-11. Refactor
-12. Commit
-
-------------------------------------------------------------------------
-
-# Roadmap
-
-Next milestones:
-
--   Vehicle Management
--   GPS Device Management
--   Geofencing
--   Trip Management
--   Alerts
--   Dashboard
--   Traccar Integration
--   Flutter Mobile Application
-
-------------------------------------------------------------------------
+---
 
 # License
 
-FleetTrack is an educational and portfolio project intended to
-demonstrate modern software engineering practices using the Laravel
-ecosystem.
+FleetTrack is an educational and portfolio project created to demonstrate modern Laravel architecture, multi-tenant application design, automated testing, and clean software engineering practices.

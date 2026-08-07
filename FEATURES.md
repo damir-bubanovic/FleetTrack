@@ -1,200 +1,335 @@
-# FleetTrack Features
+# FleetTrack — Features Overview
 
-This document provides an overview of FleetTrack's implemented,
-in-progress, and planned functionality.
+FleetTrack is a modern multi-tenant fleet management and GPS tracking platform built using Laravel, Vue.js, Flutter, and Traccar.
 
-------------------------------------------------------------------------
+This document provides a high-level overview of the platform's functional modules, completed features, and planned development roadmap.
 
-# Development Status
+---
 
-  Module                                   Status
-  -------------------------------- -----------------------
-  Foundation                             ✅ Complete
-  Authentication & Authorization         ✅ Complete
-  Company Management                     ✅ Complete
-  Fleet Management                       ✅ Complete
-  Driver Management                      ✅ Complete
-  Vehicle Management                🚧 In Progress (Next)
-  GPS Device Management                  ⏳ Planned
-  Trip Management                        ⏳ Planned
-  Geofencing                             ⏳ Planned
-  Alerts                                 ⏳ Planned
-  Reporting                              ⏳ Planned
-  Flutter Mobile Application             ⏳ Planned
+# Project Vision
 
-------------------------------------------------------------------------
+FleetTrack enables logistics companies to manage:
+
+- Companies
+- Users
+- Fleets
+- Drivers
+- Vehicles
+- GPS Devices
+- Trips
+- Live vehicle tracking
+- Reports
+- Mobile workforce
+
+The platform is designed around secure multi-company architecture, reusable business components, and API-first development.
+
+---
+
+# Current Development Status
+
+## Completed
+
+- Project foundation
+- Authentication & Authorization
+- Company Management foundation
+- Fleet Management
+- Driver Management
+- Vehicle Management
+- Automated testing infrastructure
+
+## Current Next Milestone
+
+- GPS Device Management
+
+---
 
 # Foundation
 
 ## Completed
 
--   Laravel 12 project
--   Docker (Laravel Sail)
--   Multi-company architecture
--   Versioned REST API (`/api/v1`)
--   Redis integration
--   Database factories
--   Database seeders
--   Pest testing infrastructure
--   Architecture documentation
+### Infrastructure
 
-------------------------------------------------------------------------
+- Laravel 12
+- Docker (Laravel Sail)
+- MySQL
+- Redis
+- Pest Testing
+- GitHub
 
-# Authentication & Authorization
+### Security
 
-## Completed
+- Authentication
+- Authorization
+- Laravel Policies
+- Spatie Permission
+- Spatie Teams
+- Multi-company architecture
 
--   Multi-company users
--   Spatie Laravel Permission
--   Spatie Teams using `company_id`
--   Super Admin role
--   Company Admin role
--   Fleet Manager role
--   Driver role
--   Company-scoped permissions
--   Authentication test helpers
+### Architecture
 
-------------------------------------------------------------------------
+- API-first design
+- Action classes
+- Form Requests
+- API Resources
+- Thin Controllers
+- Feature testing
+- Reusable model traits
+
+---
 
 # Company Management
 
 ## Completed
 
--   Company model
--   Company API
--   Company authorization
--   API Resources
--   Policies
--   Seeders
--   Feature tests
--   Internal FleetTrack system company
+- Company model
+- Company API
+- Company authorization
+- Company resources
+- Feature tests
+- Company ownership
 
 ## Planned
 
--   Company settings
--   Company logo
--   Contact profile
+- Company settings
+- Company branding
+- Company contacts
+- Company preferences
 
-------------------------------------------------------------------------
+---
 
 # Fleet Management
 
 ## Completed
 
--   Fleet CRUD API
--   Create / Update / Delete Actions
--   Policies
--   Form Requests
--   API Resources
--   Soft Deletes
--   Multi-company isolation
--   Feature test suite
+- Fleet CRUD API
+- Fleet Policies
+- Fleet Actions
+- Fleet Requests
+- Fleet Resources
+- Multi-tenant isolation
+- Soft deletes
+- Feature tests
 
-------------------------------------------------------------------------
+Fleet Management serves as the reference implementation for all future business modules.
+
+---
 
 # Driver Management
 
 ## Completed
 
--   Driver CRUD API
--   Fleet assignment
--   Driver status
--   License management
--   Create / Update / Delete Actions
--   Policies
--   Form Requests
--   API Resources
--   Feature test suite
+- Driver CRUD API
+- Driver Policies
+- Driver Actions
+- Driver Requests
+- Driver Resources
+- Fleet assignment
+- Company ownership
+- Feature tests
 
-------------------------------------------------------------------------
+## Planned
+
+- Driver documents
+- Driver license expiry
+- Driver availability
+- Driver performance metrics
+
+---
 
 # Vehicle Management
 
-## Planned Next
+## Completed
 
--   Vehicle CRUD
--   Fleet assignment
--   Registration details
--   VIN
--   Fuel type
--   Odometer
--   Vehicle status
--   Feature tests
+- Vehicle CRUD API
+- Vehicle Policies
+- Vehicle Actions
+- Vehicle Requests
+- Vehicle Resources
+- Fleet assignment
+- Company ownership
+- VIN validation
+- Registration management
+- Feature tests
 
-------------------------------------------------------------------------
+## Planned
+
+- Vehicle maintenance
+- Vehicle inspections
+- Fuel records
+- Insurance tracking
+- Service history
+
+---
 
 # GPS Device Management
 
 ## Planned
 
--   Device registration
--   Vehicle assignment
--   Traccar synchronization
--   Connectivity status
+- Device CRUD
+- Vehicle assignment
+- Traccar unique ID
+- Device status
+- SIM information
+- Connection history
+- Feature tests
 
-------------------------------------------------------------------------
+---
+
+# Traccar Integration
+
+## Planned
+
+- Device synchronization
+- Vehicle synchronization
+- Live positions
+- Device commands
+- Event synchronization
+- Driver assignment
+- Position history
+
+---
 
 # Trip Management
 
 ## Planned
 
--   Automatic trip detection
--   Driver assignment
--   Distance tracking
--   Trip history
--   Route information
+- Trip lifecycle
+- Trip history
+- Route tracking
+- Distance calculation
+- Fuel usage
+- Driver assignment
+- Vehicle assignment
 
-------------------------------------------------------------------------
+---
 
-# Technical Features
+# Geofencing
 
--   Thin Controllers
--   Action-based business logic
--   Laravel Policies
--   Form Requests
--   API Resources
--   `BelongsToCompany` reusable trait
--   `visibleTo()` and `forCompany()` model scopes
--   PHP Enums
--   Automated feature testing
+## Planned
 
-------------------------------------------------------------------------
+- Geofence management
+- Entry detection
+- Exit detection
+- Polygon support
+- Circle support
+
+---
+
+# Alerts
+
+## Planned
+
+- Speed alerts
+- Geofence alerts
+- Ignition alerts
+- Offline alerts
+- Device alerts
+- Driver alerts
+
+---
+
+# Dashboard
+
+## Planned
+
+- Fleet overview
+- Active vehicles
+- Driver status
+- Recent trips
+- Live locations
+- Alerts
+- Statistics
+
+---
+
+# Reporting
+
+## Planned
+
+- Fleet reports
+- Driver reports
+- Vehicle reports
+- Utilization
+- Fuel consumption
+- Trip summaries
+
+---
+
+# Mobile Application
+
+## Planned
+
+Flutter application supporting:
+
+- Driver login
+- Vehicle assignment
+- Trip information
+- Live location
+- Notifications
+
+---
 
 # Testing
 
-Current automated coverage includes:
+FleetTrack uses automated feature testing throughout development.
 
--   Company module
--   Fleet module
--   Driver module
--   Multi-company authorization
--   CRUD operations
--   Validation rules
--   Business rules
+Current coverage includes:
 
-All new modules follow the same implementation workflow:
+- Authorization
+- Validation
+- CRUD operations
+- Multi-tenant security
+- Company ownership
+- Business rules
 
-1.  Migration
-2.  Model
-3.  Factory
-4.  Seeder
-5.  Policy
-6.  Form Requests
-7.  Actions
-8.  API Resource
-9.  Controller
-10. Feature Tests
-11. Refactor
-12. Commit
+Every completed module includes its own feature test suite.
 
-------------------------------------------------------------------------
+---
 
-# Long-Term Roadmap
+# Development Workflow
 
--   Vehicle Management
--   GPS Device Management
--   Traccar Integration
--   Live Tracking
--   Dashboard
--   Reports
--   Flutter Mobile Application
+Each business module follows the same implementation process:
+
+1. Database migration
+2. Model
+3. Factory
+4. Seeder
+5. Policy
+6. Form Requests
+7. Actions
+8. API Resource
+9. Controller
+10. Routes
+11. Feature tests
+12. Refactoring
+13. Documentation
+14. Git commit
+
+This standardized workflow ensures consistency across the entire project.
+
+---
+
+# Roadmap
+
+## Completed
+
+- Foundation
+- Company
+- Fleet
+- Driver
+- Vehicle
+
+## In Progress
+
+- Documentation refresh
+
+## Next
+
+- GPS Device Management
+- Traccar Integration
+- Trip Management
+- Geofencing
+- Alerts
+- Dashboard
+- Reports
+- Flutter Mobile Application
