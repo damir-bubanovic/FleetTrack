@@ -6,10 +6,16 @@ use App\Enums\UserRole;
 use App\Models\Device;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\Traccar\TraccarDeviceService;
 use Illuminate\Auth\Access\AuthorizationException;
 
 class CreateDevice
 {
+    public function __construct(
+        private readonly TraccarDeviceService $traccarDeviceService,
+    ) {
+    }
+
     /**
      * Create a new device.
      *
@@ -40,9 +46,15 @@ class CreateDevice
             ? ($vehicle?->company_id ?? $attributes['company_id'])
             : $user->company_id;
 
+        $traccarDevice = $this->traccarDeviceService->create([
+            'name' => $attributes['name'],
+            'uniqueId' => $attributes['unique_id'],
+        ]);
+
         return Device::create([
             ...$attributes,
             'company_id' => $companyId,
+            'traccar_device_id' => $traccarDevice->id,
         ]);
     }
 }

@@ -25,6 +25,8 @@ services:
             - mysql
             - redis
             - mailpit
+            - traccar
+
     mysql:
         image: 'mysql:8.4'
         ports:
@@ -50,6 +52,7 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+
     redis:
         image: 'redis:alpine'
         ports:
@@ -65,6 +68,7 @@ services:
                 - ping
             retries: 3
             timeout: 5s
+
     mailpit:
         image: 'axllent/mailpit:latest'
         ports:
@@ -72,11 +76,33 @@ services:
             - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
+
+    traccar:
+        image: traccar/traccar:latest
+        container_name: fleettrack-traccar
+        ports:
+            - '8082:8082'
+            - '5000-5150:5000-5150'
+        volumes:
+            - sail-traccar-data:/opt/traccar/data
+            - sail-traccar-logs:/opt/traccar/logs
+        restart: unless-stopped
+        networks:
+            - sail
+
 networks:
     sail:
         driver: bridge
+
 volumes:
     sail-mysql:
         driver: local
+
     sail-redis:
+        driver: local
+
+    sail-traccar-data:
+        driver: local
+
+    sail-traccar-logs:
         driver: local
