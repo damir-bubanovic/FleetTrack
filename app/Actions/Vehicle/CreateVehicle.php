@@ -12,7 +12,7 @@ class CreateVehicle
     /**
      * Create a new vehicle.
      *
-     * @param  array<string, mixed>  $attributes
+     * @param array<string, mixed> $attributes
      *
      * @throws AuthorizationException
      */
@@ -20,6 +20,7 @@ class CreateVehicle
         User $user,
         array $attributes,
     ): Vehicle {
+        /** @var Fleet $fleet */
         $fleet = Fleet::query()->findOrFail($attributes['fleet_id']);
 
         if (

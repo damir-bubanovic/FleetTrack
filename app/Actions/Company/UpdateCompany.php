@@ -11,6 +11,8 @@ class UpdateCompany
 {
     /**
      * Update an existing company.
+     *
+     * @param array<string, mixed> $data
      */
     public function handle(Company $company, array $data): Company
     {

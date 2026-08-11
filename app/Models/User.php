@@ -62,6 +62,8 @@ class User extends Authenticatable
 
     /**
      * Get the company that the user belongs to.
+     *
+     * @return BelongsTo<Company, $this>
      */
     public function company(): BelongsTo
     {

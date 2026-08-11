@@ -27,7 +27,14 @@ class CompanyFactory extends Factory
 
             'address' => fake()->streetAddress(),
             'city' => fake()->city(),
-            'state' => fake()->state(),
+            'state' => fake()->randomElement([
+                'Zagreb',
+                'Split-Dalmatia',
+                'Primorje-Gorski Kotar',
+                'Osijek-Baranja',
+                'Istria',
+                null,
+            ]),
             'postal_code' => fake()->postcode(),
             'country' => fake()->country(),
 

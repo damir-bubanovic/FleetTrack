@@ -25,6 +25,7 @@ return new class extends Migration
                 ->nullOnDelete();
 
             $table->unsignedBigInteger('traccar_device_id')
+                ->nullable()
                 ->unique();
 
             $table->string('name');

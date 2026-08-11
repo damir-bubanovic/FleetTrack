@@ -32,6 +32,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read Company $company
  * @property-read Fleet $fleet
+ * @property-read Device|null $device
+ *
+ * @use HasFactory<VehicleFactory>
  */
 #[Fillable([
     'company_id',
@@ -50,8 +53,9 @@ use Illuminate\Support\Carbon;
 ])]
 class Vehicle extends Model
 {
-    /** @use HasFactory<VehicleFactory> */
-    use BelongsToCompany, HasFactory, SoftDeletes;
+    use BelongsToCompany;
+    use HasFactory;
+    use SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -69,10 +73,22 @@ class Vehicle extends Model
 
     /**
      * Get the fleet that owns the vehicle.
+     *
+     * @return BelongsTo<Fleet, $this>
      */
     public function fleet(): BelongsTo
     {
         return $this->belongsTo(Fleet::class);
+    }
+
+    /**
+     * Get the GPS device assigned to the vehicle.
+     *
+     * @return HasOne<Device, $this>
+     */
+    public function device(): HasOne
+    {
+        return $this->hasOne(Device::class);
     }
 
     /**
@@ -81,10 +97,5 @@ class Vehicle extends Model
     public function displayName(): string
     {
         return "{$this->manufacturer} {$this->model}";
-    }
-
-    public function device(): HasOne
-    {
-        return $this->hasOne(Device::class);
     }
 }

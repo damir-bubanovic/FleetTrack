@@ -33,6 +33,8 @@ use Illuminate\Support\Carbon;
  * @property-read Company $company
  * @property-read Fleet $fleet
  * @property-read User|null $user
+ *
+ * @use HasFactory<DriverFactory>
  */
 #[Fillable([
     'company_id',
@@ -52,8 +54,9 @@ use Illuminate\Support\Carbon;
 ])]
 class Driver extends Model
 {
-    /** @use HasFactory<DriverFactory> */
-    use BelongsToCompany, HasFactory, SoftDeletes;
+    use BelongsToCompany;
+    use HasFactory;
+    use SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -71,6 +74,8 @@ class Driver extends Model
 
     /**
      * Get the fleet that the driver belongs to.
+     *
+     * @return BelongsTo<Fleet, $this>
      */
     public function fleet(): BelongsTo
     {
@@ -79,6 +84,8 @@ class Driver extends Model
 
     /**
      * Get the optional user account linked to the driver.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

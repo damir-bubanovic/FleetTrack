@@ -7,6 +7,8 @@ use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesDevices;
 use Tests\Traits\CreatesUsers;
 use Tests\Traits\CreatesVehicles;
+use App\Jobs\SyncDeviceToTraccar;
+use Illuminate\Support\Facades\Queue;
 
 uses(
     RefreshDatabase::class,
@@ -112,6 +114,7 @@ test('company admin cannot view device from another company', function (): void 
 
 
 test('company admin can create device', function (): void {
+    Queue::fake();
 
     $company = $this->createCompany();
 
@@ -138,15 +141,17 @@ test('company admin can create device', function (): void {
         ->assertCreated()
         ->assertJsonPath('data.company_id', $company->id)
         ->assertJsonPath('data.vehicle_id', $vehicle->id)
-        ->assertJsonPath('data.traccar_device_id', 1001)
+        ->assertJsonPath('data.traccar_device_id', null)
         ->assertJsonPath('data.unique_id', 'IMEI123456789');
 
     $this->assertDatabaseHas('devices', [
         'company_id' => $company->id,
         'vehicle_id' => $vehicle->id,
-        'traccar_device_id' => 1001,
+        'traccar_device_id' => null,
         'unique_id' => 'IMEI123456789',
     ]);
+
+    Queue::assertPushed(SyncDeviceToTraccar::class);
 });
 
 test('company admin cannot create device for another company vehicle', function (): void {

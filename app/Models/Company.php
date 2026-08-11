@@ -22,7 +22,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $country
  * @property string|null $logo
  * @property bool $is_active
- * @property array|null $settings
+ * @property array<string, mixed>|null $settings
+ *
+ * @use HasFactory<CompanyFactory>
  */
 #[Fillable([
     'name',
@@ -40,8 +42,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class Company extends Model
 {
-    /** @use HasFactory<CompanyFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     /**
      * Get the attributes that should be cast.
@@ -58,6 +60,8 @@ class Company extends Model
 
     /**
      * Users that belong to this company.
+     *
+     * @return HasMany<User, $this>
      */
     public function users(): HasMany
     {
@@ -66,6 +70,8 @@ class Company extends Model
 
     /**
      * Fleets that belong to this company.
+     *
+     * @return HasMany<Fleet, $this>
      */
     public function fleets(): HasMany
     {
@@ -74,12 +80,19 @@ class Company extends Model
 
     /**
      * Vehicles that belong to this company.
+     *
+     * @return HasMany<Vehicle, $this>
      */
     public function vehicles(): HasMany
     {
         return $this->hasMany(Vehicle::class);
     }
 
+    /**
+     * Devices that belong to this company.
+     *
+     * @return HasMany<Device, $this>
+     */
     public function devices(): HasMany
     {
         return $this->hasMany(Device::class);

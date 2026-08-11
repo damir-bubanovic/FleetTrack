@@ -27,6 +27,8 @@ class UpdateDevice
         if (! empty($attributes['vehicle_id'])) {
             $vehicle = Vehicle::query()->findOrFail($attributes['vehicle_id']);
 
+            /** @var Vehicle $vehicle */
+
             if (
                 ! $user->hasRole(UserRole::SuperAdmin->value)
                 && $vehicle->company_id !== $user->company_id
@@ -38,7 +40,7 @@ class UpdateDevice
         }
 
         $companyId = $user->hasRole(UserRole::SuperAdmin->value)
-            ? ($vehicle?->company_id ?? $attributes['company_id'])
+            ? ($vehicle->company_id ?? $attributes['company_id'])
             : $user->company_id;
 
         $device->update([

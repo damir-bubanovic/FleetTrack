@@ -24,16 +24,25 @@ class TraccarClient
             ]);
     }
 
+    /**
+     * @param array<string, mixed> $query
+     */
     public function get(string $uri, array $query = []): Response
     {
         return $this->client()->get($uri, $query);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function post(string $uri, array $data = []): Response
     {
         return $this->client()->post($uri, $data);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function put(string $uri, array $data = []): Response
     {
         return $this->client()->put($uri, $data);

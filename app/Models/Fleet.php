@@ -3,11 +3,15 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToCompany;
+use Database\Factories\FleetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @use HasFactory<FleetFactory>
+ */
 class Fleet extends Model
 {
     use BelongsToCompany;
@@ -16,6 +20,8 @@ class Fleet extends Model
 
     /**
      * The attributes that are mass assignable.
+     *
+     * @var list<string>
      */
     protected $fillable = [
         'company_id',
@@ -33,6 +39,8 @@ class Fleet extends Model
 
     /**
      * The attributes that should be cast.
+     *
+     * @return array<string, string>
      */
     protected function casts(): array
     {
@@ -45,6 +53,8 @@ class Fleet extends Model
 
     /**
      * Vehicles that belong to this fleet.
+     *
+     * @return HasMany<Vehicle, $this>
      */
     public function vehicles(): HasMany
     {

@@ -6,12 +6,15 @@ use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 trait BelongsToCompany
 {
     /**
      * Company that owns the model.
+     *
+     * @return BelongsTo<Company, $this>
      */
     public function company(): BelongsTo
     {
@@ -20,6 +23,9 @@ trait BelongsToCompany
 
     /**
      * Scope the query to a specific company.
+     *
+     * @param Builder<static> $query
+     * @return Builder<static>
      */
     public function scopeForCompany(
         Builder $query,
@@ -33,6 +39,9 @@ trait BelongsToCompany
 
     /**
      * Scope records visible to the given user.
+     *
+     * @param Builder<static> $query
+     * @return Builder<static>
      */
     public function scopeVisibleTo(
         Builder $query,
@@ -42,6 +51,10 @@ trait BelongsToCompany
             return $query;
         }
 
-        return $query->forCompany($user->company_id);
+        /** @var Builder<static> $query */
+        return $query->where(
+            $this->getTable().'.company_id',
+            $user->company_id,
+        );
     }
 }

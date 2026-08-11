@@ -3,19 +3,15 @@
 namespace App\Actions\Device;
 
 use App\Enums\UserRole;
+use App\Jobs\SyncDeviceToTraccar;
 use App\Models\Device;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Services\Traccar\TraccarDeviceService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 
 class CreateDevice
 {
-    public function __construct(
-        private readonly TraccarDeviceService $traccarDeviceService,
-    ) {
-    }
-
     /**
      * Create a new device.
      *
@@ -32,6 +28,8 @@ class CreateDevice
         if (! empty($attributes['vehicle_id'])) {
             $vehicle = Vehicle::query()->findOrFail($attributes['vehicle_id']);
 
+            /** @var Vehicle $vehicle */
+
             if (
                 ! $user->hasRole(UserRole::SuperAdmin->value)
                 && $vehicle->company_id !== $user->company_id
@@ -43,18 +41,19 @@ class CreateDevice
         }
 
         $companyId = $user->hasRole(UserRole::SuperAdmin->value)
-            ? ($vehicle?->company_id ?? $attributes['company_id'])
+            ? ($vehicle->company_id ?? $attributes['company_id'])
             : $user->company_id;
 
-        $traccarDevice = $this->traccarDeviceService->create([
-            'name' => $attributes['name'],
-            'uniqueId' => $attributes['unique_id'],
-        ]);
+        $device = DB::transaction(function () use ($attributes, $companyId): Device {
+            return Device::create([
+                ...$attributes,
+                'company_id' => $companyId,
+                'traccar_device_id' => null,
+            ]);
+        });
 
-        return Device::create([
-            ...$attributes,
-            'company_id' => $companyId,
-            'traccar_device_id' => $traccarDevice->id,
-        ]);
+        SyncDeviceToTraccar::dispatch($device);
+
+        return $device;
     }
 }

@@ -12,7 +12,7 @@ class UpdateVehicle
     /**
      * Update an existing vehicle.
      *
-     * @param  array<string, mixed>  $attributes
+     * @param array<string, mixed> $attributes
      *
      * @throws AuthorizationException
      */
@@ -21,6 +21,7 @@ class UpdateVehicle
         Vehicle $vehicle,
         array $attributes,
     ): Vehicle {
+        /** @var Fleet $fleet */
         $fleet = Fleet::query()->findOrFail($attributes['fleet_id']);
 
         if (

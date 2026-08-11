@@ -12,6 +12,8 @@ class UpdateDriver
 {
     /**
      * Update an existing driver.
+     *
+     * @param array<string, mixed> $data
      */
     public function handle(
         User $user,
@@ -20,7 +22,7 @@ class UpdateDriver
     ): Driver {
         return DB::transaction(function () use ($user, $driver, $data): Driver {
 
-            $isSuperAdmin = $user->role === UserRole::SuperAdmin
+            $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value)
                 && $user->company_id === null;
 
             /*
@@ -31,6 +33,7 @@ class UpdateDriver
                 unset($data['company_id']);
             }
 
+            /** @var Fleet $fleet */
             $fleet = Fleet::query()
                 ->whereKey($data['fleet_id'])
                 ->where('company_id', $driver->company_id)

@@ -10,6 +10,8 @@ class CreateCompany
 {
     /**
      * Create a new company.
+     *
+     * @param array<string, mixed> $data
      */
     public function handle(array $data): Company
     {
