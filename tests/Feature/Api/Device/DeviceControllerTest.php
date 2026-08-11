@@ -1,14 +1,14 @@
 <?php
 
 use App\Enums\DeviceStatus;
+use App\Jobs\SyncDeviceToTraccar;
 use App\Models\Fleet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesDevices;
 use Tests\Traits\CreatesUsers;
 use Tests\Traits\CreatesVehicles;
-use App\Jobs\SyncDeviceToTraccar;
-use Illuminate\Support\Facades\Queue;
 
 uses(
     RefreshDatabase::class,
@@ -112,7 +112,6 @@ test('company admin cannot view device from another company', function (): void 
         ->assertForbidden();
 });
 
-
 test('company admin can create device', function (): void {
     Queue::fake();
 
@@ -129,7 +128,6 @@ test('company admin can create device', function (): void {
     $response = $this->postJson('/api/v1/devices', [
         'company_id' => $company->id,
         'vehicle_id' => $vehicle->id,
-        'traccar_device_id' => 1001,
         'name' => 'GPS Device 1',
         'unique_id' => 'IMEI123456789',
         'model' => 'Teltonika FMB920',
@@ -170,7 +168,6 @@ test('company admin cannot create device for another company vehicle', function 
     $this->postJson('/api/v1/devices', [
         'company_id' => $companyB->id,
         'vehicle_id' => $vehicleB->id,
-        'traccar_device_id' => 2001,
         'name' => 'Forbidden Device',
         'unique_id' => 'FORBIDDEN123',
         'status' => DeviceStatus::ACTIVE->value,
@@ -179,32 +176,6 @@ test('company admin cannot create device for another company vehicle', function 
     $this->assertDatabaseMissing('devices', [
         'unique_id' => 'FORBIDDEN123',
     ]);
-});
-
-
-test('traccar device id is required', function (): void {
-
-    $company = $this->createCompany();
-
-    $fleet = Fleet::factory()->create([
-        'company_id' => $company->id,
-    ]);
-
-    $vehicle = $this->createVehicle($company, $fleet);
-
-    $this->actingAsCompanyAdmin($company);
-
-    $this->postJson('/api/v1/devices', [
-        'company_id' => $company->id,
-        'vehicle_id' => $vehicle->id,
-        'name' => 'GPS Device',
-        'unique_id' => 'IMEI123456789',
-        'status' => DeviceStatus::ACTIVE->value,
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors([
-            'traccar_device_id',
-        ]);
 });
 
 test('unique id must be unique', function (): void {
@@ -226,7 +197,6 @@ test('unique id must be unique', function (): void {
     $this->postJson('/api/v1/devices', [
         'company_id' => $company->id,
         'vehicle_id' => $vehicle->id,
-        'traccar_device_id' => 9999,
         'name' => 'GPS Device',
         'unique_id' => 'IMEI123456789',
         'status' => DeviceStatus::ACTIVE->value,
@@ -236,7 +206,6 @@ test('unique id must be unique', function (): void {
             'unique_id',
         ]);
 });
-
 
 test('company admin can update own device', function (): void {
 
@@ -255,7 +224,6 @@ test('company admin can update own device', function (): void {
     $response = $this->putJson("/api/v1/devices/{$device->id}", [
         'company_id' => $company->id,
         'vehicle_id' => $vehicle->id,
-        'traccar_device_id' => 9999,
         'name' => 'Updated GPS Device',
         'unique_id' => $device->unique_id,
         'model' => 'Teltonika FMC130',
@@ -266,12 +234,12 @@ test('company admin can update own device', function (): void {
     $response
         ->assertOk()
         ->assertJsonPath('data.name', 'Updated GPS Device')
-        ->assertJsonPath('data.traccar_device_id', 9999);
+        ->assertJsonPath('data.traccar_device_id', $device->traccar_device_id);
 
     $this->assertDatabaseHas('devices', [
         'id' => $device->id,
         'name' => 'Updated GPS Device',
-        'traccar_device_id' => 9999,
+        'traccar_device_id' => $device->traccar_device_id,
     ]);
 });
 
@@ -293,7 +261,6 @@ test('company admin cannot update device from another company', function (): voi
     $this->putJson("/api/v1/devices/{$device->id}", [
         'company_id' => $companyB->id,
         'vehicle_id' => $vehicleB->id,
-        'traccar_device_id' => 9999,
         'name' => 'Hacked Device',
         'unique_id' => $device->unique_id,
         'status' => DeviceStatus::ACTIVE->value,

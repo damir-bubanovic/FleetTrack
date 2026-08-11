@@ -3,7 +3,7 @@
 namespace App\Actions\Device;
 
 use App\Enums\UserRole;
-use App\Jobs\SyncDeviceToTraccar;
+use App\Events\DeviceCreated;
 use App\Models\Device;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -26,9 +26,8 @@ class CreateDevice
         $vehicle = null;
 
         if (! empty($attributes['vehicle_id'])) {
-            $vehicle = Vehicle::query()->findOrFail($attributes['vehicle_id']);
-
             /** @var Vehicle $vehicle */
+            $vehicle = Vehicle::query()->findOrFail($attributes['vehicle_id']);
 
             if (
                 ! $user->hasRole(UserRole::SuperAdmin->value)
@@ -41,7 +40,7 @@ class CreateDevice
         }
 
         $companyId = $user->hasRole(UserRole::SuperAdmin->value)
-            ? ($vehicle->company_id ?? $attributes['company_id'])
+            ? ($vehicle?->company_id ?? $attributes['company_id'])
             : $user->company_id;
 
         $device = DB::transaction(function () use ($attributes, $companyId): Device {
@@ -52,7 +51,7 @@ class CreateDevice
             ]);
         });
 
-        SyncDeviceToTraccar::dispatch($device);
+        event(new DeviceCreated($device));
 
         return $device;
     }

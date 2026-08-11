@@ -17,7 +17,6 @@ class UpdateDeviceRequest extends FormRequest
         return $this->user()->can('update', $device);
     }
 
-
     /**
      * @return array<string, mixed>
      */
@@ -35,12 +34,6 @@ class UpdateDeviceRequest extends FormRequest
             'vehicle_id' => [
                 'nullable',
                 'exists:vehicles,id',
-            ],
-
-            'traccar_device_id' => [
-                'required',
-                'integer',
-                Rule::unique('devices', 'traccar_device_id')->ignore($device),
             ],
 
             'name' => [
@@ -71,11 +64,6 @@ class UpdateDeviceRequest extends FormRequest
             'status' => [
                 'required',
                 Rule::enum(DeviceStatus::class),
-            ],
-
-            'last_sync_at' => [
-                'nullable',
-                'date',
             ],
         ];
     }

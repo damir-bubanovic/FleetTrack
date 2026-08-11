@@ -3,8 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\DeviceUpdated;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use App\Jobs\UpdateDeviceInTraccar;
 
 class SyncDeviceUpdatedToTraccar
 {
@@ -21,6 +20,6 @@ class SyncDeviceUpdatedToTraccar
      */
     public function handle(DeviceUpdated $event): void
     {
-        //
+        UpdateDeviceInTraccar::dispatch($event->device);
     }
 }

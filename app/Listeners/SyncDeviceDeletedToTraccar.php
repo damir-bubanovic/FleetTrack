@@ -3,8 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\DeviceDeleted;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use App\Jobs\DeleteDeviceFromTraccar;
 
 class SyncDeviceDeletedToTraccar
 {
@@ -21,6 +20,6 @@ class SyncDeviceDeletedToTraccar
      */
     public function handle(DeviceDeleted $event): void
     {
-        //
+        DeleteDeviceFromTraccar::dispatch($event->device);
     }
 }

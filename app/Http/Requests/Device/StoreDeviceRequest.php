@@ -29,12 +29,6 @@ class StoreDeviceRequest extends FormRequest
                 'exists:vehicles,id',
             ],
 
-            'traccar_device_id' => [
-                'required',
-                'integer',
-                'unique:devices,traccar_device_id',
-            ],
-
             'name' => [
                 'required',
                 'string',
@@ -63,11 +57,6 @@ class StoreDeviceRequest extends FormRequest
             'status' => [
                 'required',
                 Rule::enum(DeviceStatus::class),
-            ],
-
-            'last_sync_at' => [
-                'nullable',
-                'date',
             ],
         ];
     }

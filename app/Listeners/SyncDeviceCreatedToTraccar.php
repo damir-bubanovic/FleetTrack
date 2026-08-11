@@ -3,8 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\DeviceCreated;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
+use App\Jobs\SyncDeviceToTraccar;
 
 class SyncDeviceCreatedToTraccar
 {
@@ -21,6 +20,6 @@ class SyncDeviceCreatedToTraccar
      */
     public function handle(DeviceCreated $event): void
     {
-        //
+        SyncDeviceToTraccar::dispatch($event->device);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Device;
 use App\Services\Traccar\TraccarDeviceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SyncDeviceToTraccar implements ShouldQueue
@@ -27,19 +28,26 @@ class SyncDeviceToTraccar implements ShouldQueue
     public function handle(
         TraccarDeviceService $traccarDeviceService,
     ): void {
-        if ($this->device->traccar_device_id !== null) {
+        $device = $this->device->fresh();
+
+        if ($device === null) {
+            return;
+        }
+
+        if ($device->traccar_device_id !== null) {
             return;
         }
 
         $traccarDevice = $traccarDeviceService->create([
-            'name' => $this->device->name,
-            'uniqueId' => $this->device->unique_id,
-            'model' => $this->device->model,
-            'phone' => $this->device->phone,
+            'name' => $device->name,
+            'uniqueId' => $device->unique_id,
+            'model' => $device->model,
+            'phone' => $device->phone,
         ]);
 
-        $this->device->update([
+        $device->update([
             'traccar_device_id' => $traccarDevice->id,
+            'last_sync_at' => now(),
         ]);
     }
 
@@ -48,6 +56,11 @@ class SyncDeviceToTraccar implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        Log::error('Failed to sync device to Traccar.', [
+            'device_id' => $this->device->id,
+            'exception' => $exception->getMessage(),
+        ]);
+
         report($exception);
     }
 }

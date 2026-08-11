@@ -3,6 +3,7 @@
 namespace App\Actions\Device;
 
 use App\Enums\UserRole;
+use App\Events\DeviceUpdated;
 use App\Models\Device;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -25,9 +26,8 @@ class UpdateDevice
         $vehicle = null;
 
         if (! empty($attributes['vehicle_id'])) {
-            $vehicle = Vehicle::query()->findOrFail($attributes['vehicle_id']);
-
             /** @var Vehicle $vehicle */
+            $vehicle = Vehicle::query()->findOrFail($attributes['vehicle_id']);
 
             if (
                 ! $user->hasRole(UserRole::SuperAdmin->value)
@@ -39,15 +39,23 @@ class UpdateDevice
             }
         }
 
-        $companyId = $user->hasRole(UserRole::SuperAdmin->value)
-            ? ($vehicle->company_id ?? $attributes['company_id'])
-            : $user->company_id;
+        if ($user->hasRole(UserRole::SuperAdmin->value)) {
+            $companyId = $vehicle !== null
+                ? $vehicle->company_id
+                : $attributes['company_id'];
+        } else {
+            $companyId = $user->company_id;
+        }
 
         $device->update([
             ...$attributes,
             'company_id' => $companyId,
         ]);
 
-        return $device->refresh();
+        $device = $device->refresh();
+
+        event(new DeviceUpdated($device));
+
+        return $device;
     }
 }
