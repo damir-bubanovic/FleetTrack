@@ -40,7 +40,9 @@ class CreateDevice
         }
 
         $companyId = $user->hasRole(UserRole::SuperAdmin->value)
-            ? ($vehicle?->company_id ?? $attributes['company_id'])
+            ? ($vehicle !== null
+                ? $vehicle->company_id
+                : $attributes['company_id'])
             : $user->company_id;
 
         $device = DB::transaction(function () use ($attributes, $companyId): Device {

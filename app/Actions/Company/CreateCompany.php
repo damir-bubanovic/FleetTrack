@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 class CreateCompany
 {
+    public function __construct(
+        private readonly ProvisionCompanyRoles $provisionCompanyRoles,
+    ) {
+    }
+
     /**
      * Create a new company.
      *
@@ -23,7 +28,7 @@ class CreateCompany
             ) {
                 $data['logo'] = $data['logo']->store(
                     'companies/logos',
-                    'public'
+                    'public',
                 );
             }
 
@@ -36,7 +41,11 @@ class CreateCompany
                 'speed_unit' => 'km/h',
             ];
 
-            return Company::create($data);
+            $company = Company::create($data);
+
+            $this->provisionCompanyRoles->handle($company);
+
+            return $company;
         });
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class LogoutUser
 {
@@ -11,6 +12,9 @@ class LogoutUser
      */
     public function handle(User $user): void
     {
-        $user->currentAccessToken()?->delete();
+        /** @var PersonalAccessToken $token */
+        $token = $user->currentAccessToken();
+
+        $token->delete();
     }
 }
