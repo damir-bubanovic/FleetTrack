@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Device\DeviceController;
 use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
+use App\Http\Middleware\SetPermissionTeam;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,7 +21,10 @@ Route::prefix('v1')->group(function (): void {
         'login',
     ]);
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware([
+        'auth:sanctum',
+        SetPermissionTeam::class,
+    ])->group(function (): void {
 
         Route::get('auth/me', [
             AuthController::class,

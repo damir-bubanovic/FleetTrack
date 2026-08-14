@@ -27,7 +27,8 @@ class UpdateDeviceRequest extends FormRequest
 
         return [
             'company_id' => [
-                'required',
+                'nullable',
+                'integer',
                 'exists:companies,id',
             ],
 

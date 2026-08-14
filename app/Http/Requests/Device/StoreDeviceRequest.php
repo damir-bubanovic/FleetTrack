@@ -20,7 +20,7 @@ class StoreDeviceRequest extends FormRequest
     {
         return [
             'company_id' => [
-                'required',
+                'nullable',
                 'exists:companies,id',
             ],
 
