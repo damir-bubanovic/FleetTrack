@@ -3,6 +3,7 @@
 namespace App\Services\Traccar;
 
 use App\Data\Traccar\DeviceData;
+use stdClass;
 
 class TraccarDeviceService
 {
@@ -62,18 +63,10 @@ class TraccarDeviceService
             ->throw()
             ->json();
 
-        $payload = [
+        $payload = $this->normalizePayload([
             ...$payload,
             ...$data,
-        ];
-
-        if (
-            isset($payload['attributes'])
-            && is_array($payload['attributes'])
-            && $payload['attributes'] === []
-        ) {
-            $payload['attributes'] = new \stdClass();
-        }
+        ]);
 
         $device = $this->client
             ->put("/devices/{$id}", $payload)
@@ -88,5 +81,27 @@ class TraccarDeviceService
         $this->client
             ->delete("/devices/{$id}")
             ->throw();
+    }
+
+    /**
+     * Normalize a Traccar device payload before sending it back to the API.
+     *
+     * Traccar expects the "attributes" field to be a JSON object (`{}`)
+     * instead of an empty array (`[]`).
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function normalizePayload(array $payload): array
+    {
+        if (
+            isset($payload['attributes'])
+            && is_array($payload['attributes'])
+            && $payload['attributes'] === []
+        ) {
+            $payload['attributes'] = new stdClass();
+        }
+
+        return $payload;
     }
 }

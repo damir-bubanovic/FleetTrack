@@ -38,18 +38,25 @@ class UpdateDeviceInTraccar implements ShouldQueue
             return;
         }
 
+        $payload = [
+            'name' => $device->name,
+            'uniqueId' => $device->unique_id,
+            'model' => $device->model,
+            'phone' => $device->phone,
+        ];
+
         $traccarDeviceService->update(
             $device->traccar_device_id,
-            [
-                'name' => $device->name,
-                'uniqueId' => $device->unique_id,
-                'model' => $device->model,
-                'phone' => $device->phone,
-            ]
+            $payload,
         );
 
         $device->update([
             'last_sync_at' => now(),
+        ]);
+
+        Log::info('Device updated in Traccar.', [
+            'device_id' => $device->id,
+            'traccar_device_id' => $device->traccar_device_id,
         ]);
     }
 

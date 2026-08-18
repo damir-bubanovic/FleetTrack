@@ -31,6 +31,11 @@ class DeleteDeviceFromTraccar implements ShouldQueue
         $traccarDeviceService->delete(
             $this->traccarDeviceId,
         );
+
+        Log::info('Device deleted from Traccar.', [
+            'device_id' => $this->deviceId,
+            'traccar_device_id' => $this->traccarDeviceId,
+        ]);
     }
 
     /**

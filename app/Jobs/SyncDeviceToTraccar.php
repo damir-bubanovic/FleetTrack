@@ -38,16 +38,23 @@ class SyncDeviceToTraccar implements ShouldQueue
             return;
         }
 
-        $traccarDevice = $traccarDeviceService->create([
+        $payload = [
             'name' => $device->name,
             'uniqueId' => $device->unique_id,
             'model' => $device->model,
             'phone' => $device->phone,
-        ]);
+        ];
+
+        $traccarDevice = $traccarDeviceService->create($payload);
 
         $device->update([
             'traccar_device_id' => $traccarDevice->id,
             'last_sync_at' => now(),
+        ]);
+
+        Log::info('Device synchronized to Traccar.', [
+            'device_id' => $device->id,
+            'traccar_device_id' => $traccarDevice->id,
         ]);
     }
 
