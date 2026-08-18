@@ -15,7 +15,7 @@ class CreateDevice
     /**
      * Create a new device.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      *
      * @throws AuthorizationException
      */

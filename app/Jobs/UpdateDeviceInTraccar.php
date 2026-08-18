@@ -19,8 +19,7 @@ class UpdateDeviceInTraccar implements ShouldQueue
 
     public function __construct(
         public readonly Device $device,
-    ) {
-    }
+    ) {}
 
     /**
      * Execute the job.

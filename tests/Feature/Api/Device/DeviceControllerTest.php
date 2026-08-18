@@ -2,6 +2,7 @@
 
 use App\Enums\DeviceStatus;
 use App\Jobs\SyncDeviceToTraccar;
+use App\Jobs\UpdateDeviceInTraccar;
 use App\Models\Fleet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -9,8 +10,6 @@ use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesDevices;
 use Tests\Traits\CreatesUsers;
 use Tests\Traits\CreatesVehicles;
-use App\Jobs\UpdateDeviceInTraccar;
-
 
 uses(
     RefreshDatabase::class,

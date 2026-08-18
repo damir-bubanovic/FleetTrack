@@ -9,8 +9,7 @@ class TraccarDeviceService
 {
     public function __construct(
         private readonly TraccarClient $client,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<DeviceData>
@@ -39,7 +38,7 @@ class TraccarDeviceService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function create(array $data): DeviceData
     {
@@ -52,7 +51,7 @@ class TraccarDeviceService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function update(
         int $id,
@@ -89,7 +88,7 @@ class TraccarDeviceService
      * Traccar expects the "attributes" field to be a JSON object (`{}`)
      * instead of an empty array (`[]`).
      *
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
     private function normalizePayload(array $payload): array
@@ -99,7 +98,7 @@ class TraccarDeviceService
             && is_array($payload['attributes'])
             && $payload['attributes'] === []
         ) {
-            $payload['attributes'] = new stdClass();
+            $payload['attributes'] = new stdClass;
         }
 
         return $payload;

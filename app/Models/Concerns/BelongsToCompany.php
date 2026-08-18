@@ -24,7 +24,7 @@ trait BelongsToCompany
     /**
      * Scope the query to a specific company.
      *
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeForCompany(
@@ -40,7 +40,7 @@ trait BelongsToCompany
     /**
      * Scope records visible to the given user.
      *
-     * @param Builder<static> $query
+     * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeVisibleTo(

@@ -13,7 +13,7 @@ class CreateDriver
     /**
      * Create a new driver.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function handle(User $user, array $data): Driver
     {

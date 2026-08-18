@@ -16,6 +16,5 @@ class DeviceUpdated
      */
     public function __construct(
         public readonly Device $device,
-    ) {
-    }
+    ) {}
 }

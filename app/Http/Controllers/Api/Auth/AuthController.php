@@ -15,8 +15,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly LoginUser $loginUser,
         private readonly LogoutUser $logoutUser,
-    ) {
-    }
+    ) {}
 
     /**
      * Authenticate a user and issue a Sanctum token.

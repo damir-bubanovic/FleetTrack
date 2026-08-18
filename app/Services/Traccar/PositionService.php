@@ -8,11 +8,10 @@ class PositionService
 {
     public function __construct(
         private readonly TraccarClient $client,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $query
+     * @param  array<string, mixed>  $query
      */
     public function all(array $query = []): Response
     {

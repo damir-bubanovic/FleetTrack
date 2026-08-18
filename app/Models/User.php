@@ -50,7 +50,6 @@ class User extends Authenticatable
 
     use HasRoles;
     use Notifiable;
-    
 
     /**
      * Get the attributes that should be cast.

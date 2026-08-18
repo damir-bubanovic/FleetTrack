@@ -12,7 +12,7 @@ class CreateFleet
     /**
      * Create a new fleet.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function handle(User $user, array $data): Fleet
     {

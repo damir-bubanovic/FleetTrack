@@ -13,7 +13,7 @@ class UpdateDriver
     /**
      * Update an existing driver.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function handle(
         User $user,

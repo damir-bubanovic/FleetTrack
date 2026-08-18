@@ -25,7 +25,7 @@ class TraccarClient
     }
 
     /**
-     * @param array<string, mixed> $query
+     * @param  array<string, mixed>  $query
      */
     public function get(string $uri, array $query = []): Response
     {
@@ -33,7 +33,7 @@ class TraccarClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function post(string $uri, array $data = []): Response
     {
@@ -41,7 +41,7 @@ class TraccarClient
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function put(string $uri, array $data = []): Response
     {

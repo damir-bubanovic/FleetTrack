@@ -16,6 +16,5 @@ class DeviceDeleted
      */
     public function __construct(
         public readonly Device $device,
-    ) {
-    }
+    ) {}
 }

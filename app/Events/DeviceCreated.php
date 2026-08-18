@@ -16,6 +16,5 @@ class DeviceCreated
      */
     public function __construct(
         public readonly Device $device,
-    ) {
-    }
+    ) {}
 }

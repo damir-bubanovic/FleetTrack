@@ -11,7 +11,7 @@ class LoginUser
     /**
      * Authenticate a user and create a Sanctum token.
      *
-     * @param array<string, mixed> $credentials
+     * @param  array<string, mixed>  $credentials
      * @return array{token: string, user: User}
      *
      * @throws AuthenticationException

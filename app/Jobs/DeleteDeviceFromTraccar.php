@@ -19,8 +19,7 @@ class DeleteDeviceFromTraccar implements ShouldQueue
     public function __construct(
         public readonly int $deviceId,
         public readonly int $traccarDeviceId,
-    ) {
-    }
+    ) {}
 
     /**
      * Execute the job.

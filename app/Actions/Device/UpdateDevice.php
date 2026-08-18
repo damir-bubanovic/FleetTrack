@@ -14,7 +14,7 @@ class UpdateDevice
     /**
      * Update an existing device.
      *
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      *
      * @throws AuthorizationException
      */

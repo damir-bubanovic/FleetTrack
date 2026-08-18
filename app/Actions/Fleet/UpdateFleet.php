@@ -12,7 +12,7 @@ class UpdateFleet
     /**
      * Update an existing fleet.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function handle(
         User $user,

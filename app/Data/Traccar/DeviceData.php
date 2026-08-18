@@ -11,11 +11,10 @@ final readonly class DeviceData
         public ?string $model = null,
         public ?string $phone = null,
         public ?string $status = null,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public static function fromArray(array $data): self
     {
