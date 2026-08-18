@@ -20,6 +20,13 @@ class SyncDeviceDeletedToTraccar
      */
     public function handle(DeviceDeleted $event): void
     {
-        DeleteDeviceFromTraccar::dispatch($event->device);
+        if ($event->device->traccar_device_id === null) {
+            return;
+        }
+
+        DeleteDeviceFromTraccar::dispatch(
+            $event->device->id,
+            $event->device->traccar_device_id,
+        );
     }
 }

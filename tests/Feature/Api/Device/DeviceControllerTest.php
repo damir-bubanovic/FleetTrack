@@ -9,6 +9,8 @@ use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesDevices;
 use Tests\Traits\CreatesUsers;
 use Tests\Traits\CreatesVehicles;
+use App\Jobs\UpdateDeviceInTraccar;
+
 
 uses(
     RefreshDatabase::class,
@@ -209,6 +211,8 @@ test('unique id must be unique', function (): void {
 
 test('company admin can update own device', function (): void {
 
+    Queue::fake();
+
     $company = $this->createCompany();
 
     $fleet = Fleet::factory()->create([
@@ -241,6 +245,8 @@ test('company admin can update own device', function (): void {
         'name' => 'Updated GPS Device',
         'traccar_device_id' => $device->traccar_device_id,
     ]);
+
+    Queue::assertPushed(UpdateDeviceInTraccar::class);
 });
 
 test('company admin cannot update device from another company', function (): void {

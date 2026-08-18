@@ -57,8 +57,26 @@ class TraccarDeviceService
         int $id,
         array $data,
     ): DeviceData {
+        $payload = $this->client
+            ->get("/devices/{$id}")
+            ->throw()
+            ->json();
+
+        $payload = [
+            ...$payload,
+            ...$data,
+        ];
+
+        if (
+            isset($payload['attributes'])
+            && is_array($payload['attributes'])
+            && $payload['attributes'] === []
+        ) {
+            $payload['attributes'] = new \stdClass();
+        }
+
         $device = $this->client
-            ->put("/devices/{$id}", $data)
+            ->put("/devices/{$id}", $payload)
             ->throw()
             ->json();
 
