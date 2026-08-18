@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Company\CompanyController;
 use App\Http\Controllers\Api\Device\DeviceController;
 use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
+use App\Http\Controllers\Api\Tracking\LiveTrackingController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Middleware\SetPermissionTeam;
 use Illuminate\Http\Request;
@@ -35,6 +36,9 @@ Route::prefix('v1')->group(function (): void {
             AuthController::class,
             'logout',
         ]);
+
+        Route::get('tracking/positions', [LiveTrackingController::class, 'index'])
+            ->name('tracking.positions');
 
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('fleets', FleetController::class);
