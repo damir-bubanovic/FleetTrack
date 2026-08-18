@@ -1,10 +1,10 @@
 # FleetTrack
 
-FleetTrack is a modern multi-tenant fleet management and GPS tracking platform built with **Laravel 12**, **Vue.js**, **Flutter**, and **Traccar**.
+## Overview
 
-The project demonstrates how to build a scalable enterprise fleet management platform using modern Laravel architecture, automated testing, clean code principles, and API-first development.
+FleetTrack is a multi-tenant fleet management platform built with Laravel. It integrates with Traccar for GPS tracking while keeping FleetTrack as the system of record for business entities such as companies, fleets, users, vehicles, and devices.
 
-FleetTrack is being developed as a production-quality portfolio project inspired by real-world logistics and transportation management systems.
+The application follows a service-oriented architecture with thin controllers, Action classes for business logic, Policies for authorization, queued integrations, and comprehensive feature tests.
 
 ---
 
@@ -12,283 +12,237 @@ FleetTrack is being developed as a production-quality portfolio project inspired
 
 ## Backend
 
-- Laravel 12
 - PHP 8.5
+- Laravel 12
 - MySQL
 - Redis
-- Laravel Sail (Docker)
-- Pest
-- PHPUnit
+- Laravel Sail
+- Laravel Sanctum
+- Spatie Permission (Teams)
+- PHPUnit / Pest
+- PHPStan (Larastan)
+- Laravel Pint
 
-## Frontend
+## External Services
 
-- Vue.js
-- Vite
-
-## Mobile
-
-- Flutter
-
-## GPS Platform
-
-- Traccar
+- Traccar Server
+- Traccar REST API
 
 ---
 
-# Project Goals
+# Current Backend Status
 
-FleetTrack aims to provide a complete fleet management solution supporting multiple logistics companies.
+The following modules are implemented and tested.
 
-Core goals include:
+## Authentication
 
-- Multi-company architecture
-- Fleet management
-- Driver management
-- Vehicle management
-- GPS device management
-- Real-time vehicle tracking
-- Trip management
-- Geofencing
-- Alerts
-- Reporting
-- Mobile application
-- REST API
+- API authentication with Laravel Sanctum
+- Login
+- Logout
+- Token-based API access
+
+## Authorization
+
+- Spatie Permission with Teams enabled
+- Company isolation
+- Policies for API resources
+- Middleware that sets the active permission team
+
+## Companies
+
+- CRUD
+- Policies
+- Validation
+- API Resources
+- Feature Tests
+
+## Fleets
+
+- CRUD
+- Company isolation
+- Policies
+- Feature Tests
+
+## Vehicles
+
+- CRUD
+- Company isolation
+- Validation
+- Feature Tests
+
+## Devices
+
+- CRUD
+- Company isolation
+- Validation
+- Feature Tests
+
+---
+
+# Traccar Integration
+
+FleetTrack synchronizes devices asynchronously using Laravel queues.
+
+Workflow:
+
+FleetTrack API
+
+↓
+
+Action
+
+↓
+
+Domain Event
+
+↓
+
+Listener
+
+↓
+
+Queued Job
+
+↓
+
+Traccar REST API
+
+Implemented synchronization:
+
+- Create device
+- Update device
+- Delete device
+
+Synchronization updates:
+
+- Traccar Device ID
+- Last synchronization timestamp
+
+The integration uses dedicated classes:
+
+- TraccarClient
+- TraccarDeviceService
+- DeviceData DTO
 
 ---
 
 # Architecture
 
-FleetTrack follows an API-first architecture.
+Business logic is intentionally separated.
 
-Every business module follows the same implementation pattern:
-
-- Model
-- Policy
+- Controllers
 - Form Requests
-- Actions
-- API Resource
-- API Controller
-- Feature Tests
+- Policies
+- Action classes
+- Resources
+- Events
+- Listeners
+- Queue Jobs
+- Services
+- DTOs
 
-Business logic is intentionally separated from controllers using Action classes, while authorization is handled through Laravel Policies.
-
-Reusable components are extracted whenever a common pattern emerges.
-
-Current reusable components include:
-
-- BelongsToCompany trait
-- visibleTo() tenant scope
-- Company ownership architecture
-- Shared testing traits
+Controllers remain thin while Actions encapsulate business rules.
 
 ---
 
-# Multi-Tenant Design
+# Multi-Tenancy
 
-FleetTrack is designed as a multi-company platform.
+The application uses company-based tenancy.
 
-Each company owns its own:
+Features include:
 
-- Users
-- Fleets
-- Drivers
-- Vehicles
-- Devices
-- Trips
-
-Tenant isolation is enforced through:
-
-- company_id ownership
-- Laravel Policies
-- Spatie Permission Teams
-- Query scopes
-- Business Actions
-
----
-
-# Completed Modules
-
-## Foundation
-
-- Laravel project
-- Docker environment
-- Authentication
-- Authorization
-- Multi-company architecture
-- Spatie Permission
-- Spatie Teams
-- Database seeders
-- Database factories
-- Automated testing foundation
-
-## Company Management
-
-Completed:
-
-- Company model
-- Company API foundation
-- Authorization
-- API Resources
-- Feature tests
-
-## Fleet Management
-
-Completed:
-
-- Full CRUD API
-- Policies
-- Actions
-- Form Requests
-- API Resources
-- Feature tests
-
-## Driver Management
-
-Completed:
-
-- Full CRUD API
-- Policies
-- Actions
-- Form Requests
-- API Resources
-- Feature tests
-
-## Vehicle Management
-
-Completed:
-
-- Full CRUD API
-- Policies
-- Actions
-- Form Requests
-- API Resources
-- Feature tests
-
----
-
-# Development Principles
-
-FleetTrack follows several architectural principles:
-
-- API-first development
-- Thin Controllers
-- Action-based business logic
+- Company-scoped data
+- Team-aware permissions
 - Policy-based authorization
-- Feature-test-first development
-- Multi-tenant security
-- Reusable components
-- Incremental refactoring
+- Query scopes for visibility
 
-Every module is implemented file-by-file, fully tested, and refactored before moving to the next module.
+Super Administrators can access all companies.
 
----
-
-# Testing
-
-FleetTrack uses:
-
-- Pest
-- Laravel Feature Tests
-
-Current automated tests cover:
-
-- Company module
-- Fleet module
-- Driver module
-- Vehicle module
-- Authorization
-- Validation
-- Multi-tenant isolation
-- CRUD operations
-
-Every completed module includes a complete feature test suite.
+Company users are restricted to their own company.
 
 ---
 
-# Current Roadmap
+# Development
 
-Completed:
-
-- Foundation
-- Company
-- Fleet
-- Driver
-- Vehicle
-
-Upcoming:
-
-- GPS Device Management
-- Traccar Integration
-- Live Tracking
-- Trip Management
-- Geofencing
-- Alerts
-- Dashboard
-- Reports
-- Flutter Mobile Application
-
----
-
-# Local Development
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-
-cd FleetTrack
-```
-
-Start Laravel Sail:
+## Start environment
 
 ```bash
 ./vendor/bin/sail up -d
 ```
 
-Install dependencies:
+## Run queues
 
 ```bash
-./vendor/bin/sail composer install
+./vendor/bin/sail artisan queue:work
 ```
 
-Generate the application key:
-
-```bash
-./vendor/bin/sail artisan key:generate
-```
-
-Run migrations and seeders:
-
-```bash
-./vendor/bin/sail artisan migrate:fresh --seed
-```
-
-Run the test suite:
+## Run tests
 
 ```bash
 ./vendor/bin/sail artisan test
 ```
 
-Run Laravel Pint:
+## Static analysis
 
 ```bash
-./vendor/bin/sail pint
+./vendor/bin/sail composer types:check
+```
+
+## Code style
+
+```bash
+./vendor/bin/sail artisan pint
 ```
 
 ---
 
-# Documentation
+# Project Structure
 
-Project documentation includes:
-
-- README.md
-- FEATURES.md
-- ARCHITECTURE.md
-- docs/architecture-decisions.md
-- docs/module-development-checklist.md
+```
+app/
+ ├── Actions
+ ├── Data
+ ├── Events
+ ├── Http
+ ├── Jobs
+ ├── Listeners
+ ├── Models
+ ├── Policies
+ ├── Services
+```
 
 ---
 
-# License
+# Development Principles
 
-FleetTrack is an educational and portfolio project created to demonstrate modern Laravel architecture, multi-tenant application design, automated testing, and clean software engineering practices.
+- Thin Controllers
+- Single Responsibility
+- Queue external integrations
+- Policy-based authorization
+- Feature-test driven development
+- PHPStan clean
+- Laravel Pint compliant
+
+---
+
+# Roadmap
+
+Completed
+
+- Authentication
+- Authorization
+- Companies
+- Fleets
+- Vehicles
+- Devices
+- Traccar synchronization
+
+Next
+
+- Live Tracking
+- Positions
+- Trips
+- Geofences
+- Alerts
+- Reports
+- Dashboard

@@ -2,378 +2,219 @@
 
 ## Overview
 
-FleetTrack is a modern multi-tenant fleet management and GPS tracking platform built with Laravel 12.
+FleetTrack is a multi-tenant fleet management platform built with Laravel. The application is the system of record for business entities, while Traccar provides GPS tracking capabilities. External communication with Traccar is asynchronous through Laravel Events, Listeners, and Queue Jobs.
 
-The application follows an API-first architecture with strong separation of concerns, reusable business components, automated testing, and secure tenant isolation.
+---
 
-The Fleet, Driver, and Vehicle modules establish the architectural reference implementation for all future business modules.
+# High-Level Architecture
+
+```
+Client
+   │
+   ▼
+API Routes
+   │
+   ▼
+Controllers
+   │
+   ▼
+Form Requests ─── Policies
+   │
+   ▼
+Actions
+   │
+   ├── Eloquent Models
+   ├── Domain Events
+   └── Services
+           │
+           ▼
+      Queue Jobs
+           │
+           ▼
+     Traccar REST API
+```
 
 ---
 
 # Architectural Principles
 
-## API-First
-
-All business functionality is exposed through versioned REST endpoints.
-
-```
-/api/v1
-```
-
-The API is consumed by:
-
-- Vue.js web application
-- Flutter mobile application
-- Third-party integrations
-- Future public API
+- Thin controllers
+- Business logic in Action classes
+- Validation in Form Requests
+- Authorization through Policies
+- API Resources for responses
+- External integrations through Services
+- Asynchronous processing with queues
+- Feature-test driven development
 
 ---
 
-## Multi-Tenant Architecture
+# Multi-Tenancy
 
-FleetTrack supports multiple logistics companies within a single application.
+FleetTrack uses company-based tenancy.
 
-Each business entity belongs to a company through:
+## Isolation
 
-```
-company_id
-```
+- Every business entity belongs to a company.
+- Policies enforce company ownership.
+- Query scopes restrict visibility.
+- Spatie Permission Teams use `company_id` as the active team.
 
-Tenant isolation is enforced through:
-
-- Laravel Policies
-- Spatie Permission Teams
-- Query scopes
-- Business Actions
-- Authorization checks
+Super Administrators have global access.
 
 ---
 
-## Thin Controllers
+# Domain Structure
 
-Controllers have a single responsibility:
+## Models
 
-- Authorize requests
-- Delegate work to Actions
-- Return API Resources
+- Company
+- Fleet
+- User
+- Vehicle
+- Device
 
-Controllers never contain business logic.
+Future modules:
 
-Example flow:
-
-```
-Request
-    ↓
-Controller
-    ↓
-Policy
-    ↓
-Action
-    ↓
-Model
-    ↓
-API Resource
-    ↓
-JSON Response
-```
+- Position
+- Trip
+- Geofence
+- Alert
+- Report
 
 ---
 
-## Action-Based Business Logic
+# HTTP Layer
 
-Business rules live inside dedicated Action classes.
+Each module follows the same pattern:
 
-Example:
+- API Controller
+- Form Requests
+- API Resource
+- Policy
+- Action classes
 
-```
-CreateFleet
-UpdateFleet
-DeleteFleet
-
-CreateDriver
-UpdateDriver
-DeleteDriver
-
-CreateVehicle
-UpdateVehicle
-DeleteVehicle
-```
-
-Advantages:
-
-- Small controllers
-- Reusable business logic
-- Easier testing
-- Better separation of concerns
+Controllers orchestrate requests but do not contain business rules.
 
 ---
 
-# Project Structure
+# Business Layer
 
-```
-app/
+Action classes encapsulate application logic.
 
-├── Actions/
-│
-├── Enums/
-│
-├── Http/
-│   ├── Controllers/
-│   ├── Requests/
-│   └── Resources/
-│
-├── Models/
-│   └── Concerns/
-│
-├── Policies/
-│
-├── Providers/
-│
-└── Support/
-```
+Examples:
 
-Every business module follows the same structure.
+- CreateCompany
+- UpdateVehicle
+- CreateDevice
+- UpdateDevice
+- DeleteDevice
+
+Actions may dispatch events after successful persistence.
 
 ---
 
-# Domain Model
+# Event-Driven Integration
+
+Device synchronization is implemented using Laravel events.
 
 ```
-Company
-│
-├── Users
-│
-├── Fleets
-│   │
-│   ├── Drivers
-│   │
-│   └── Vehicles
-│
-└── Future
-    ├── Devices
-    ├── Trips
-    ├── Alerts
-    └── Geofences
+Create Device
+      │
+      ▼
+DeviceCreated
+      │
+      ▼
+Listener
+      │
+      ▼
+Queue Job
+      │
+      ▼
+Traccar API
 ```
 
----
+The same pattern is used for:
 
-# Authorization
-
-FleetTrack combines Laravel Policies with Spatie Permission.
-
-## Roles
-
-- Super Admin
-- Company Admin
-- Fleet Manager
-- Driver
-
-Permissions are assigned through roles.
-
-Company-specific permissions are provisioned automatically.
+- DeviceCreated
+- DeviceUpdated
+- DeviceDeleted
 
 ---
 
-# Reusable Components
+# Queue Architecture
 
-## BelongsToCompany
+Redis is used as the queue backend.
 
-Shared model trait providing:
+Jobs:
 
-- Company relationship
-- Tenant query scope
-- Shared ownership behavior
+- SyncDeviceToTraccar
+- UpdateDeviceInTraccar
+- DeleteDeviceFromTraccar
+
+Each job:
+
+- retries failed requests
+- logs failures
+- reports exceptions
+- performs one responsibility
 
 ---
 
-## visibleTo()
+# Traccar Integration
 
-Reusable query scope used by controllers.
+Core classes:
+
+- TraccarClient
+- TraccarDeviceService
+- DeviceData DTO
 
 Responsibilities:
 
-- Super Admin sees all records
-- Company Admin sees only company records
+## TraccarClient
 
-This removes duplicated tenant filtering logic.
+- HTTP communication
+- Authentication
+- Timeouts
+- JSON configuration
 
----
+## TraccarDeviceService
 
-## Shared Testing Traits
-
-Reusable testing helpers include:
-
-- CreatesCompanies
-- CreatesUsers
-- CreatesFleets
-- CreatesDrivers
-- CreatesVehicles
-
-These eliminate duplicated setup code across feature tests.
-
----
-
-# Request Validation
-
-Every write endpoint uses Form Requests.
-
-Responsibilities:
-
-- Validation
-- Sanitization
-- Request authorization
-
-Business rules remain inside Actions.
-
----
-
-# API Resources
-
-Every endpoint returns dedicated API Resources.
-
-Benefits:
-
-- Consistent JSON
-- Stable API contracts
-- Easier frontend development
+- Device CRUD
+- Payload normalization
+- DTO conversion
 
 ---
 
 # Testing Strategy
 
-FleetTrack follows a feature-test-first workflow.
+- Pest feature tests
+- Queue::fake() for feature tests involving jobs
+- Policy verification
+- Multi-tenant authorization checks
+- Database assertions
+- PHPStan static analysis
+- Laravel Pint formatting
 
-Each completed module includes automated tests covering:
+---
 
-- CRUD operations
+# Current Status
+
+Completed:
+
+- Authentication
 - Authorization
-- Validation
-- Multi-tenant isolation
-- Business rules
+- Companies
+- Fleets
+- Vehicles
+- Devices
+- Traccar synchronization
 
-Current completed test suites:
+Next:
 
-- Company
-- Fleet
-- Driver
-- Vehicle
-
----
-
-# Development Workflow
-
-Every module follows the same implementation process.
-
-```
-Migration
-↓
-
-Model
-↓
-
-Factory
-↓
-
-Seeder
-↓
-
-Policy
-↓
-
-Form Requests
-↓
-
-Actions
-↓
-
-API Resource
-↓
-
-Controller
-↓
-
-Routes
-↓
-
-Feature Tests
-↓
-
-Refactoring
-↓
-
-Documentation
-↓
-
-Git Commit
-```
-
-This workflow ensures every module is implemented consistently.
-
----
-
-# Current Reference Modules
-
-The following modules are complete and serve as implementation references:
-
-## Fleet
-
-Reference for:
-
-- CRUD
-- Policies
-- Actions
-- Resources
-- Requests
-- Testing
-
-## Driver
-
-Reference for:
-
-- Fleet relationships
-- Company ownership
-- Authorization
-
-## Vehicle
-
-Reference for:
-
-- Fleet ownership validation
-- Business rule enforcement
-- CRUD testing
-- Resource consistency
-
-Future modules should follow these established patterns.
-
----
-
-# Future Architecture
-
-Upcoming modules:
-
-- GPS Device Management
-- Traccar Integration
 - Live Tracking
-- Trip Management
-- Geofencing
+- Positions
+- Trips
+- Geofences
 - Alerts
-- Dashboard
 - Reports
-
-Each will follow the same architecture established by the Fleet, Driver, and Vehicle modules.
-
----
-
-# Conclusion
-
-FleetTrack is designed around:
-
-- Clean Architecture
-- API-First Development
-- Multi-Tenant Security
-- Reusable Components
-- Automated Testing
-- Incremental Refactoring
-
-The architecture intentionally favors consistency over complexity, making future modules faster to implement while maintaining high code quality.
