@@ -588,3 +588,111 @@ test('company admin can combine fleet and vehicle live position filters', functi
         ->assertJsonPath('data.0.vehicle.id', $vehicleA->id)
         ->assertJsonPath('data.0.position.device_id', 101);
 });
+
+test('live position reports vehicle as online when gps fix is recent', function (): void {
+    $this->travelTo('2026-08-19 10:00:00');
+
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-19T09:58:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions')
+        ->assertOk()
+        ->assertJsonPath('data.0.status.online', true)
+        ->assertJsonPath(
+            'data.0.status.last_seen_at',
+            '2026-08-19T09:58:00.000000Z'
+        );
+});
+
+test('live position reports vehicle as offline when gps fix is stale', function (): void {
+    $this->travelTo('2026-08-19 10:00:00');
+
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-19T09:50:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions')
+        ->assertOk()
+        ->assertJsonPath('data.0.status.online', false)
+        ->assertJsonPath(
+            'data.0.status.last_seen_at',
+            '2026-08-19T09:50:00.000000Z'
+        );
+});
+
+test('live position reports vehicle as offline when gps fix time is missing', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions')
+        ->assertOk()
+        ->assertJsonPath('data.0.status.online', false)
+        ->assertJsonPath('data.0.status.last_seen_at', null);
+});
