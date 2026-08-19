@@ -22,6 +22,11 @@ class LivePositionsRequest extends FormRequest
                 'integer',
                 'exists:fleets,id',
             ],
+            'vehicle_id' => [
+                'nullable',
+                'integer',
+                'exists:vehicles,id',
+            ],
         ];
     }
 }

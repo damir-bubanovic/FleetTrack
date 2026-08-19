@@ -18,8 +18,11 @@ class GetLivePositions
      *     position: non-empty-array<string, mixed>
      * }>
      */
-    public function handle(User $user, ?int $fleetId = null): array
-    {
+    public function handle(
+        User $user,
+        ?int $fleetId = null,
+        ?int $vehicleId = null,
+    ): array {
         $response = $this->positionService->all();
 
         $response->throw();
@@ -36,6 +39,10 @@ class GetLivePositions
                     'vehicle',
                     fn ($query) => $query->where('fleet_id', $fleetId)
                 )
+            )
+            ->when(
+                $vehicleId !== null,
+                fn ($query) => $query->where('vehicle_id', $vehicleId)
             )
             ->with('vehicle')
             ->get()

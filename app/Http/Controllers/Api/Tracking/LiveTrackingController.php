@@ -27,8 +27,13 @@ class LiveTrackingController extends Controller
         $user = $request->user();
 
         $fleetId = $request->integer('fleet_id') ?: null;
+        $vehicleId = $request->integer('vehicle_id') ?: null;
 
-        $positions = $this->getLivePositions->handle($user, $fleetId);
+        $positions = $this->getLivePositions->handle(
+            $user,
+            $fleetId,
+            $vehicleId,
+        );
 
         return LivePositionResource::collection($positions);
     }
