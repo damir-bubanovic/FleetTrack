@@ -907,3 +907,55 @@ test('vehicle without synced device has no position history', function (): void 
 
     Http::assertNothingSent();
 });
+
+test('position history allows a seven day date range', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-01T10:00:00Z'
+        .'&to=2026-08-08T10:00:00Z'
+    )->assertOk();
+
+    Http::assertSentCount(1);
+});
+
+test('position history rejects a date range longer than seven days', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-01T10:00:00Z'
+        .'&to=2026-08-08T10:00:01Z'
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('to');
+
+    Http::assertNothingSent();
+});
