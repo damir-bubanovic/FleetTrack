@@ -18,7 +18,7 @@ class GetLivePositions
      *     position: non-empty-array<string, mixed>
      * }>
      */
-    public function handle(User $user): array
+    public function handle(User $user, ?int $fleetId = null): array
     {
         $response = $this->positionService->all();
 
@@ -30,6 +30,13 @@ class GetLivePositions
         $devices = Device::query()
             ->visibleTo($user)
             ->whereNotNull('traccar_device_id')
+            ->when(
+                $fleetId !== null,
+                fn ($query) => $query->whereHas(
+                    'vehicle',
+                    fn ($query) => $query->where('fleet_id', $fleetId)
+                )
+            )
             ->with('vehicle')
             ->get()
             ->keyBy('traccar_device_id');

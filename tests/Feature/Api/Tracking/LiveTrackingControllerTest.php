@@ -198,7 +198,6 @@ test('unsynced devices do not expose traccar positions', function (): void {
         ->assertJsonCount(0, 'data');
 });
 
-
 test('company admin can view live position for own vehicle', function (): void {
     $company = $this->createCompany();
 
@@ -317,4 +316,115 @@ test('vehicle returns not found when traccar has no live position', function ():
 
     $this->getJson("/api/v1/tracking/vehicles/{$vehicle->id}")
         ->assertNotFound();
+});
+
+test('company admin can filter live positions by fleet', function (): void {
+    $company = $this->createCompany();
+
+    $fleetA = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicleA = $this->createVehicle($company, $fleetA);
+    $vehicleB = $this->createVehicle($company, $fleetB);
+
+    $deviceA = $this->createDevice($company, $vehicleA, [
+        'traccar_device_id' => 101,
+    ]);
+
+    $this->createDevice($company, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+            ],
+            [
+                'id' => 1002,
+                'deviceId' => 202,
+                'latitude' => 44.8666,
+                'longitude' => 13.8496,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $response = $this->getJson(
+        "/api/v1/tracking/positions?fleet_id={$fleetA->id}"
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.device.id', $deviceA->id)
+        ->assertJsonPath('data.0.vehicle.id', $vehicleA->id)
+        ->assertJsonPath('data.0.position.device_id', 101);
+
+    $response->assertJsonMissing([
+        'device_id' => 202,
+    ]);
+});
+
+test('fleet filter does not expose another company live positions', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle($companyB, $fleetB);
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1002,
+                'deviceId' => 202,
+                'latitude' => 44.8666,
+                'longitude' => 13.8496,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson(
+        "/api/v1/tracking/positions?fleet_id={$fleetB->id}"
+    )
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+});
+
+test('fleet filter must contain a valid fleet id', function (): void {
+    $company = $this->createCompany();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions?fleet_id=999999')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('fleet_id');
+});
+
+test('fleet filter must be an integer', function (): void {
+    $company = $this->createCompany();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions?fleet_id=invalid')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('fleet_id');
 });

@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Api\Tracking;
 
 use App\Actions\Tracking\GetLivePositions;
-use App\Http\Controllers\Controller;
-use App\Http\Resources\Tracking\LivePositionResource;
 use App\Actions\Tracking\GetVehicleLivePosition;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Tracking\LivePositionsRequest;
+use App\Http\Resources\Tracking\LivePositionResource;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-
 
 class LiveTrackingController extends Controller
 {
@@ -19,14 +19,16 @@ class LiveTrackingController extends Controller
         private readonly GetVehicleLivePosition $getVehicleLivePosition,
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(LivePositionsRequest $request): AnonymousResourceCollection
     {
         $this->authorize('tracking.view');
 
         /** @var User $user */
         $user = $request->user();
 
-        $positions = $this->getLivePositions->handle($user);
+        $fleetId = $request->integer('fleet_id') ?: null;
+
+        $positions = $this->getLivePositions->handle($user, $fleetId);
 
         return LivePositionResource::collection($positions);
     }

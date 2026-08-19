@@ -21,7 +21,7 @@ class FleetFactory extends Factory
 
             'name' => fake()->company().' Fleet',
 
-            'code' => strtoupper(fake()->bothify('FLT-###')),
+            'code' => strtoupper(fake()->unique()->bothify('FLT-#####')),
 
             'email' => fake()->companyEmail(),
 
