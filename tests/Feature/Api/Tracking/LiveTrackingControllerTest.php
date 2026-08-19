@@ -696,3 +696,214 @@ test('live position reports vehicle as offline when gps fix time is missing', fu
         ->assertJsonPath('data.0.status.online', false)
         ->assertJsonPath('data.0.status.last_seen_at', null);
 });
+
+test('company admin can view position history for own vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'speed' => 35.5,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+                'attributes' => [
+                    'ignition' => true,
+                ],
+            ],
+            [
+                'id' => 1002,
+                'deviceId' => 101,
+                'latitude' => 45.8200,
+                'longitude' => 15.9900,
+                'speed' => 42.0,
+                'fixTime' => '2026-08-18T09:00:00+00:00',
+                'attributes' => [
+                    'ignition' => true,
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $response = $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.id', 1001)
+        ->assertJsonPath('data.0.device_id', 101)
+        ->assertJsonPath('data.0.latitude', 45.8150)
+        ->assertJsonPath('data.0.longitude', 15.9819)
+        ->assertJsonPath('data.0.attributes.ignition', true)
+        ->assertJsonPath('data.1.id', 1002);
+});
+
+test('position history sends device and time range to traccar', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )->assertOk();
+
+    Http::assertSent(function ($request): bool {
+        parse_str(
+            (string) parse_url($request->url(), PHP_URL_QUERY),
+            $query
+        );
+
+        return ($query['deviceId'] ?? null) === '101'
+            && ($query['from'] ?? null) === '2026-08-18T08:00:00.000000Z'
+            && ($query['to'] ?? null) === '2026-08-18T10:00:00.000000Z';
+    });
+});
+
+test('company admin cannot view position history for another company vehicle', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle($companyB, $fleetB);
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicleB->id}/positions"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    Http::assertNothingSent();
+});
+
+test('position history requires from date', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?to=2026-08-18T10:00:00Z'
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('from');
+});
+
+test('position history requires to date', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-18T08:00:00Z'
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('to');
+});
+
+test('position history to date must be after from date', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-18T10:00:00Z'
+        .'&to=2026-08-18T08:00:00Z'
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('to');
+});
+
+test('vehicle without synced device has no position history', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => null,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    Http::assertNothingSent();
+});
