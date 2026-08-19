@@ -197,3 +197,124 @@ test('unsynced devices do not expose traccar positions', function (): void {
         ->assertOk()
         ->assertJsonCount(0, 'data');
 });
+
+
+test('company admin can view live position for own vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $device = $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'speed' => 42.3,
+                'attributes' => [
+                    'ignition' => true,
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $response = $this->getJson("/api/v1/tracking/vehicles/{$vehicle->id}");
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.device.id', $device->id)
+        ->assertJsonPath('data.device.traccar_device_id', 101)
+        ->assertJsonPath('data.vehicle.id', $vehicle->id)
+        ->assertJsonPath('data.position.device_id', 101)
+        ->assertJsonPath('data.position.latitude', 45.8150)
+        ->assertJsonPath('data.position.longitude', 15.9819)
+        ->assertJsonPath('data.position.attributes.ignition', true);
+});
+
+test('company admin cannot view live position for another company vehicle', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle($companyB, $fleetB);
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1002,
+                'deviceId' => 202,
+                'latitude' => 44.8666,
+                'longitude' => 13.8496,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson("/api/v1/tracking/vehicles/{$vehicleB->id}")
+        ->assertNotFound();
+});
+
+test('vehicle without synced device has no live position', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => null,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson("/api/v1/tracking/vehicles/{$vehicle->id}")
+        ->assertNotFound();
+
+    Http::assertNothingSent();
+});
+
+test('vehicle returns not found when traccar has no live position', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson("/api/v1/tracking/vehicles/{$vehicle->id}")
+        ->assertNotFound();
+});
