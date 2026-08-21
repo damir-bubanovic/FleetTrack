@@ -20,6 +20,9 @@ class VehicleTripSummaryResource extends JsonResource
             'ended_at' => $this->resource['ended_at'],
             'duration_seconds' => $this->resource['duration_seconds'],
             'distance_km' => $this->resource['distance_km'],
+            'average_speed' => $this->resource['average_speed'],
+            'max_speed' => $this->resource['max_speed'],
+            'speed_unit' => 'knots',
         ];
     }
 }

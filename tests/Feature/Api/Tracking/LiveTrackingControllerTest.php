@@ -980,6 +980,7 @@ test('company admin can view trip summary for own vehicle', function (): void {
                 'deviceId' => 101,
                 'latitude' => 45.8150,
                 'longitude' => 15.9819,
+                'speed' => 10.0,
                 'fixTime' => '2026-08-18T08:00:00+00:00',
             ],
             [
@@ -987,6 +988,7 @@ test('company admin can view trip summary for own vehicle', function (): void {
                 'deviceId' => 101,
                 'latitude' => 45.8200,
                 'longitude' => 15.9900,
+                'speed' => 20.0,
                 'fixTime' => '2026-08-18T08:30:00+00:00',
             ],
             [
@@ -994,6 +996,7 @@ test('company admin can view trip summary for own vehicle', function (): void {
                 'deviceId' => 101,
                 'latitude' => 45.8250,
                 'longitude' => 16.0000,
+                'speed' => 30.0,
                 'fixTime' => '2026-08-18T09:00:00+00:00',
             ],
         ], 200),
@@ -1012,7 +1015,10 @@ test('company admin can view trip summary for own vehicle', function (): void {
         ->assertJsonPath('data.position_count', 3)
         ->assertJsonPath('data.started_at', '2026-08-18T08:00:00+00:00')
         ->assertJsonPath('data.ended_at', '2026-08-18T09:00:00+00:00')
-        ->assertJsonPath('data.duration_seconds', 3600);
+        ->assertJsonPath('data.duration_seconds', 3600)
+        ->assertJsonPath('data.average_speed', 20)
+        ->assertJsonPath('data.max_speed', 30)
+        ->assertJsonPath('data.speed_unit', 'knots');
 
     expect($response->json('data.distance_km'))
         ->toBeGreaterThan(0);
@@ -1047,7 +1053,10 @@ test('trip summary returns empty summary when vehicle has no position history', 
         ->assertJsonPath('data.started_at', null)
         ->assertJsonPath('data.ended_at', null)
         ->assertJsonPath('data.duration_seconds', null)
-        ->assertJsonPath('data.distance_km', 0);
+        ->assertJsonPath('data.distance_km', 0)
+        ->assertJsonPath('data.average_speed', 0)
+        ->assertJsonPath('data.max_speed', 0)
+        ->assertJsonPath('data.speed_unit', 'knots');
 });
 
 test('company admin cannot view trip summary for another company vehicle', function (): void {
@@ -1123,4 +1132,49 @@ test('trip summary rejects a date range longer than seven days', function (): vo
         ->assertJsonValidationErrors('to');
 
     Http::assertNothingSent();
+});
+
+test('trip summary handles positions without speed data', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-18T08:00:00+00:00',
+            ],
+            [
+                'id' => 1002,
+                'deviceId' => 101,
+                'latitude' => 45.8200,
+                'longitude' => 15.9900,
+                'fixTime' => '2026-08-18T09:00:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonPath('data.average_speed', 0)
+        ->assertJsonPath('data.max_speed', 0)
+        ->assertJsonPath('data.speed_unit', 'knots');
 });

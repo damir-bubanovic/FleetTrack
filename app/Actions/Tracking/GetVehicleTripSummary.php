@@ -19,7 +19,9 @@ class GetVehicleTripSummary
      *     started_at: string|null,
      *     ended_at: string|null,
      *     duration_seconds: int|null,
-     *     distance_km: float
+     *     distance_km: float,
+     *     average_speed: float,
+     *     max_speed: float
      * }
      */
     public function handle(
@@ -42,6 +44,8 @@ class GetVehicleTripSummary
                 'ended_at' => null,
                 'duration_seconds' => null,
                 'distance_km' => 0.0,
+                'average_speed' => 0.0,
+                'max_speed' => 0.0,
             ];
         }
 
@@ -63,12 +67,27 @@ class GetVehicleTripSummary
                 ->diffInSeconds(CarbonImmutable::parse($endedAt));
         }
 
+        $speeds = collect($positions)
+            ->pluck('speed')
+            ->filter(fn (mixed $speed): bool => is_numeric($speed))
+            ->map(fn (mixed $speed): float => (float) $speed);
+
+        $averageSpeed = $speeds->isEmpty()
+            ? 0.0
+            : round((float) $speeds->avg(), 2);
+
+        $maxSpeed = $speeds->isEmpty()
+            ? 0.0
+            : round((float) $speeds->max(), 2);
+
         return [
             'position_count' => count($positions),
             'started_at' => $startedAt,
             'ended_at' => $endedAt,
             'duration_seconds' => $durationSeconds,
             'distance_km' => $this->calculateDistance($positions),
+            'average_speed' => $averageSpeed,
+            'max_speed' => $maxSpeed,
         ];
     }
 
