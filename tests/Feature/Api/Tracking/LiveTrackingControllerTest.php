@@ -959,3 +959,168 @@ test('position history rejects a date range longer than seven days', function ()
 
     Http::assertNothingSent();
 });
+
+test('company admin can view trip summary for own vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-18T08:00:00+00:00',
+            ],
+            [
+                'id' => 1002,
+                'deviceId' => 101,
+                'latitude' => 45.8200,
+                'longitude' => 15.9900,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+            ],
+            [
+                'id' => 1003,
+                'deviceId' => 101,
+                'latitude' => 45.8250,
+                'longitude' => 16.0000,
+                'fixTime' => '2026-08-18T09:00:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $response = $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.position_count', 3)
+        ->assertJsonPath('data.started_at', '2026-08-18T08:00:00+00:00')
+        ->assertJsonPath('data.ended_at', '2026-08-18T09:00:00+00:00')
+        ->assertJsonPath('data.duration_seconds', 3600);
+
+    expect($response->json('data.distance_km'))
+        ->toBeGreaterThan(0);
+});
+
+test('trip summary returns empty summary when vehicle has no position history', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonPath('data.position_count', 0)
+        ->assertJsonPath('data.started_at', null)
+        ->assertJsonPath('data.ended_at', null)
+        ->assertJsonPath('data.duration_seconds', null)
+        ->assertJsonPath('data.distance_km', 0);
+});
+
+test('company admin cannot view trip summary for another company vehicle', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle($companyB, $fleetB);
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicleB->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonPath('data.position_count', 0)
+        ->assertJsonPath('data.distance_km', 0);
+
+    Http::assertNothingSent();
+});
+
+test('trip summary validates required date range', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trip-summary"
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'from',
+            'to',
+        ]);
+});
+
+test('trip summary rejects a date range longer than seven days', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-01T10:00:00Z'
+        .'&to=2026-08-08T10:00:01Z'
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('to');
+
+    Http::assertNothingSent();
+});

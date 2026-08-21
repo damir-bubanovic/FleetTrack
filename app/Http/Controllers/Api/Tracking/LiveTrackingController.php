@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api\Tracking;
 use App\Actions\Tracking\GetLivePositions;
 use App\Actions\Tracking\GetVehicleLivePosition;
 use App\Actions\Tracking\GetVehiclePositionHistory;
+use App\Actions\Tracking\GetVehicleTripSummary;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tracking\LivePositionsRequest;
 use App\Http\Requests\Tracking\VehiclePositionHistoryRequest;
 use App\Http\Resources\Tracking\HistoricalPositionResource;
 use App\Http\Resources\Tracking\LivePositionResource;
+use App\Http\Resources\Tracking\VehicleTripSummaryResource;
 use App\Models\User;
 use App\Models\Vehicle;
 use Carbon\CarbonImmutable;
@@ -22,6 +24,7 @@ class LiveTrackingController extends Controller
         private readonly GetLivePositions $getLivePositions,
         private readonly GetVehicleLivePosition $getVehicleLivePosition,
         private readonly GetVehiclePositionHistory $getVehiclePositionHistory,
+        private readonly GetVehicleTripSummary $getVehicleTripSummary,
     ) {}
 
     public function index(LivePositionsRequest $request): AnonymousResourceCollection
@@ -77,5 +80,27 @@ class LiveTrackingController extends Controller
         );
 
         return HistoricalPositionResource::collection($positions);
+    }
+
+    public function tripSummary(
+        VehiclePositionHistoryRequest $request,
+        Vehicle $vehicle,
+    ): VehicleTripSummaryResource {
+        $this->authorize('tracking.view');
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $from = CarbonImmutable::parse($request->string('from')->toString());
+        $to = CarbonImmutable::parse($request->string('to')->toString());
+
+        $summary = $this->getVehicleTripSummary->handle(
+            $user,
+            $vehicle,
+            $from,
+            $to,
+        );
+
+        return new VehicleTripSummaryResource($summary);
     }
 }

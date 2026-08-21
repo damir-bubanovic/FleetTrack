@@ -46,6 +46,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('tracking/vehicles/{vehicle}/positions', [LiveTrackingController::class, 'history'])
             ->name('tracking.vehicles.positions');
 
+        Route::get('tracking/vehicles/{vehicle}/trip-summary', [LiveTrackingController::class, 'tripSummary'])
+            ->name('tracking.vehicles.trip-summary');
+
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('fleets', FleetController::class);
         Route::apiResource('drivers', DriverController::class);
