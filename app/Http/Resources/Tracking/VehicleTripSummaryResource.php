@@ -22,6 +22,8 @@ class VehicleTripSummaryResource extends JsonResource
             'distance_km' => $this->resource['distance_km'],
             'average_speed' => $this->resource['average_speed'],
             'max_speed' => $this->resource['max_speed'],
+            'moving_seconds' => $this->resource['moving_seconds'],
+            'stopped_seconds' => $this->resource['stopped_seconds'],
             'speed_unit' => 'knots',
         ];
     }

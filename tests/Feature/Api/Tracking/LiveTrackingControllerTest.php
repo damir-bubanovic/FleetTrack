@@ -988,7 +988,7 @@ test('company admin can view trip summary for own vehicle', function (): void {
                 'deviceId' => 101,
                 'latitude' => 45.8200,
                 'longitude' => 15.9900,
-                'speed' => 20.0,
+                'speed' => 0.0,
                 'fixTime' => '2026-08-18T08:30:00+00:00',
             ],
             [
@@ -1016,8 +1016,10 @@ test('company admin can view trip summary for own vehicle', function (): void {
         ->assertJsonPath('data.started_at', '2026-08-18T08:00:00+00:00')
         ->assertJsonPath('data.ended_at', '2026-08-18T09:00:00+00:00')
         ->assertJsonPath('data.duration_seconds', 3600)
-        ->assertJsonPath('data.average_speed', 20)
+        ->assertJsonPath('data.average_speed', 13.33)
         ->assertJsonPath('data.max_speed', 30)
+        ->assertJsonPath('data.moving_seconds', 1800)
+        ->assertJsonPath('data.stopped_seconds', 1800)
         ->assertJsonPath('data.speed_unit', 'knots');
 
     expect($response->json('data.distance_km'))
@@ -1056,6 +1058,8 @@ test('trip summary returns empty summary when vehicle has no position history', 
         ->assertJsonPath('data.distance_km', 0)
         ->assertJsonPath('data.average_speed', 0)
         ->assertJsonPath('data.max_speed', 0)
+        ->assertJsonPath('data.moving_seconds', 0)
+        ->assertJsonPath('data.stopped_seconds', 0)
         ->assertJsonPath('data.speed_unit', 'knots');
 });
 
@@ -1176,5 +1180,7 @@ test('trip summary handles positions without speed data', function (): void {
         ->assertOk()
         ->assertJsonPath('data.average_speed', 0)
         ->assertJsonPath('data.max_speed', 0)
+        ->assertJsonPath('data.moving_seconds', 0)
+        ->assertJsonPath('data.stopped_seconds', 3600)
         ->assertJsonPath('data.speed_unit', 'knots');
 });

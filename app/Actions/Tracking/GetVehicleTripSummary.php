@@ -21,7 +21,9 @@ class GetVehicleTripSummary
      *     duration_seconds: int|null,
      *     distance_km: float,
      *     average_speed: float,
-     *     max_speed: float
+     *     max_speed: float,
+     *     moving_seconds: int,
+     *     stopped_seconds: int
      * }
      */
     public function handle(
@@ -46,6 +48,8 @@ class GetVehicleTripSummary
                 'distance_km' => 0.0,
                 'average_speed' => 0.0,
                 'max_speed' => 0.0,
+                'moving_seconds' => 0,
+                'stopped_seconds' => 0,
             ];
         }
 
@@ -80,6 +84,10 @@ class GetVehicleTripSummary
             ? 0.0
             : round((float) $speeds->max(), 2);
 
+        [$movingSeconds, $stoppedSeconds] = $this->calculateMovementTime(
+            $positions,
+        );
+
         return [
             'position_count' => count($positions),
             'started_at' => $startedAt,
@@ -88,6 +96,8 @@ class GetVehicleTripSummary
             'distance_km' => $this->calculateDistance($positions),
             'average_speed' => $averageSpeed,
             'max_speed' => $maxSpeed,
+            'moving_seconds' => $movingSeconds,
+            'stopped_seconds' => $stoppedSeconds,
         ];
     }
 
@@ -122,6 +132,49 @@ class GetVehicleTripSummary
         }
 
         return round($distance, 2);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $positions
+     * @return array{int, int}
+     */
+    private function calculateMovementTime(array $positions): array
+    {
+        $movingSeconds = 0;
+        $stoppedSeconds = 0;
+
+        for ($index = 1; $index < count($positions); $index++) {
+            $previous = $positions[$index - 1];
+            $current = $positions[$index];
+
+            if (
+                ! isset($previous['fixTime'], $current['fixTime'])
+                || ! is_string($previous['fixTime'])
+                || ! is_string($current['fixTime'])
+            ) {
+                continue;
+            }
+
+            $seconds = (int) CarbonImmutable::parse($previous['fixTime'])
+                ->diffInSeconds(
+                    CarbonImmutable::parse($current['fixTime']),
+                );
+
+            $speed = $previous['speed'] ?? null;
+
+            if (is_numeric($speed) && (float) $speed > 0.0) {
+                $movingSeconds += $seconds;
+
+                continue;
+            }
+
+            $stoppedSeconds += $seconds;
+        }
+
+        return [
+            $movingSeconds,
+            $stoppedSeconds,
+        ];
     }
 
     private function haversine(
