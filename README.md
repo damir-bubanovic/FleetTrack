@@ -2,247 +2,503 @@
 
 ## Overview
 
-FleetTrack is a multi-tenant fleet management platform built with Laravel. It integrates with Traccar for GPS tracking while keeping FleetTrack as the system of record for business entities such as companies, fleets, users, vehicles, and devices.
+FleetTrack is a multi-tenant fleet management and GPS tracking platform
+built with Laravel.
 
-The application follows a service-oriented architecture with thin controllers, Action classes for business logic, Policies for authorization, queued integrations, and comprehensive feature tests.
+FleetTrack is the system of record for business entities such as
+companies, fleets, users, drivers, vehicles, and devices. It integrates
+with Traccar for GPS tracking, position history, and GPS trip detection.
 
----
+The backend follows a layered architecture with thin controllers, Action
+classes for application logic, Form Requests for validation, Policies
+and team-aware permissions for authorization, API Resources for response
+contracts, and dedicated services for Traccar integration.
+
+------------------------------------------------------------------------
 
 # Technology Stack
 
 ## Backend
 
-- PHP 8.5
-- Laravel 12
-- MySQL
-- Redis
-- Laravel Sail
-- Laravel Sanctum
-- Spatie Permission (Teams)
-- PHPUnit / Pest
-- PHPStan (Larastan)
-- Laravel Pint
+-   PHP `^8.3`
+-   Laravel `^13.17`
+-   MySQL
+-   Redis
+-   Laravel Sail
+-   Laravel Sanctum
+-   Spatie Laravel Permission with Teams
+-   Pest
+-   PHPStan / Larastan
+-   Laravel Pint
 
 ## External Services
 
-- Traccar Server
-- Traccar REST API
+-   Traccar Server
+-   Traccar REST API
 
----
+------------------------------------------------------------------------
 
 # Current Backend Status
 
-The following modules are implemented and tested.
+The core fleet-management backend and the initial tracking foundation
+are implemented and tested.
 
 ## Authentication
 
-- API authentication with Laravel Sanctum
-- Login
-- Logout
-- Token-based API access
+-   API login
+-   Authenticated user endpoint
+-   Logout
+-   Laravel Sanctum authentication
+-   Protected API routes
 
-## Authorization
+Current authentication endpoints:
 
-- Spatie Permission with Teams enabled
-- Company isolation
-- Policies for API resources
-- Middleware that sets the active permission team
+``` text
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
+```
+
+## Authorization and Multi-Tenancy
+
+-   Spatie Laravel Permission with Teams
+-   Company-based tenant isolation
+-   Policy-based authorization
+-   Team-aware permission middleware
+-   Visibility scopes
+-   Super Administrator access
+-   Company Administrator access
+-   Tracking authorization through `tracking.view`
 
 ## Companies
 
-- CRUD
-- Policies
-- Validation
-- API Resources
-- Feature Tests
+-   CRUD
+-   Validation
+-   Policies
+-   API Resources
+-   Feature tests
 
 ## Fleets
 
-- CRUD
-- Company isolation
-- Policies
-- Feature Tests
+-   CRUD
+-   Company ownership
+-   Tenant isolation
+-   Policies
+-   Feature tests
+
+## Drivers
+
+-   Company-scoped driver backend
+-   Actions
+-   Validation
+-   API Resources
+-   Authorization
+-   Feature coverage
 
 ## Vehicles
 
-- CRUD
-- Company isolation
-- Validation
-- Feature Tests
+-   CRUD
+-   Fleet assignment
+-   Company isolation
+-   Validation
+-   Authorization
+-   Feature tests
 
 ## Devices
 
-- CRUD
-- Company isolation
-- Validation
-- Feature Tests
+-   CRUD
+-   Vehicle assignment
+-   Company isolation
+-   Validation
+-   Authorization
+-   Traccar synchronization
+-   Feature tests
 
----
+------------------------------------------------------------------------
 
 # Traccar Integration
 
-FleetTrack synchronizes devices asynchronously using Laravel queues.
+All Traccar HTTP communication is isolated behind dedicated integration
+services.
 
-Workflow:
+Current core integration classes include:
 
+-   `TraccarClient`
+-   `TraccarDeviceService`
+-   `PositionService`
+-   `ReportService`
+-   `DeviceData`
+
+## Device Synchronization
+
+Device lifecycle writes are synchronized asynchronously through Laravel
+queues.
+
+``` text
 FleetTrack API
-
-↓
-
+    ↓
 Action
-
-↓
-
+    ↓
 Domain Event
-
-↓
-
+    ↓
 Listener
-
-↓
-
-Queued Job
-
-↓
-
+    ↓
+Queue Job
+    ↓
+TraccarDeviceService
+    ↓
 Traccar REST API
+```
 
-Implemented synchronization:
+Implemented synchronization includes:
 
-- Create device
-- Update device
-- Delete device
+-   Create device
+-   Update device
+-   Delete device
+-   Store Traccar device ID
+-   Track synchronization state/timestamp
 
-Synchronization updates:
+## Tracking Reads
 
-- Traccar Device ID
-- Last synchronization timestamp
+Tracking and report reads are synchronous because the API caller
+requires the current Traccar result.
 
-The integration uses dedicated classes:
+``` text
+FleetTrack API
+    ↓
+Tracking Action
+    ↓
+PositionService / ReportService
+    ↓
+Traccar REST API
+    ↓
+API Resource
+    ↓
+JSON Response
+```
 
-- TraccarClient
-- TraccarDeviceService
-- DeviceData DTO
+Traccar is the source of truth for GPS position data and detected GPS
+trips.
 
----
+------------------------------------------------------------------------
+
+# Tracking API
+
+The current tracking API contains five endpoints.
+
+## Live Positions
+
+``` text
+GET /api/v1/tracking/positions
+```
+
+Provides:
+
+-   Latest positions for visible synchronized devices
+-   Fleet filtering
+-   Vehicle filtering
+-   Combined filters
+-   Company isolation
+-   Online/offline status
+-   Last-seen information
+
+## Vehicle Live Position
+
+``` text
+GET /api/v1/tracking/vehicles/{vehicle}
+```
+
+Provides the latest Traccar position for a visible vehicle with a
+synchronized device.
+
+## Vehicle Position History
+
+``` text
+GET /api/v1/tracking/vehicles/{vehicle}/positions
+```
+
+Provides historical vehicle positions for a requested date range.
+
+Current validation:
+
+-   `from` required
+-   `to` required
+-   `to` must be after `from`
+-   Maximum range: 7 days
+
+## Vehicle Trip Summary
+
+``` text
+GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
+```
+
+Calculates aggregate statistics over a requested position-history range.
+
+Current output includes:
+
+-   Position count
+-   Start/end time
+-   Duration in seconds
+-   Distance in kilometers
+-   Average sampled speed
+-   Maximum speed
+-   Moving time
+-   Stopped time
+-   Speed unit (`knots`)
+
+This endpoint summarizes a selected range; it does not detect individual
+trips.
+
+## Vehicle Trip History
+
+``` text
+GET /api/v1/tracking/vehicles/{vehicle}/trips
+```
+
+Returns trips detected by Traccar through `/reports/trips`.
+
+FleetTrack applies tenant visibility and transforms the external report
+into its API contract.
+
+The normalized response includes:
+
+-   Start/end times
+-   Start/end coordinates
+-   Distance in kilometers
+-   Duration in seconds
+-   Average speed
+-   Maximum speed
+-   Speed unit (`knots`)
+-   Start/end addresses
+-   Traccar device/driver references where available
+
+FleetTrack intentionally delegates GPS trip detection to Traccar rather
+than maintaining a competing detection algorithm.
+
+------------------------------------------------------------------------
 
 # Architecture
 
-Business logic is intentionally separated.
+The application separates responsibilities into:
 
-- Controllers
-- Form Requests
-- Policies
-- Action classes
-- Resources
-- Events
-- Listeners
-- Queue Jobs
-- Services
-- DTOs
+``` text
+Routes
+    ↓
+Middleware
+    ↓
+Form Requests
+    ↓
+Controllers
+    ↓
+Policies / Permissions
+    ↓
+Actions
+    ↓
+Models / Services
+    ↓
+API Resources
+```
 
-Controllers remain thin while Actions encapsulate business rules.
+Additional asynchronous integration components include:
 
----
+-   Events
+-   Listeners
+-   Queue Jobs
+-   DTOs
+
+Controllers remain thin while Actions contain application/business
+logic.
+
+See `ARCHITECTURE.md` for the detailed architecture and integration
+flows.
+
+------------------------------------------------------------------------
 
 # Multi-Tenancy
 
-The application uses company-based tenancy.
+FleetTrack uses company-based tenancy.
 
-Features include:
+Core rules:
 
-- Company-scoped data
-- Team-aware permissions
-- Policy-based authorization
-- Query scopes for visibility
+-   Company users access only data visible to their company.
+-   Super Administrators can have global visibility.
+-   Team-aware permissions are configured with Spatie Permission.
+-   Policies centralize authorization.
+-   Visibility scopes restrict database queries.
+-   Traccar data is exposed only after resolving an authorized
+    FleetTrack entity.
 
-Super Administrators can access all companies.
+External Traccar identifiers never bypass FleetTrack tenant
+authorization.
 
-Company users are restricted to their own company.
-
----
+------------------------------------------------------------------------
 
 # Development
 
-## Start environment
+FleetTrack uses Laravel Sail.
 
-```bash
+## Start the environment
+
+``` bash
+sail up -d
+```
+
+If the `sail` shell alias is not configured:
+
+``` bash
 ./vendor/bin/sail up -d
 ```
 
-## Run queues
+## Run the queue worker
 
-```bash
-./vendor/bin/sail artisan queue:work
+``` bash
+sail artisan queue:work
 ```
 
-## Run tests
+## Run the full test suite
 
-```bash
-./vendor/bin/sail artisan test
+``` bash
+sail artisan test
+```
+
+## Run a targeted test
+
+Example:
+
+``` bash
+sail artisan test tests/Feature/Api/Tracking/LiveTrackingControllerTest.php
 ```
 
 ## Static analysis
 
-```bash
-./vendor/bin/sail composer types:check
+``` bash
+sail composer types:check
 ```
 
-## Code style
+## Formatting / lint
 
-```bash
-./vendor/bin/sail artisan pint
+``` bash
+sail composer lint
 ```
 
----
+Before committing a completed functionality slice, the expected quality
+checks are:
+
+``` bash
+sail composer lint
+sail composer types:check
+sail artisan test
+```
+
+------------------------------------------------------------------------
 
 # Project Structure
 
-```
+``` text
 app/
- ├── Actions
- ├── Data
- ├── Events
- ├── Http
- ├── Jobs
- ├── Listeners
- ├── Models
- ├── Policies
- ├── Services
+├── Actions/
+├── Data/
+├── Events/
+├── Http/
+│   ├── Controllers/
+│   ├── Requests/
+│   └── Resources/
+├── Jobs/
+├── Listeners/
+├── Models/
+├── Policies/
+└── Services/
+    └── Traccar/
 ```
 
----
+Tests are organized under:
+
+``` text
+tests/
+├── Feature/
+└── Unit/
+```
+
+------------------------------------------------------------------------
 
 # Development Principles
 
-- Thin Controllers
-- Single Responsibility
-- Queue external integrations
-- Policy-based authorization
-- Feature-test driven development
-- PHPStan clean
-- Laravel Pint compliant
+-   Thin controllers
+-   Business logic in Actions
+-   Validation in Form Requests
+-   Policy/permission-based authorization
+-   Strict tenant isolation
+-   External APIs behind services
+-   Asynchronous device synchronization
+-   Synchronous tracking/report reads
+-   Stable API Resource contracts
+-   Feature coverage for new API behavior
+-   PHPStan clean
+-   Laravel Pint compliant
+-   Focused Git commits
 
----
+------------------------------------------------------------------------
+
+# Documentation
+
+Project documentation:
+
+-   `README.md` --- project overview and development entry point
+-   `FEATURES.md` --- implemented functionality and roadmap
+-   `ARCHITECTURE.md` --- detailed current architecture
+-   `AGENTS.md` --- contributor rules and fresh-session continuation
+    context
+-   `docs/ARCHITECTURE_DECISIONS.md` --- durable architectural decisions
+
+The latest source code remains the primary source of truth if
+documentation and implementation ever differ.
+
+------------------------------------------------------------------------
 
 # Roadmap
 
-Completed
+## Completed
 
-- Authentication
-- Authorization
-- Companies
-- Fleets
-- Vehicles
-- Devices
-- Traccar synchronization
+-   Authentication
+-   Authorization and multi-tenancy
+-   Companies
+-   Fleets
+-   Drivers
+-   Vehicles
+-   Devices
+-   Traccar device synchronization
+-   Live Tracking
+-   Online/offline tracking status
+-   Vehicle position history
+-   Vehicle aggregate trip summary
+-   Traccar-detected vehicle trip history
 
-Next
+## Remaining
 
-- Live Tracking
-- Positions
-- Trips
-- Geofences
-- Alerts
-- Reports
-- Dashboard
+1.  Geofences
+2.  Alerts
+3.  Reports
+4.  Dashboard
+
+The next module should be selected after reviewing requirements and the
+latest project state.
+
+------------------------------------------------------------------------
+
+# Current Development Checkpoint
+
+The latest completed functionality is the Traccar-backed vehicle
+trip-history endpoint.
+
+At this checkpoint:
+
+-   All five tracking endpoints are implemented.
+-   Tracking feature tests pass.
+-   The full test suite passes.
+-   PHPStan / Larastan reports no errors.
+-   Formatting/lint checks pass.
+-   The latest Trips functionality has been committed and pushed.
+
+After the documentation cleanup, development can continue with the next
+roadmap module without rebuilding the completed Live Tracking or Trips
+foundation.
