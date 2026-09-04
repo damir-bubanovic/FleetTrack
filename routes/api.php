@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Company\CompanyController;
 use App\Http\Controllers\Api\Device\DeviceController;
 use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
+use App\Http\Controllers\Api\Geofence\GeofenceController;
 use App\Http\Controllers\Api\Tracking\LiveTrackingController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Middleware\SetPermissionTeam;
@@ -57,5 +58,6 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('drivers', DriverController::class);
         Route::apiResource('vehicles', VehicleController::class);
         Route::apiResource('devices', DeviceController::class);
+        Route::apiResource('geofences', GeofenceController::class);
     });
 });

@@ -97,4 +97,12 @@ class Company extends Model
     {
         return $this->hasMany(Device::class);
     }
+
+    /**
+     * @return HasMany<Geofence, $this>
+     */
+    public function geofences(): HasMany
+    {
+        return $this->hasMany(Geofence::class);
+    }
 }
