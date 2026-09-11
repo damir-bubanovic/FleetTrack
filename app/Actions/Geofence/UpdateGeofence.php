@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Geofence;
 
 use App\Enums\UserRole;
+use App\Events\GeofenceUpdated;
 use App\Models\Company;
 use App\Models\Geofence;
 use App\Models\User;
@@ -35,6 +36,10 @@ class UpdateGeofence
 
         $geofence->update($data);
 
-        return $geofence->refresh();
+        $geofence->refresh();
+
+        GeofenceUpdated::dispatch($geofence);
+
+        return $geofence;
     }
 }

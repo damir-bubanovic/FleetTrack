@@ -2,8 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Jobs\DeleteGeofenceFromTraccar;
+use App\Jobs\SyncGeofenceToTraccar;
+use App\Jobs\UpdateGeofenceInTraccar;
 use App\Models\Geofence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesUsers;
 
@@ -12,6 +16,10 @@ uses(
     CreatesCompanies::class,
     CreatesUsers::class,
 );
+
+beforeEach(function (): void {
+    Queue::fake();
+});
 
 it('allows a company admin to list geofences from their own company', function (): void {
     $company = $this->createCompany();
@@ -268,4 +276,115 @@ it('prevents a company admin from deleting another company geofence', function (
     $this->assertDatabaseHas('geofences', [
         'id' => $geofence->id,
     ]);
+});
+
+it('queues traccar synchronization when a geofence is created', function (): void {
+    $company = $this->createCompany();
+    $user = $this->createCompanyAdmin($company);
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson('/api/v1/geofences', [
+            'name' => 'Warehouse',
+            'description' => 'Main warehouse',
+            'area' => 'CIRCLE (45.8150 15.9819, 100)',
+            'is_active' => true,
+        ]);
+
+    $response
+        ->assertSuccessful()
+        ->assertJsonPath('data.name', 'Warehouse');
+
+    $geofence = Geofence::query()
+        ->where('name', 'Warehouse')
+        ->firstOrFail();
+
+    Queue::assertPushed(
+        SyncGeofenceToTraccar::class,
+        fn (SyncGeofenceToTraccar $job): bool => $job->geofenceId === $geofence->id,
+    );
+});
+
+it('queues traccar synchronization when a geofence is updated', function (): void {
+    $company = $this->createCompany();
+    $user = $this->createCompanyAdmin($company);
+
+    $geofence = Geofence::factory()->create([
+        'company_id' => $company->id,
+        'traccar_geofence_id' => 123,
+        'name' => 'Old Warehouse',
+        'area' => 'CIRCLE (45.8150 15.9819, 50)',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->patchJson("/api/v1/geofences/{$geofence->id}", [
+            'name' => 'Updated Warehouse',
+            'area' => 'CIRCLE (45.8150 15.9819, 100)',
+        ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.name', 'Updated Warehouse')
+        ->assertJsonPath(
+            'data.area',
+            'CIRCLE (45.8150 15.9819, 100)',
+        );
+
+    Queue::assertPushed(
+        UpdateGeofenceInTraccar::class,
+        fn (UpdateGeofenceInTraccar $job): bool => $job->geofenceId === $geofence->id,
+    );
+});
+
+it('queues traccar deletion when a synced geofence is deleted', function (): void {
+    $company = $this->createCompany();
+    $user = $this->createCompanyAdmin($company);
+
+    $geofence = Geofence::factory()->create([
+        'company_id' => $company->id,
+        'traccar_geofence_id' => 123,
+        'last_sync_at' => now(),
+    ]);
+
+    $geofenceId = $geofence->id;
+
+    $this
+        ->actingAs($user)
+        ->deleteJson("/api/v1/geofences/{$geofence->id}")
+        ->assertNoContent();
+
+    $this->assertDatabaseMissing('geofences', [
+        'id' => $geofenceId,
+    ]);
+
+    Queue::assertPushed(
+        DeleteGeofenceFromTraccar::class,
+        fn (DeleteGeofenceFromTraccar $job): bool => $job->geofenceId === $geofenceId
+            && $job->traccarGeofenceId === 123,
+    );
+});
+
+it('does not queue traccar deletion when an unsynced geofence is deleted', function (): void {
+    $company = $this->createCompany();
+    $user = $this->createCompanyAdmin($company);
+
+    $geofence = Geofence::factory()->create([
+        'company_id' => $company->id,
+        'traccar_geofence_id' => null,
+        'last_sync_at' => null,
+    ]);
+
+    $geofenceId = $geofence->id;
+
+    $this
+        ->actingAs($user)
+        ->deleteJson("/api/v1/geofences/{$geofence->id}")
+        ->assertNoContent();
+
+    $this->assertDatabaseMissing('geofences', [
+        'id' => $geofenceId,
+    ]);
+
+    Queue::assertNotPushed(DeleteGeofenceFromTraccar::class);
 });

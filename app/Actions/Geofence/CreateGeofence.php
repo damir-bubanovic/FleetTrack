@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Geofence;
 
 use App\Enums\UserRole;
+use App\Events\GeofenceCreated;
 use App\Models\Company;
 use App\Models\Geofence;
 use App\Models\User;
@@ -12,8 +13,6 @@ use App\Models\User;
 class CreateGeofence
 {
     /**
-     * Create a new geofence.
-     *
      * @param  array<string, mixed>  $data
      */
     public function handle(User $user, array $data): Geofence
@@ -30,6 +29,10 @@ class CreateGeofence
 
         $data['company_id'] = $company->id;
 
-        return Geofence::create($data);
+        $geofence = Geofence::create($data);
+
+        GeofenceCreated::dispatch($geofence);
+
+        return $geofence;
     }
 }
