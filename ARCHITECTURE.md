@@ -162,7 +162,9 @@ Company
  ├── Users
  ├── Drivers
  ├── Vehicles
- │    └── Devices
+ │    ├── Device
+ │    └── Geofences (many-to-many)
+ ├── Geofences
  └── Permissions / Roles
 ```
 
@@ -196,6 +198,24 @@ Tracking device associated with a vehicle.
 
 Devices may contain a `traccar_device_id`, linking the FleetTrack device
 to the corresponding Traccar device.
+
+## Geofence
+
+Company-scoped geographic boundary owned by FleetTrack and synchronized
+to Traccar.
+
+Geofences may contain a `traccar_geofence_id` and `last_sync_at` value.
+FleetTrack associates Geofences with Vehicles through the
+`geofence_vehicle` pivot table. Traccar itself associates a geofence with
+the Vehicle's synchronized Device, so the integration resolves:
+
+``` text
+Geofence -> traccar_geofence_id
+Vehicle -> Device -> traccar_device_id
+```
+
+This keeps the public CRM/domain API vehicle-oriented while isolating
+Traccar-specific device permission behavior in the integration layer.
 
 ------------------------------------------------------------------------
 
@@ -249,6 +269,7 @@ Current core classes include:
 ``` text
 TraccarClient
 ├── TraccarDeviceService
+├── TraccarGeofenceService
 ├── PositionService
 └── ReportService
 ```
@@ -269,6 +290,17 @@ Higher-level services own endpoint-specific operations.
 
 Device data is represented through the integration DTO layer where
 appropriate.
+
+## Geofence Service
+
+`TraccarGeofenceService` manages geofence lifecycle operations and
+Traccar device/geofence permission links.
+
+Current responsibilities include:
+
+-   Create/update/delete Traccar geofences
+-   Attach a geofence to a Traccar device through `POST /permissions`
+-   Detach a geofence from a Traccar device through `DELETE /permissions`
 
 ## Position Service
 
@@ -337,7 +369,122 @@ Benefits of this architecture:
 
 ------------------------------------------------------------------------
 
-# 9. Tracking Read Architecture
+# 9. Geofence Architecture
+
+FleetTrack owns Geofence CRUD, tenant ownership, Vehicle associations,
+and synchronization state. Traccar owns the tracking-engine behavior of
+evaluating device positions against geofence boundaries.
+
+## Geofence Lifecycle Synchronization
+
+Geofence create/update/delete writes follow the same asynchronous
+integration boundary as Device writes:
+
+``` text
+API Request
+    ↓
+Controller
+    ↓
+Action
+    ↓
+FleetTrack database change
+    ↓
+GeofenceCreated / GeofenceUpdated / GeofenceDeleted
+    ↓
+Listener
+    ↓
+Queue Job
+    ↓
+TraccarGeofenceService
+    ↓
+Traccar REST API
+```
+
+Current jobs include:
+
+-   `SyncGeofenceToTraccar`
+-   `UpdateGeofenceInTraccar`
+-   `DeleteGeofenceFromTraccar`
+
+The local Geofence stores `traccar_geofence_id` and `last_sync_at` after
+successful synchronization. Client requests cannot directly control
+these Traccar-managed fields.
+
+## Vehicle Associations
+
+FleetTrack models Geofence membership against Vehicles rather than
+exposing Traccar Device permissions as the business-domain API.
+
+``` text
+Geofence
+    ↕ geofence_vehicle
+Vehicle
+    ↓
+Device
+    ↓
+traccar_device_id
+```
+
+The current association endpoints are:
+
+``` text
+POST   /api/v1/geofences/{geofence}/vehicles/{vehicle}
+DELETE /api/v1/geofences/{geofence}/vehicles/{vehicle}
+```
+
+Attach/detach Actions enforce that the Geofence and Vehicle belong to
+the same company. Operations are idempotent and dispatch domain events
+only when the pivot state actually changes.
+
+Association synchronization flow:
+
+``` text
+VehicleAttachedToGeofence / VehicleDetachedFromGeofence
+    ↓
+Listener
+    ↓
+AttachGeofenceToDeviceInTraccar /
+DetachGeofenceFromDeviceInTraccar
+    ↓
+TraccarGeofenceService
+    ↓
+Traccar /permissions
+```
+
+Queued association jobs re-read current FleetTrack state before making
+external calls. This protects against stale jobs, including an attach
+that was removed before execution and a detach followed by a reattach.
+
+## Synchronization-Order Reconciliation
+
+An association can exist before either side has received its Traccar ID.
+Association jobs therefore safely return when the Geofence or Device is
+not synchronized yet.
+
+To prevent the association from being permanently missed:
+
+-   `SyncGeofenceToTraccar` requeues association jobs for all currently
+    attached Vehicles after the Geofence receives its Traccar ID.
+-   `SyncDeviceToTraccar` requeues association jobs for all current
+    Geofences of the Device's Vehicle after the Device receives its
+    Traccar ID.
+
+This provides eventual synchronization regardless of whether the
+association, Geofence sync, or Device sync completes first.
+
+## Geofence Event Handling
+
+Geofence entry/exit event handling is not implemented yet. This is the
+next Geofence architecture slice.
+
+The implementation should consume Traccar's geofence event behavior
+rather than implement a second position-in-polygon engine in FleetTrack.
+Tenant-visible FleetTrack entities must be resolved before any external
+event data is exposed or used by application workflows.
+
+------------------------------------------------------------------------
+
+# 10. Tracking Read Architecture
 
 Tracking/report reads use synchronous service calls because the API
 caller requires the current Traccar result in the response.
@@ -369,7 +516,7 @@ device synchronization writes.
 
 ------------------------------------------------------------------------
 
-# 10. Current Tracking API
+# 11. Current Tracking API
 
 The current tracking API consists of five endpoints.
 
@@ -514,7 +661,7 @@ The current normalized contract includes:
 
 ------------------------------------------------------------------------
 
-# 11. Trip Detection Ownership
+# 12. Trip Detection Ownership
 
 GPS trip detection belongs to Traccar.
 
@@ -550,7 +697,7 @@ end.
 
 ------------------------------------------------------------------------
 
-# 12. Persistent Trip Domain Model
+# 13. Persistent Trip Domain Model
 
 A FleetTrack `Trip` model is not currently required for detected GPS
 trips.
@@ -573,7 +720,7 @@ than replace Traccar's GPS detection algorithm.
 
 ------------------------------------------------------------------------
 
-# 13. API Resource Contracts and Units
+# 14. API Resource Contracts and Units
 
 External-service field names and units should be normalized before they
 become FleetTrack API contracts.
@@ -602,7 +749,7 @@ and speed in knots.
 
 ------------------------------------------------------------------------
 
-# 14. Error and Empty-State Behavior
+# 15. Error and Empty-State Behavior
 
 Tracking Actions distinguish between FleetTrack visibility/device state
 and Traccar response state.
@@ -624,7 +771,7 @@ using Laravel HTTP response error handling.
 
 ------------------------------------------------------------------------
 
-# 15. Testing Architecture
+# 16. Testing Architecture
 
 Tests use Pest.
 
@@ -654,7 +801,7 @@ No feature test should depend on a live Traccar server.
 
 ------------------------------------------------------------------------
 
-# 16. Code Quality
+# 17. Code Quality
 
 The project uses:
 
@@ -662,24 +809,27 @@ The project uses:
 -   PHPStan / Larastan for static analysis
 -   Pest for automated tests
 
-Expected completion checks for a functionality slice:
+Expected pre-commit checks for a meaningful functionality slice:
 
 ``` bash
-sail composer lint
+sail composer lint:check
 sail composer types:check
 sail artisan test
 ```
+
+When Pint reports fixable formatting issues, run `sail composer lint`,
+then rerun all three pre-commit checks.
 
 New work should preserve zero PHPStan errors and a passing test suite.
 
 ------------------------------------------------------------------------
 
-# 17. Remaining Architecture Roadmap
+# 18. Remaining Architecture Roadmap
 
-The major remaining product areas are:
+The current development sequence is:
 
 ``` text
-Geofences
+Geofence entry/exit handling
     ↓
 Alerts
     ↓
@@ -688,21 +838,25 @@ Reports
 Dashboard
 ```
 
-The exact implementation order can change with product requirements.
-
 ## Geofences
 
-Architecture still needs to define:
+Geofence CRUD, tenant authorization, Traccar lifecycle synchronization,
+Vehicle associations, Traccar permission synchronization, stale-job
+protection, and synchronization-order reconciliation are implemented.
 
--   FleetTrack ownership/model
--   Traccar synchronization
--   Vehicle/device associations
--   Entry/exit event handling
+Remaining Geofence work:
+
+-   Geofence entry/exit event handling
+-   Define and implement notification behavior required for geofence
+    events
+-   Final Geofence integration verification
 
 ## Alerts
 
 Architecture still needs to define application-owned alert rules, event
 ingestion, history, acknowledgement, and notification behavior.
+Geofence events should feed this area where product requirements require
+alerts or notifications.
 
 ## Reports
 
@@ -716,32 +870,38 @@ capabilities without moving business logic into controllers.
 
 ------------------------------------------------------------------------
 
-# 18. Current Architecture Checkpoint
+# 19. Current Architecture Checkpoint
 
 At the latest completed checkpoint:
 
 ``` text
-Authentication                    COMPLETE
-Authorization / Multi-tenancy     COMPLETE
-Companies                         COMPLETE
-Fleets                            COMPLETE
-Drivers                           COMPLETE
-Vehicles                          COMPLETE
-Devices                           COMPLETE
-Traccar device synchronization    COMPLETE
-Live Tracking foundation          COMPLETE
-Vehicle position history          COMPLETE
-Aggregate trip summary            COMPLETE
-Traccar-detected trip history     COMPLETE
-Geofences                         NEXT / PLANNED
-Alerts                            PLANNED
-Reports                           PLANNED
-Dashboard                         PLANNED
+Authentication                         COMPLETE
+Authorization / Multi-tenancy          COMPLETE
+Companies                              COMPLETE
+Fleets                                 COMPLETE
+Drivers                                COMPLETE
+Vehicles                               COMPLETE
+Devices                                COMPLETE
+Traccar device synchronization         COMPLETE
+Live Tracking foundation               COMPLETE
+Vehicle position history               COMPLETE
+Aggregate trip summary                 COMPLETE
+Traccar-detected trip history          COMPLETE
+Geofence CRUD / authorization          COMPLETE
+Traccar geofence lifecycle sync        COMPLETE
+Geofence <-> Vehicle associations      COMPLETE
+Traccar geofence/device permissions    COMPLETE
+Association reconciliation             COMPLETE
+Geofence entry/exit handling           NEXT
+Alerts                                 PLANNED
+Reports                                PLANNED
+Dashboard                              PLANNED
 ```
 
-The latest Trips implementation has been tested, statically analyzed,
-committed, and pushed.
+The latest Geofence Vehicle association and Traccar synchronization
+checkpoint has passed Pint formatting/lint checks, PHPStan/Larastan, and
+the full Pest test suite, and has been committed.
 
 When beginning a fresh development session, review the latest source
-first and continue from this checkpoint rather than recreating completed
-tracking functionality.
+first and continue with Geofence entry/exit event handling rather than
+recreating completed Geofence, tracking, or synchronization work.

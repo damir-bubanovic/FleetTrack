@@ -5,9 +5,11 @@
 This document tracks the functional capabilities currently implemented
 in FleetTrack and the remaining product roadmap.
 
-The latest completed backend checkpoint includes Live Tracking, vehicle
-position history, aggregate trip summaries, and Traccar-detected vehicle
-trip history.
+The latest completed backend checkpoint includes the Geofence CRUD,
+company isolation, Vehicle associations, Traccar geofence synchronization,
+and Traccar device/geofence permission synchronization. Live Tracking,
+position history, aggregate trip summaries, and Traccar-detected trip
+history remain completed foundations.
 
 ------------------------------------------------------------------------
 
@@ -100,6 +102,7 @@ trip history.
 
 -   `TraccarClient`
 -   `TraccarDeviceService`
+-   `TraccarGeofenceService`
 -   `PositionService`
 -   `ReportService`
 -   `DeviceData` DTO
@@ -309,7 +312,7 @@ Traccar remains the source of truth for GPS trip detection.
 -   Spatie Laravel Permission with Teams
 -   Redis queues
 -   Queue retry support
--   Event-driven device synchronization
+-   Event-driven device and geofence synchronization
 -   Service layer for Traccar
 -   DTO pattern
 -   Action pattern
@@ -324,18 +327,101 @@ Traccar remains the source of truth for GPS trip detection.
 
 ------------------------------------------------------------------------
 
+# Geofences
+
+The Geofence module is partially implemented and is the current development
+area.
+
+## Geofence CRUD and Authorization
+
+Endpoints:
+
+``` text
+GET    /api/v1/geofences
+POST   /api/v1/geofences
+GET    /api/v1/geofences/{geofence}
+PUT    /api/v1/geofences/{geofence}
+PATCH  /api/v1/geofences/{geofence}
+DELETE /api/v1/geofences/{geofence}
+```
+
+Implemented:
+
+-   Full Geofence CRUD
+-   Company ownership and tenant isolation
+-   Policy and permission-based authorization
+-   Validation through Form Requests
+-   API Resource responses
+-   Protection of Traccar-managed fields from client writes
+-   Company assignment enforcement for non-super-admin users
+-   Feature coverage for CRUD and tenant boundaries
+
+## Geofence Traccar Synchronization
+
+Implemented:
+
+-   Create geofence in Traccar
+-   Update geofence in Traccar
+-   Delete geofence from Traccar
+-   Store Traccar geofence ID
+-   Track geofence synchronization timestamp
+-   Event/listener/queue-job synchronization flow
+-   Retryable synchronization jobs
+-   Dedicated Traccar geofence DTO/service coverage
+
+Geofence synchronization writes follow the same application boundary as
+device synchronization:
+
+``` text
+Action
+→ Event
+→ Listener
+→ Queue Job
+→ Traccar service
+→ Traccar REST API
+```
+
+## Geofence Vehicle Associations
+
+FleetTrack models Geofence associations against Vehicles. Traccar permission
+synchronization resolves the Vehicle's assigned Device and uses its
+`traccar_device_id`.
+
+Endpoints:
+
+``` text
+POST   /api/v1/geofences/{geofence}/vehicles/{vehicle}
+DELETE /api/v1/geofences/{geofence}/vehicles/{vehicle}
+```
+
+Implemented:
+
+-   Many-to-many Geofence ↔ Vehicle relationship
+-   `geofence_vehicle` pivot table with duplicate protection
+-   Same-company association enforcement
+-   Idempotent attach and detach operations
+-   Company-admin authorization through the Geofence update policy
+-   Association events and listeners
+-   Queue-based Traccar permission synchronization
+-   Traccar `POST /permissions` association
+-   Traccar `DELETE /permissions` disassociation
+-   Stale attach-job protection when an association has been removed
+-   Stale detach-job protection when an association has been recreated
+-   Reconciliation after a Geofence receives its Traccar ID
+-   Reconciliation after a Device receives its Traccar ID
+-   Dedicated action, API, service, relationship, and job tests
+
+## Geofence Work Remaining
+
+Still to implement before the Geofence module is considered complete:
+
+-   Geofence entry/exit event handling
+-   Determine and implement notification behavior required for geofence events
+-   Complete final Geofence module documentation and integration verification
+
+------------------------------------------------------------------------
+
 # Remaining Roadmap
-
-## Geofences
-
-Planned:
-
--   Geofence CRUD
--   Company ownership and isolation
--   Vehicle/device association as required
--   Entry/exit handling
--   Traccar integration
--   Notifications where required
 
 ## Alerts
 
@@ -419,26 +505,35 @@ At the latest completed checkpoint:
 -   Vehicle position history implemented
 -   Aggregate vehicle trip summary implemented
 -   Traccar-detected trip history implemented
--   Tracking feature tests passing
--   Full test suite passing
+-   Geofence CRUD and tenant authorization implemented
+-   Traccar geofence lifecycle synchronization implemented
+-   Geofence ↔ Vehicle associations implemented
+-   Traccar device/geofence permission synchronization implemented
+-   Association reconciliation for synchronization-order gaps implemented
+-   Full test suite passing at the latest checkpoint
 -   PHPStan / Larastan clean
 -   Formatting/lint checks passing
--   Latest Trips functionality committed and pushed
+-   Latest Geofence Vehicle association and Traccar sync checkpoint committed
 
 ------------------------------------------------------------------------
 
 # Next Development Point
 
-The current tracking foundation should be treated as completed
-functionality.
+The tracking foundation is completed. Geofences are the active module and
+are partially completed.
 
-After documentation cleanup, select the next module from the remaining
-roadmap:
+Continue the Geofence module with:
 
-1.  Geofences
-2.  Alerts
-3.  Reports
-4.  Dashboard
+1.  Geofence entry/exit event handling
+2.  Geofence-event notification behavior where required
+3.  Final Geofence integration verification and documentation cleanup
 
-Before implementing the next module, review the latest project source
-and confirm its requirements and architecture.
+After Geofences are complete, continue the remaining roadmap in this order:
+
+1.  Alerts
+2.  Reports
+3.  Dashboard
+
+Before implementing each remaining area, review the latest project source and
+confirm the required domain behavior without duplicating capabilities already
+provided by Traccar or the tracking endpoints.

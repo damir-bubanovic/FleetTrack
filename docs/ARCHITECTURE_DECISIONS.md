@@ -112,6 +112,11 @@ Examples include:
 -   `GetVehiclePositionHistory`
 -   `GetVehicleTripSummary`
 -   `GetVehicleTrips`
+-   `CreateGeofence`
+-   `UpdateGeofence`
+-   `DeleteGeofence`
+-   `AttachVehicleToGeofence`
+-   `DetachVehicleFromGeofence`
 
 Actions may persist FleetTrack data, coordinate domain behavior,
 dispatch events, or call dedicated services depending on the operation.
@@ -174,9 +179,11 @@ Current core integration classes include:
 
 -   `TraccarClient`
 -   `TraccarDeviceService`
+-   `TraccarGeofenceService`
 -   `PositionService`
 -   `ReportService`
 -   `DeviceData`
+-   `GeofenceData`
 
 **Rationale**
 
@@ -205,6 +212,11 @@ Current examples:
 -   `SyncDeviceToTraccar`
 -   `UpdateDeviceInTraccar`
 -   `DeleteDeviceFromTraccar`
+-   `SyncGeofenceToTraccar`
+-   `UpdateGeofenceInTraccar`
+-   `DeleteGeofenceFromTraccar`
+-   `AttachGeofenceToDeviceInTraccar`
+-   `DetachGeofenceFromDeviceInTraccar`
 
 Jobs should:
 
@@ -286,10 +298,18 @@ Current expectations:
 Standard final checks:
 
 ``` bash
-sail composer lint
+sail composer lint:check
 sail composer types:check
 sail artisan test
 ```
+
+If Pint reports fixable formatting issues, run:
+
+``` bash
+sail composer lint
+```
+
+Then rerun all three final checks. Do not use `sail artisan lint`.
 
 ------------------------------------------------------------------------
 
@@ -486,6 +506,221 @@ larger ranges or asynchronous report generation.
 
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+
+# ADR-016: FleetTrack Models Geofence Associations to Vehicles
+
+**Status:** Accepted
+
+**Decision**
+
+Model the FleetTrack business-domain relationship as:
+
+``` text
+Geofence ↔ Vehicle
+```
+
+Do not expose a Geofence ↔ Device relationship as the primary FleetTrack
+CRM model solely because Traccar permissions operate on devices.
+
+The local relationship is persisted in the `geofence_vehicle` pivot
+table.
+
+When synchronizing the association to Traccar, resolve:
+
+``` text
+Geofence
+→ traccar_geofence_id
+
+Vehicle
+→ Device
+→ traccar_device_id
+```
+
+**Rationale**
+
+-   Vehicles are the FleetTrack business entity users manage.
+-   Devices are implementation/integration details of GPS tracking.
+-   Keeping the public domain relationship at Vehicle level prevents
+    Traccar-specific concepts from leaking into the CRM model.
+-   The mapping can still be translated to Traccar's required
+    device/geofence permission relationship at the integration boundary.
+
+Cross-company Geofence ↔ Vehicle associations are forbidden.
+
+------------------------------------------------------------------------
+
+# ADR-017: Geofence Lifecycle Synchronization Is Event-Driven
+
+**Status:** Accepted
+
+**Decision**
+
+Synchronize Geofence create/update/delete writes to Traccar
+asynchronously using the same event-driven boundary used for Device
+writes.
+
+Typical flow:
+
+``` text
+Geofence Action
+→ FleetTrack persistence
+→ Domain Event
+→ Listener
+→ Queue Job
+→ TraccarGeofenceService
+→ Traccar REST API
+```
+
+Current lifecycle components include:
+
+-   `GeofenceCreated`
+-   `GeofenceUpdated`
+-   `GeofenceDeleted`
+-   `SyncGeofenceToTraccar`
+-   `UpdateGeofenceInTraccar`
+-   `DeleteGeofenceFromTraccar`
+
+**Rationale**
+
+-   Keeps FleetTrack persistence independent of temporary Traccar
+    availability.
+-   Provides retries and fault isolation.
+-   Preserves the same integration architecture already established for
+    Devices.
+-   Keeps controllers and Actions free of direct HTTP concerns.
+
+------------------------------------------------------------------------
+
+# ADR-018: Geofence-to-Device Permissions Are Synchronized from Local Association Events
+
+**Status:** Accepted
+
+**Decision**
+
+When the local Geofence ↔ Vehicle relationship changes, synchronize the
+corresponding Traccar Geofence ↔ Device permission asynchronously.
+
+Attach flow:
+
+``` text
+AttachVehicleToGeofence
+→ VehicleAttachedToGeofence
+→ SyncVehicleAttachedToGeofenceToTraccar
+→ AttachGeofenceToDeviceInTraccar
+→ TraccarGeofenceService
+→ POST /permissions
+```
+
+Detach flow:
+
+``` text
+DetachVehicleFromGeofence
+→ VehicleDetachedFromGeofence
+→ SyncVehicleDetachedFromGeofenceToTraccar
+→ DetachGeofenceFromDeviceInTraccar
+→ TraccarGeofenceService
+→ DELETE /permissions
+```
+
+The Traccar permission payload contains:
+
+``` text
+geofenceId
+deviceId
+```
+
+Local attach/detach operations are idempotent. Association events are
+dispatched only when the pivot state actually changes.
+
+**Rationale**
+
+-   FleetTrack remains the source of truth for the business association.
+-   Traccar receives only the translated integration relationship.
+-   Queue retries isolate external failures from the API request.
+-   Idempotent local mutations prevent duplicate association events.
+
+------------------------------------------------------------------------
+
+# ADR-019: Geofence Permission Jobs Re-Check Current Local State
+
+**Status:** Accepted
+
+**Decision**
+
+Queued Geofence permission jobs must validate the current FleetTrack
+state before making a Traccar permission request.
+
+An attach job must not call Traccar if the Geofence or Vehicle no longer
+exists, the local association no longer exists, the Geofence is not yet
+synchronized, the Vehicle has no Device, or the Device is not yet
+synchronized.
+
+A detach job must not call Traccar if the local association exists again.
+
+**Rationale**
+
+Queue execution is asynchronous. The state that caused a job to be
+queued may no longer be valid when that job executes.
+
+In particular, the detach guard protects this race:
+
+``` text
+detach locally
+→ detach job queued
+→ vehicle reattached locally
+→ stale detach job executes
+```
+
+Without a current-state check, the stale job could incorrectly remove a
+permission that FleetTrack now expects to exist.
+
+------------------------------------------------------------------------
+
+# ADR-020: Geofence Permission Synchronization Uses Reconciliation for Eventual Consistency
+
+**Status:** Accepted
+
+**Decision**
+
+Do not require the Geofence, Device, and local association to become
+synchronized in a particular order.
+
+Association jobs may safely return when a required Traccar ID is not yet
+available. Later lifecycle synchronization performs reconciliation.
+
+Two reconciliation paths are required:
+
+**Geofence-side reconciliation**
+
+After `SyncGeofenceToTraccar` stores a new `traccar_geofence_id`, dispatch
+`AttachGeofenceToDeviceInTraccar` for every Vehicle currently associated
+with that Geofence.
+
+**Device-side reconciliation**
+
+After `SyncDeviceToTraccar` stores a new `traccar_device_id`, dispatch
+`AttachGeofenceToDeviceInTraccar` for every Geofence currently associated
+with that Device's Vehicle.
+
+**Rationale**
+
+This provides eventual consistency for both ordering cases:
+
+``` text
+association exists before Geofence synchronization
+```
+
+and:
+
+``` text
+association exists before Device synchronization
+```
+
+Neither reconciliation path replaces the other.
+
+------------------------------------------------------------------------
+
 # Current Architecture Baseline
 
 Implemented:
@@ -506,6 +741,11 @@ Implemented:
 -   Vehicle position history
 -   Aggregate vehicle trip summary
 -   Traccar-detected vehicle trip history
+-   Geofence CRUD and tenant authorization
+-   Traccar Geofence lifecycle synchronization
+-   Geofence ↔ Vehicle associations
+-   Traccar Geofence ↔ Device permission synchronization
+-   Geofence/Device association reconciliation
 
 Current tracking endpoints:
 
@@ -517,13 +757,31 @@ GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
 GET /api/v1/tracking/vehicles/{vehicle}/trips
 ```
 
-Remaining major roadmap areas:
+Current Geofence endpoints:
 
-1.  Geofences
-2.  Alerts
-3.  Reports
-4.  Dashboard
+``` text
+GET /api/v1/geofences
+POST /api/v1/geofences
+GET /api/v1/geofences/{geofence}
+PUT/PATCH /api/v1/geofences/{geofence}
+DELETE /api/v1/geofences/{geofence}
+POST /api/v1/geofences/{geofence}/vehicles/{vehicle}
+DELETE /api/v1/geofences/{geofence}/vehicles/{vehicle}
+```
 
-The latest completed development checkpoint is the Traccar-backed
-detected vehicle trip-history functionality. It has been tested,
-statically analyzed, committed, and pushed.
+The Geofence module is currently in progress.
+
+The latest completed Geofence checkpoint is Geofence ↔ Vehicle
+association synchronization, including Traccar permission attach/detach,
+stale-job protection, and Geofence-side/Device-side reconciliation.
+
+The next development slice is:
+
+**Geofence entry/exit event handling.**
+
+After the Geofence module is complete, the remaining major roadmap areas
+are:
+
+1.  Alerts
+2.  Reports
+3.  Dashboard
