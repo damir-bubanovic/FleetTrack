@@ -49,6 +49,15 @@ class SyncGeofenceToTraccar implements ShouldQueue
             'last_sync_at' => now(),
         ]);
 
+        $geofence->vehicles()
+            ->select('vehicles.id')
+            ->eachById(function ($vehicle): void {
+                AttachGeofenceToDeviceInTraccar::dispatch(
+                    $this->geofenceId,
+                    $vehicle->id,
+                );
+            });
+
         Log::info('Geofence synchronized to Traccar.', [
             'geofence_id' => $geofence->id,
             'traccar_geofence_id' => $traccarGeofence->id,

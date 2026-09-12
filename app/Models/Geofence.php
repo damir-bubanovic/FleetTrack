@@ -8,6 +8,7 @@ use App\Models\Concerns\BelongsToCompany;
 use Database\Factories\GeofenceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * @use HasFactory<GeofenceFactory>
@@ -44,5 +45,14 @@ class Geofence extends Model
             'is_active' => 'boolean',
             'last_sync_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return BelongsToMany<Vehicle, $this>
+     */
+    public function vehicles(): BelongsToMany
+    {
+        return $this->belongsToMany(Vehicle::class)
+            ->withTimestamps();
     }
 }

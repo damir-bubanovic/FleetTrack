@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Data\Traccar\GeofenceData;
 use App\Services\Traccar\TraccarGeofenceService;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
@@ -150,4 +151,48 @@ test('can delete geofence', function (): void {
     });
 
     Http::assertSentCount(1);
+});
+
+test('attaches a device to a geofence', function (): void {
+    Http::fake([
+        '*/api/permissions' => Http::response([], 200),
+    ]);
+
+    $service = app(TraccarGeofenceService::class);
+
+    $service->attachDevice(
+        geofenceId: 123,
+        deviceId: 456,
+    );
+
+    Http::assertSent(function (Request $request): bool {
+        return $request->method() === 'POST'
+            && $request->url() === rtrim((string) config('traccar.url'), '/').'/api/permissions'
+            && $request->data() === [
+                'geofenceId' => 123,
+                'deviceId' => 456,
+            ];
+    });
+});
+
+test('detaches a device from a geofence', function (): void {
+    Http::fake([
+        '*/api/permissions' => Http::response([], 200),
+    ]);
+
+    $service = app(TraccarGeofenceService::class);
+
+    $service->detachDevice(
+        geofenceId: 123,
+        deviceId: 456,
+    );
+
+    Http::assertSent(function (Request $request): bool {
+        return $request->method() === 'DELETE'
+            && $request->url() === rtrim((string) config('traccar.url'), '/').'/api/permissions'
+            && $request->data() === [
+                'geofenceId' => 123,
+                'deviceId' => 456,
+            ];
+    });
 });

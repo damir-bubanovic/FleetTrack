@@ -84,4 +84,28 @@ class TraccarGeofenceService
 
         return $payload;
     }
+
+    public function attachDevice(
+        int $geofenceId,
+        int $deviceId,
+    ): void {
+        $this->client
+            ->post('/permissions', [
+                'geofenceId' => $geofenceId,
+                'deviceId' => $deviceId,
+            ])
+            ->throw();
+    }
+
+    public function detachDevice(
+        int $geofenceId,
+        int $deviceId,
+    ): void {
+        $this->client
+            ->delete('/permissions', [
+                'geofenceId' => $geofenceId,
+                'deviceId' => $deviceId,
+            ])
+            ->throw();
+    }
 }

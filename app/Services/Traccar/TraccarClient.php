@@ -48,8 +48,11 @@ class TraccarClient
         return $this->client()->put($uri, $data);
     }
 
-    public function delete(string $uri): Response
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function delete(string $uri, array $data = []): Response
     {
-        return $this->client()->delete($uri);
+        return $this->client()->delete($uri, $data);
     }
 }

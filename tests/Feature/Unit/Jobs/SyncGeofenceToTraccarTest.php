@@ -2,11 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Data\Traccar\GeofenceData;
+use App\Jobs\AttachGeofenceToDeviceInTraccar;
 use App\Jobs\SyncGeofenceToTraccar;
 use App\Models\Geofence;
+use App\Models\Vehicle;
 use App\Services\Traccar\TraccarGeofenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -92,4 +97,63 @@ test('exits cleanly when the geofence no longer exists', function (): void {
     $job->handle(app(TraccarGeofenceService::class));
 
     Http::assertNothingSent();
+});
+
+test('queues association synchronization for attached vehicles after geofence sync', function (): void {
+    Queue::fake();
+
+    $geofence = Geofence::factory()->create([
+        'traccar_geofence_id' => null,
+        'last_sync_at' => null,
+    ]);
+
+    $firstVehicle = Vehicle::factory()->create([
+        'company_id' => $geofence->company_id,
+    ]);
+
+    $secondVehicle = Vehicle::factory()->create([
+        'company_id' => $geofence->company_id,
+    ]);
+
+    $geofence->vehicles()->attach([
+        $firstVehicle->id,
+        $secondVehicle->id,
+    ]);
+
+    $service = $this->mock(
+        TraccarGeofenceService::class,
+        function (MockInterface $mock): void {
+            $mock->shouldReceive('create')
+                ->once()
+                ->andReturn(new GeofenceData(
+                    id: 123,
+                    name: 'Test Geofence',
+                    area: 'CIRCLE (45.8150 15.9819, 100)',
+                    description: null,
+                ));
+        },
+    );
+
+    $job = new SyncGeofenceToTraccar(
+        geofenceId: $geofence->id,
+    );
+
+    $job->handle($service);
+
+    Queue::assertPushed(
+        AttachGeofenceToDeviceInTraccar::class,
+        2,
+    );
+
+    Queue::assertPushed(
+        AttachGeofenceToDeviceInTraccar::class,
+        fn (AttachGeofenceToDeviceInTraccar $job): bool => $job->geofenceId === $geofence->id
+            && $job->vehicleId === $firstVehicle->id,
+    );
+
+    Queue::assertPushed(
+        AttachGeofenceToDeviceInTraccar::class,
+        fn (AttachGeofenceToDeviceInTraccar $job): bool => $job->geofenceId === $geofence->id
+            && $job->vehicleId === $secondVehicle->id,
+    );
 });

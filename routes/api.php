@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Device\DeviceController;
 use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
 use App\Http\Controllers\Api\Geofence\GeofenceController;
+use App\Http\Controllers\Api\Geofence\GeofenceVehicleController;
 use App\Http\Controllers\Api\Tracking\LiveTrackingController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Middleware\SetPermissionTeam;
@@ -52,6 +53,16 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('tracking/vehicles/{vehicle}/trips', [LiveTrackingController::class, 'trips'])
             ->name('tracking.vehicles.trips');
+
+        Route::post(
+            'geofences/{geofence}/vehicles/{vehicle}',
+            [GeofenceVehicleController::class, 'store'],
+        )->name('geofences.vehicles.store');
+
+        Route::delete(
+            'geofences/{geofence}/vehicles/{vehicle}',
+            [GeofenceVehicleController::class, 'destroy'],
+        )->name('geofences.vehicles.destroy');
 
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('fleets', FleetController::class);
