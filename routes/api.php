@@ -7,9 +7,11 @@ use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
 use App\Http\Controllers\Api\Geofence\GeofenceController;
 use App\Http\Controllers\Api\Geofence\GeofenceVehicleController;
+use App\Http\Controllers\Api\Traccar\TraccarEventController;
 use App\Http\Controllers\Api\Tracking\LiveTrackingController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
 use App\Http\Middleware\SetPermissionTeam;
+use App\Http\Middleware\VerifyTraccarWebhook;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,6 +25,10 @@ Route::prefix('v1')->group(function (): void {
         AuthController::class,
         'login',
     ]);
+
+    Route::post('traccar/events', TraccarEventController::class)
+        ->middleware(VerifyTraccarWebhook::class)
+        ->name('traccar.events');
 
     Route::middleware([
         'auth:sanctum',

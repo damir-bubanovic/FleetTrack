@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'traccar' => [
+        'webhook_token' => env('TRACCAR_WEBHOOK_TOKEN'),
+    ],
+
 ];
