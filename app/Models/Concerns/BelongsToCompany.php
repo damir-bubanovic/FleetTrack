@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models\Concerns;
 
 use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 trait BelongsToCompany
@@ -24,8 +25,8 @@ trait BelongsToCompany
     /**
      * Scope the query to a specific company.
      *
-     * @param  Builder<static>  $query
-     * @return Builder<static>
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
      */
     public function scopeForCompany(
         Builder $query,
@@ -40,8 +41,8 @@ trait BelongsToCompany
     /**
      * Scope records visible to the given user.
      *
-     * @param  Builder<static>  $query
-     * @return Builder<static>
+     * @param  Builder<$this>  $query
+     * @return Builder<$this>
      */
     public function scopeVisibleTo(
         Builder $query,
@@ -51,7 +52,6 @@ trait BelongsToCompany
             return $query;
         }
 
-        /** @var Builder<static> $query */
         return $query->where(
             $this->getTable().'.company_id',
             $user->company_id,

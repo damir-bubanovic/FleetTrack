@@ -75,7 +75,7 @@ class ProvisionCompanyRoles
             'geofences.delete',
 
             'alerts.view',
-            'alerts.manage',
+            'alerts.acknowledge',
 
             'reports.view',
             'reports.export',
@@ -120,7 +120,7 @@ class ProvisionCompanyRoles
             'geofences.delete',
 
             'alerts.view',
-            'alerts.manage',
+            'alerts.acknowledge',
 
             'reports.view',
             'reports.export',

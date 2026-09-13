@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Alert\AlertController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Company\CompanyController;
 use App\Http\Controllers\Api\Device\DeviceController;
@@ -69,6 +70,17 @@ Route::prefix('v1')->group(function (): void {
             'geofences/{geofence}/vehicles/{vehicle}',
             [GeofenceVehicleController::class, 'destroy'],
         )->name('geofences.vehicles.destroy');
+
+        Route::get('alerts', [AlertController::class, 'index'])
+            ->name('alerts.index');
+
+        Route::get('alerts/{alert}', [AlertController::class, 'show'])
+            ->name('alerts.show');
+
+        Route::patch('alerts/{alert}/acknowledge', [
+            AlertController::class,
+            'acknowledge',
+        ])->name('alerts.acknowledge');
 
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('fleets', FleetController::class);

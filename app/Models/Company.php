@@ -105,4 +105,12 @@ class Company extends Model
     {
         return $this->hasMany(Geofence::class);
     }
+
+    /**
+     * @return HasMany<Alert, $this>
+     */
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(Alert::class);
+    }
 }

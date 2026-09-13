@@ -60,7 +60,7 @@ class PermissionSeeder extends Seeder
             'geofences.delete',
 
             'alerts.view',
-            'alerts.manage',
+            'alerts.acknowledge',
 
             'reports.view',
             'reports.export',
