@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Traccar;
 
 use App\Actions\Traccar\HandleGeofenceEvent;
+use App\Actions\Traccar\HandleIgnitionEvent;
 use App\Actions\Traccar\HandleOverspeedEvent;
 use App\Data\Traccar\GeofenceEventData;
+use App\Data\Traccar\IgnitionEventData;
 use App\Data\Traccar\OverspeedEventData;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +21,7 @@ final class TraccarEventController extends Controller
     public function __construct(
         private readonly HandleGeofenceEvent $handleGeofenceEvent,
         private readonly HandleOverspeedEvent $handleOverspeedEvent,
+        private readonly HandleIgnitionEvent $handleIgnitionEvent,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -32,6 +35,8 @@ final class TraccarEventController extends Controller
                     'geofenceEnter',
                     'geofenceExit',
                     'deviceOverspeed',
+                    'ignitionOn',
+                    'ignitionOff',
                 ]),
             ],
             'deviceId' => ['required', 'integer'],
@@ -50,8 +55,15 @@ final class TraccarEventController extends Controller
 
             'positionId' => [
                 Rule::requiredIf(
-                    fn (): bool => $request->input('type')
-                        === 'deviceOverspeed',
+                    fn (): bool => in_array(
+                        $request->input('type'),
+                        [
+                            'deviceOverspeed',
+                            'ignitionOn',
+                            'ignitionOff',
+                        ],
+                        true,
+                    ),
                 ),
                 'integer',
             ],
@@ -89,6 +101,11 @@ final class TraccarEventController extends Controller
 
             'deviceOverspeed' => $this->handleOverspeedEvent->execute(
                 OverspeedEventData::fromArray($validated),
+            ),
+
+            'ignitionOn',
+            'ignitionOff' => $this->handleIgnitionEvent->execute(
+                IgnitionEventData::fromArray($validated),
             ),
 
             default => throw new RuntimeException(
