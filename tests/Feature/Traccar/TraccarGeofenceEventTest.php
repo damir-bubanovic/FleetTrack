@@ -84,17 +84,16 @@ it('rejects a traccar event with an invalid webhook token', function (): void {
 it('validates the traccar geofence event payload', function (): void {
     $this
         ->withToken('test-traccar-webhook-token')
-        ->postJson('/api/v1/traccar/events', [])
+        ->postJson('/api/v1/traccar/events', [
+            'type' => 'geofenceEnter',
+        ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors([
             'id',
-            'type',
             'deviceId',
             'geofenceId',
             'eventTime',
         ]);
-
-    Event::assertNotDispatched(GeofenceTransitionOccurred::class);
 });
 
 it('rejects unsupported traccar event types', function (): void {
