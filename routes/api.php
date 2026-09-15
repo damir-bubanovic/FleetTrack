@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
 use App\Http\Controllers\Api\Geofence\GeofenceController;
 use App\Http\Controllers\Api\Geofence\GeofenceVehicleController;
+use App\Http\Controllers\Api\Report\ReportController;
 use App\Http\Controllers\Api\Traccar\TraccarEventController;
 use App\Http\Controllers\Api\Tracking\LiveTrackingController;
 use App\Http\Controllers\Api\Vehicle\VehicleController;
@@ -62,6 +63,11 @@ Route::prefix('v1')->group(function (): void {
         Route::get('tracking/vehicles/{vehicle}/trips', [LiveTrackingController::class, 'trips'])
             ->name('tracking.vehicles.trips');
 
+        Route::get(
+            'reports/vehicles/{vehicle}/trips',
+            [ReportController::class, 'vehicleTrips'],
+        )->name('reports.vehicles.trips');
+
         Route::post(
             'geofences/{geofence}/vehicles/{vehicle}',
             [GeofenceVehicleController::class, 'store'],
@@ -89,6 +95,7 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('vehicles', VehicleController::class);
         Route::apiResource('devices', DeviceController::class);
         Route::apiResource('geofences', GeofenceController::class);
+
         Route::apiResource('alert-rules', AlertRuleController::class)
             ->parameters([
                 'alert-rules' => 'alertRule',

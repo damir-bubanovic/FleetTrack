@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\Report;
+
+use App\Actions\Tracking\GetVehicleTrips;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Report\VehicleTripReportRequest;
+use App\Http\Resources\Tracking\VehicleTripResource;
+use App\Models\User;
+use App\Models\Vehicle;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+
+final class ReportController extends Controller
+{
+    public function __construct(
+        private readonly GetVehicleTrips $getVehicleTrips,
+    ) {}
+
+    public function vehicleTrips(
+        VehicleTripReportRequest $request,
+        Vehicle $vehicle,
+    ): AnonymousResourceCollection {
+        $this->authorize('reports.view');
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $from = CarbonImmutable::parse(
+            $request->string('from')->toString(),
+        );
+
+        $to = CarbonImmutable::parse(
+            $request->string('to')->toString(),
+        );
+
+        $trips = $this->getVehicleTrips->handle(
+            $user,
+            $vehicle,
+            $from,
+            $to,
+        );
+
+        return VehicleTripResource::collection($trips);
+    }
+}
