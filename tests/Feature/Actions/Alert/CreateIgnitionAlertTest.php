@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Alert\CreateIgnitionAlert;
 use App\Events\IgnitionChanged;
 use App\Models\Alert;
+use App\Models\AlertRule;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\Vehicle;
@@ -188,4 +189,64 @@ it('rejects an ignition event when the device has no vehicle', function (): void
     );
 
     expect(Alert::query()->count())->toBe(0);
+});
+
+it('uses severity from a matching ignition on alert rule', function (): void {
+    $fixtures = createIgnitionFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'ignition_on',
+        'severity' => 'critical',
+        'conditions' => [],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateIgnitionAlert::class)->execute(
+        createIgnitionEvent(
+            device: $fixtures['device'],
+            type: 'ignitionOn',
+            traccarEventId: 700003,
+        ),
+    );
+
+    expect($alert->severity)->toBe('critical');
+});
+
+it('uses severity from a matching ignition off alert rule', function (): void {
+    $fixtures = createIgnitionFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'ignition_off',
+        'severity' => 'warning',
+        'conditions' => [],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateIgnitionAlert::class)->execute(
+        createIgnitionEvent(
+            device: $fixtures['device'],
+            type: 'ignitionOff',
+            traccarEventId: 700004,
+        ),
+    );
+
+    expect($alert->severity)->toBe('warning');
+});
+
+it('keeps the default ignition severity when no custom alert rule matches', function (): void {
+    $fixtures = createIgnitionFixtures();
+
+    $alert = app(CreateIgnitionAlert::class)->execute(
+        createIgnitionEvent(
+            device: $fixtures['device'],
+            type: 'ignitionOn',
+            traccarEventId: 700005,
+        ),
+    );
+
+    expect($alert->severity)->toBe('info');
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Alert;
 
+use App\Actions\AlertRule\ResolveAlertRule;
 use App\Events\OverspeedOccurred;
 use App\Models\Alert;
 use RuntimeException;
@@ -11,6 +12,10 @@ use RuntimeException;
 final class CreateOverspeedAlert
 {
     private const KNOTS_TO_KMH = 1.852;
+
+    public function __construct(
+        private readonly ResolveAlertRule $resolveAlertRule,
+    ) {}
 
     public function execute(OverspeedOccurred $event): Alert
     {
@@ -25,6 +30,12 @@ final class CreateOverspeedAlert
         $speedKmh = $this->toKilometresPerHour($event->speed);
         $speedLimitKmh = $this->toKilometresPerHour($event->speedLimit);
 
+        $alertRule = $this->resolveAlertRule->execute(
+            $vehicle,
+            'overspeed',
+            $speedKmh,
+        );
+
         return Alert::query()->firstOrCreate(
             [
                 'company_id' => $event->device->company_id,
@@ -35,7 +46,9 @@ final class CreateOverspeedAlert
                 'device_id' => $event->device->id,
                 'geofence_id' => null,
                 'type' => 'overspeed',
-                'severity' => 'warning',
+                'severity' => $alertRule !== null
+                    ? $alertRule->severity
+                    : 'warning',
                 'title' => 'Vehicle exceeded speed limit',
                 'message' => sprintf(
                     '%s was travelling at %.0f km/h in a %.0f km/h zone.',

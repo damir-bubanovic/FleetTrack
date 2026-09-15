@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Alert\CreateDeviceOfflineAlert;
 use App\Events\DeviceWentOffline;
 use App\Models\Alert;
+use App\Models\AlertRule;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\Vehicle;
@@ -170,4 +171,39 @@ it('rejects a device offline event when the device has no vehicle', function ():
     );
 
     expect(Alert::query()->count())->toBe(0);
+});
+
+it('uses severity from a matching custom alert rule', function (): void {
+    $fixtures = createDeviceOfflineFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'device_offline',
+        'severity' => 'critical',
+        'conditions' => [],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateDeviceOfflineAlert::class)->execute(
+        createDeviceWentOfflineEvent(
+            device: $fixtures['device'],
+            traccarEventId: 900003,
+        ),
+    );
+
+    expect($alert->severity)->toBe('critical');
+});
+
+it('keeps the default severity when no custom alert rule matches', function (): void {
+    $fixtures = createDeviceOfflineFixtures();
+
+    $alert = app(CreateDeviceOfflineAlert::class)->execute(
+        createDeviceWentOfflineEvent(
+            device: $fixtures['device'],
+            traccarEventId: 900004,
+        ),
+    );
+
+    expect($alert->severity)->toBe('warning');
 });

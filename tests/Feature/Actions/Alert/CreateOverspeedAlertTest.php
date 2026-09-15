@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Alert\CreateOverspeedAlert;
 use App\Events\OverspeedOccurred;
 use App\Models\Alert;
+use App\Models\AlertRule;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\Vehicle;
@@ -166,4 +167,93 @@ it('rejects an overspeed event when the device has no vehicle', function (): voi
     );
 
     expect(Alert::query()->count())->toBe(0);
+});
+
+it('uses severity from a matching custom overspeed rule', function (): void {
+    $fixtures = createOverspeedFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'overspeed',
+        'severity' => 'critical',
+        'conditions' => [
+            'speed_limit_kmh' => 90,
+        ],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateOverspeedAlert::class)->execute(
+        createOverspeedEvent(
+            device: $fixtures['device'],
+            speed: 54.0,
+            speedLimit: 48.0,
+            traccarEventId: 800003,
+        ),
+    );
+
+    expect($alert->severity)->toBe('critical');
+});
+
+it('keeps the default severity when custom overspeed threshold is not exceeded', function (): void {
+    $fixtures = createOverspeedFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'overspeed',
+        'severity' => 'critical',
+        'conditions' => [
+            'speed_limit_kmh' => 120,
+        ],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateOverspeedAlert::class)->execute(
+        createOverspeedEvent(
+            device: $fixtures['device'],
+            speed: 54.0,
+            speedLimit: 48.0,
+            traccarEventId: 800004,
+        ),
+    );
+
+    expect($alert->severity)->toBe('warning');
+});
+
+it('prefers a vehicle specific custom overspeed rule', function (): void {
+    $fixtures = createOverspeedFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'overspeed',
+        'severity' => 'warning',
+        'conditions' => [
+            'speed_limit_kmh' => 90,
+        ],
+        'is_active' => true,
+    ]);
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => $fixtures['vehicle']->id,
+        'type' => 'overspeed',
+        'severity' => 'critical',
+        'conditions' => [
+            'speed_limit_kmh' => 90,
+        ],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateOverspeedAlert::class)->execute(
+        createOverspeedEvent(
+            device: $fixtures['device'],
+            speed: 54.0,
+            speedLimit: 48.0,
+            traccarEventId: 800005,
+        ),
+    );
+
+    expect($alert->severity)->toBe('critical');
 });

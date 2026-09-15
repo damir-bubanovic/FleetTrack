@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Alert;
 
+use App\Actions\AlertRule\ResolveAlertRule;
 use App\Events\DeviceWentOffline;
 use App\Models\Alert;
 use RuntimeException;
 
 final class CreateDeviceOfflineAlert
 {
+    public function __construct(
+        private readonly ResolveAlertRule $resolveAlertRule,
+    ) {}
+
     public function execute(DeviceWentOffline $event): Alert
     {
         $vehicle = $event->device->vehicle;
@@ -19,6 +24,11 @@ final class CreateDeviceOfflineAlert
                 "Device [{$event->device->id}] is not assigned to a vehicle."
             );
         }
+
+        $alertRule = $this->resolveAlertRule->execute(
+            $vehicle,
+            'device_offline',
+        );
 
         return Alert::query()->firstOrCreate(
             [
@@ -30,7 +40,9 @@ final class CreateDeviceOfflineAlert
                 'device_id' => $event->device->id,
                 'geofence_id' => null,
                 'type' => 'device_offline',
-                'severity' => 'warning',
+                'severity' => $alertRule !== null
+                    ? $alertRule->severity
+                    : 'warning',
                 'title' => 'Device went offline',
                 'message' => sprintf(
                     '%s device %s went offline.',

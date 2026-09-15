@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Alert\CreateGeofenceAlert;
 use App\Events\GeofenceTransitionOccurred;
 use App\Models\Alert;
+use App\Models\AlertRule;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\Geofence;
@@ -180,4 +181,67 @@ it('rejects an unsupported geofence transition type', function (): void {
     );
 
     expect(Alert::query()->count())->toBe(0);
+});
+
+it('uses severity from a matching geofence enter alert rule', function (): void {
+    $fixtures = createGeofenceTransitionFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'geofence_enter',
+        'severity' => 'critical',
+        'conditions' => [],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateGeofenceAlert::class)->execute(
+        createGeofenceTransitionEvent(
+            device: $fixtures['device'],
+            geofence: $fixtures['geofence'],
+            type: 'geofenceEnter',
+            traccarEventId: 600003,
+        ),
+    );
+
+    expect($alert->severity)->toBe('critical');
+});
+
+it('uses severity from a matching geofence exit alert rule', function (): void {
+    $fixtures = createGeofenceTransitionFixtures();
+
+    AlertRule::factory()->create([
+        'company_id' => $fixtures['company']->id,
+        'vehicle_id' => null,
+        'type' => 'geofence_exit',
+        'severity' => 'warning',
+        'conditions' => [],
+        'is_active' => true,
+    ]);
+
+    $alert = app(CreateGeofenceAlert::class)->execute(
+        createGeofenceTransitionEvent(
+            device: $fixtures['device'],
+            geofence: $fixtures['geofence'],
+            type: 'geofenceExit',
+            traccarEventId: 600004,
+        ),
+    );
+
+    expect($alert->severity)->toBe('warning');
+});
+
+it('keeps the default geofence severity when no custom alert rule matches', function (): void {
+    $fixtures = createGeofenceTransitionFixtures();
+
+    $alert = app(CreateGeofenceAlert::class)->execute(
+        createGeofenceTransitionEvent(
+            device: $fixtures['device'],
+            geofence: $fixtures['geofence'],
+            type: 'geofenceEnter',
+            traccarEventId: 600005,
+        ),
+    );
+
+    expect($alert->severity)->toBe('info');
 });

@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Alert;
 
+use App\Actions\AlertRule\ResolveAlertRule;
 use App\Events\GeofenceTransitionOccurred;
 use App\Models\Alert;
 use RuntimeException;
 
 final class CreateGeofenceAlert
 {
+    public function __construct(
+        private readonly ResolveAlertRule $resolveAlertRule,
+    ) {}
+
     public function execute(GeofenceTransitionOccurred $event): Alert
     {
         $vehicle = $event->device->vehicle;
@@ -33,6 +38,11 @@ final class CreateGeofenceAlert
             'geofenceExit' => 'Vehicle exited geofence',
         };
 
+        $alertRule = $this->resolveAlertRule->execute(
+            $vehicle,
+            $type,
+        );
+
         return Alert::query()->firstOrCreate(
             [
                 'company_id' => $event->geofence->company_id,
@@ -43,7 +53,9 @@ final class CreateGeofenceAlert
                 'device_id' => $event->device->id,
                 'geofence_id' => $event->geofence->id,
                 'type' => $type,
-                'severity' => 'info',
+                'severity' => $alertRule !== null
+                    ? $alertRule->severity
+                    : 'info',
                 'title' => $title,
                 'message' => $this->message(
                     vehicleRegistration: $vehicle->registration_number,

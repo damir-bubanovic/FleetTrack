@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Actions\Alert;
 
+use App\Actions\AlertRule\ResolveAlertRule;
 use App\Events\IgnitionChanged;
 use App\Models\Alert;
 use RuntimeException;
 
 final class CreateIgnitionAlert
 {
+    public function __construct(
+        private readonly ResolveAlertRule $resolveAlertRule,
+    ) {}
+
     public function execute(IgnitionChanged $event): Alert
     {
         $vehicle = $event->device->vehicle;
@@ -42,6 +47,11 @@ final class CreateIgnitionAlert
             ),
         };
 
+        $alertRule = $this->resolveAlertRule->execute(
+            $vehicle,
+            $type,
+        );
+
         return Alert::query()->firstOrCreate(
             [
                 'company_id' => $event->device->company_id,
@@ -52,7 +62,9 @@ final class CreateIgnitionAlert
                 'device_id' => $event->device->id,
                 'geofence_id' => null,
                 'type' => $type,
-                'severity' => 'info',
+                'severity' => $alertRule !== null
+                    ? $alertRule->severity
+                    : 'info',
                 'title' => $title,
                 'message' => $message,
                 'occurred_at' => $event->occurredAt,
