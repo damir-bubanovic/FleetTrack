@@ -76,6 +76,11 @@ class PermissionSeeder extends Seeder
 
             'vehicle-issues.create',
             'vehicle-issues.view-own',
+
+            'alert-rules.view',
+            'alert-rules.create',
+            'alert-rules.update',
+            'alert-rules.delete',
         ];
 
         foreach ($permissions as $permission) {

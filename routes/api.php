@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Alert\AlertController;
+use App\Http\Controllers\Api\AlertRule\AlertRuleController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Company\CompanyController;
 use App\Http\Controllers\Api\Device\DeviceController;
@@ -88,5 +89,9 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('vehicles', VehicleController::class);
         Route::apiResource('devices', DeviceController::class);
         Route::apiResource('geofences', GeofenceController::class);
+        Route::apiResource('alert-rules', AlertRuleController::class)
+            ->parameters([
+                'alert-rules' => 'alertRule',
+            ]);
     });
 });

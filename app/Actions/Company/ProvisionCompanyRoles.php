@@ -86,6 +86,11 @@ class ProvisionCompanyRoles
             'activity-logs.view',
 
             'tracking.view',
+
+            'alert-rules.view',
+            'alert-rules.create',
+            'alert-rules.update',
+            'alert-rules.delete',
         ]);
 
         $fleetManager->syncPermissions([
@@ -126,6 +131,10 @@ class ProvisionCompanyRoles
             'reports.export',
 
             'tracking.view',
+            'alert-rules.view',
+            'alert-rules.create',
+            'alert-rules.update',
+            'alert-rules.delete',
         ]);
 
         $driver->syncPermissions([

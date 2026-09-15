@@ -113,4 +113,12 @@ class Company extends Model
     {
         return $this->hasMany(Alert::class);
     }
+
+    /**
+     * @return HasMany<AlertRule, $this>
+     */
+    public function alertRules(): HasMany
+    {
+        return $this->hasMany(AlertRule::class);
+    }
 }
