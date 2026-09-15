@@ -8,6 +8,9 @@ FleetTrack development and the reasoning behind them.
 It should describe decisions that future contributors need to preserve
 unless requirements or architecture deliberately change.
 
+The source code remains authoritative if an older decision description
+becomes stale.
+
 ------------------------------------------------------------------------
 
 # ADR-001: Laravel as the Backend Framework
@@ -82,6 +85,8 @@ Business/application rules belong in Action classes.
 -   Invoke Actions
 -   Return API Resources
 
+Controllers must not communicate with Traccar directly.
+
 **Benefits**
 
 -   Easier testing
@@ -117,9 +122,16 @@ Examples include:
 -   `DeleteGeofence`
 -   `AttachVehicleToGeofence`
 -   `DetachVehicleFromGeofence`
+-   Alert creation Actions
+-   `ResolveAlertRule`
+-   Alert Rule CRUD Actions
 
 Actions may persist FleetTrack data, coordinate domain behavior,
 dispatch events, or call dedicated services depending on the operation.
+
+New HTTP surfaces should reuse existing Actions when the application
+behavior is already represented there. The Reports vehicle-trip
+endpoint, for example, reuses `GetVehicleTrips`.
 
 ------------------------------------------------------------------------
 
@@ -129,7 +141,7 @@ dispatch events, or call dedicated services depending on the operation.
 
 **Decision**
 
-Synchronize FleetTrack device lifecycle writes to Traccar
+Synchronize FleetTrack Device lifecycle writes to Traccar
 asynchronously.
 
 **Flow**
@@ -184,6 +196,7 @@ Current core integration classes include:
 -   `ReportService`
 -   `DeviceData`
 -   `GeofenceData`
+-   Event-specific Traccar DTOs
 
 **Rationale**
 
@@ -207,16 +220,8 @@ Controllers must not communicate with Traccar directly.
 
 Each queue job performs one integration responsibility.
 
-Current examples:
-
--   `SyncDeviceToTraccar`
--   `UpdateDeviceInTraccar`
--   `DeleteDeviceFromTraccar`
--   `SyncGeofenceToTraccar`
--   `UpdateGeofenceInTraccar`
--   `DeleteGeofenceFromTraccar`
--   `AttachGeofenceToDeviceInTraccar`
--   `DetachGeofenceFromDeviceInTraccar`
+Current examples include Device synchronization, Geofence
+synchronization, and Geofence/Device permission synchronization jobs.
 
 Jobs should:
 
@@ -225,6 +230,8 @@ Jobs should:
 -   Avoid unrelated business responsibilities
 -   Avoid unnecessary model dependencies when records may have been
     deleted before execution
+-   Re-check current local desired state where stale queued work could
+    otherwise overwrite newer state
 
 ------------------------------------------------------------------------
 
@@ -238,7 +245,24 @@ Centralize authorization using Laravel Policies and the existing
 permission system rather than scattering role/company conditionals
 through controllers.
 
-Tracking endpoints currently authorize the `tracking.view` ability.
+Model-specific CRUD uses Policies where ownership checks are required.
+
+Capability-oriented endpoints may authorize permission abilities
+directly.
+
+Current examples include:
+
+``` text
+tracking.view
+reports.view
+reports.export
+alerts.view
+alerts.acknowledge
+alert-rules.view
+alert-rules.create
+alert-rules.update
+alert-rules.delete
+```
 
 Authorization works together with tenant-visible database queries;
 neither mechanism replaces the other.
@@ -265,14 +289,15 @@ Typical coverage includes:
 
 -   Success paths
 -   Validation
+-   Authentication
 -   Authorization
 -   Tenant isolation
 -   Empty external-service responses
 -   Unsynced entities
 -   External request parameters
--   Queue dispatching with `Queue::fake()` where appropriate
+-   Queue dispatching with fakes where appropriate
 
-Traccar calls are isolated with `Http::fake()`.
+Traccar calls are isolated with Laravel HTTP fakes.
 
 Automated tests must not depend on a live Traccar server.
 
@@ -287,29 +312,31 @@ Automated tests must not depend on a live Traccar server.
 Completed functionality must preserve the project's automated quality
 gates.
 
-Current expectations:
-
--   PHPStan / Larastan with zero errors
--   Laravel Pint compliant formatting
--   Passing targeted tests
--   Passing full test suite before committing a completed functionality
-    slice
-
-Standard final checks:
+The standard commit-boundary quality gate is:
 
 ``` bash
+sail composer lint
 sail composer lint:check
 sail composer types:check
 sail artisan test
 ```
 
-If Pint reports fixable formatting issues, run:
+**Expectations**
 
-``` bash
-sail composer lint
+-   Laravel Pint formatting applied
+-   Laravel Pint verification passes
+-   PHPStan / Larastan reports zero errors
+-   Targeted tests pass
+-   Full test suite passes before committing a completed functionality
+    slice
+
+Do not use:
+
+``` text
+sail artisan lint
 ```
 
-Then rerun all three final checks. Do not use `sail artisan lint`.
+The project uses Composer scripts for linting.
 
 ------------------------------------------------------------------------
 
@@ -319,9 +346,8 @@ Then rerun all three final checks. Do not use `sail artisan lint`.
 
 **Decision**
 
-Read-only tracking and report requests that are required to build the
-current API response are performed synchronously through dedicated
-Traccar services.
+Read-only tracking and report requests required to build the current API
+response are performed synchronously through dedicated Traccar services.
 
 **Flow**
 
@@ -329,7 +355,7 @@ Traccar services.
 FleetTrack API Request
 → Controller
 → Authorization
-→ Tracking Action
+→ Action
 → Resolve FleetTrack-visible Device
 → PositionService / ReportService
 → Traccar REST API
@@ -340,9 +366,10 @@ FleetTrack API Request
 Current examples:
 
 -   Live positions
--   Per-vehicle live position
+-   Per-Vehicle live position
 -   Vehicle position history
--   Traccar trip reports
+-   Traccar trip history
+-   Reports vehicle trip report
 
 **Rationale**
 
@@ -350,8 +377,8 @@ The caller requires the current Traccar result in the same request.
 Queueing these reads would add complexity without providing the benefits
 required for the current use cases.
 
-This does not conflict with ADR-005. Device synchronization writes
-remain asynchronous.
+This does not conflict with ADR-005 or ADR-017. External lifecycle
+synchronization writes remain asynchronous.
 
 ------------------------------------------------------------------------
 
@@ -366,18 +393,23 @@ Use Traccar as the source of truth for GPS trip detection.
 FleetTrack must not maintain a competing position/speed-based trip
 segmentation algorithm for normal detected-trip functionality.
 
-Detected vehicle trips are currently retrieved from Traccar through:
+Detected Vehicle trips are retrieved from Traccar through:
 
 ``` text
 GET /reports/trips
 ```
 
-FleetTrack integration flow:
+Current FleetTrack consumers include:
 
 ``` text
 GET /api/v1/tracking/vehicles/{vehicle}/trips
-→ LiveTrackingController
-→ GetVehicleTrips
+GET /api/v1/reports/vehicles/{vehicle}/trips
+```
+
+Both reuse:
+
+``` text
+GetVehicleTrips
 → ReportService
 → Traccar /reports/trips
 → VehicleTripResource
@@ -390,8 +422,8 @@ GET /api/v1/tracking/vehicles/{vehicle}/trips
 -   Reimplementing detection in FleetTrack would create two definitions
     of a trip.
 -   Detection rules could diverge over time.
--   FleetTrack should focus on authorization, business context, and
-    application-facing response contracts.
+-   FleetTrack should focus on authorization, business context,
+    reporting surfaces, and application-facing response contracts.
 
 **Important distinction**
 
@@ -478,10 +510,10 @@ For current Traccar trip reports:
 
 **Decision**
 
-Vehicle historical tracking requests currently allow a maximum date
-range of seven days.
+Vehicle historical tracking requests using the shared historical
+tracking request currently allow a maximum date range of seven days.
 
-The shared historical request validation requires:
+The shared validation requires:
 
 -   `from`
 -   `to`
@@ -491,20 +523,19 @@ The shared historical request validation requires:
 Exactly seven days is valid. A range greater than seven days is
 rejected.
 
-This validation currently applies to historical tracking functionality
-that uses `VehiclePositionHistoryRequest`, including position history,
-trip summary, and detected trip history.
+This applies to tracking functionality using the historical tracking
+request, including position history, aggregate trip summary, and
+tracking trip history.
+
+The dedicated Reports vehicle-trip request currently has its own
+contract: `from` and `to` are required and `to` must be after `from`.
 
 **Rationale**
 
--   Bounds synchronous Traccar report/history requests
--   Prevents unexpectedly large API payloads
--   Provides a consistent current tracking API constraint
-
-The limit can be revisited later if reporting requirements require
-larger ranges or asynchronous report generation.
-
-------------------------------------------------------------------------
+-   Bounds synchronous tracking history requests
+-   Prevents unexpectedly large tracking payloads
+-   Allows Reports to evolve its own range/export constraints as
+    reporting requirements are defined
 
 ------------------------------------------------------------------------
 
@@ -521,7 +552,7 @@ Geofence ↔ Vehicle
 ```
 
 Do not expose a Geofence ↔ Device relationship as the primary FleetTrack
-CRM model solely because Traccar permissions operate on devices.
+CRM model solely because Traccar permissions operate on Devices.
 
 The local relationship is persisted in the `geofence_vehicle` pivot
 table.
@@ -544,7 +575,7 @@ Vehicle
 -   Keeping the public domain relationship at Vehicle level prevents
     Traccar-specific concepts from leaking into the CRM model.
 -   The mapping can still be translated to Traccar's required
-    device/geofence permission relationship at the integration boundary.
+    Device/Geofence permission relationship at the integration boundary.
 
 Cross-company Geofence ↔ Vehicle associations are forbidden.
 
@@ -572,21 +603,15 @@ Geofence Action
 → Traccar REST API
 ```
 
-Current lifecycle components include:
-
--   `GeofenceCreated`
--   `GeofenceUpdated`
--   `GeofenceDeleted`
--   `SyncGeofenceToTraccar`
--   `UpdateGeofenceInTraccar`
--   `DeleteGeofenceFromTraccar`
+Current lifecycle components include Geofence created/updated/deleted
+events and dedicated synchronization jobs.
 
 **Rationale**
 
 -   Keeps FleetTrack persistence independent of temporary Traccar
     availability.
 -   Provides retries and fault isolation.
--   Preserves the same integration architecture already established for
+-   Preserves the integration architecture already established for
     Devices.
 -   Keeps controllers and Actions free of direct HTTP concerns.
 
@@ -601,34 +626,32 @@ Current lifecycle components include:
 When the local Geofence ↔ Vehicle relationship changes, synchronize the
 corresponding Traccar Geofence ↔ Device permission asynchronously.
 
-Attach flow:
+Conceptual attach flow:
 
 ``` text
 AttachVehicleToGeofence
+→ local pivot change
 → VehicleAttachedToGeofence
-→ SyncVehicleAttachedToGeofenceToTraccar
-→ AttachGeofenceToDeviceInTraccar
+→ Listener
+→ permission synchronization job
 → TraccarGeofenceService
 → POST /permissions
 ```
 
-Detach flow:
+Conceptual detach flow:
 
 ``` text
 DetachVehicleFromGeofence
+→ local pivot change
 → VehicleDetachedFromGeofence
-→ SyncVehicleDetachedFromGeofenceToTraccar
-→ DetachGeofenceFromDeviceInTraccar
+→ Listener
+→ permission removal job
 → TraccarGeofenceService
 → DELETE /permissions
 ```
 
-The Traccar permission payload contains:
-
-``` text
-geofenceId
-deviceId
-```
+The Traccar permission payload contains the resolved Traccar Geofence
+and Device identifiers.
 
 Local attach/detach operations are idempotent. Association events are
 dispatched only when the pivot state actually changes.
@@ -648,32 +671,35 @@ dispatched only when the pivot state actually changes.
 
 **Decision**
 
-Queued Geofence permission jobs must validate the current FleetTrack
-state before making a Traccar permission request.
+Queued Geofence permission jobs must validate current FleetTrack state
+before making a Traccar permission request.
 
-An attach job must not call Traccar if the Geofence or Vehicle no longer
-exists, the local association no longer exists, the Geofence is not yet
-synchronized, the Vehicle has no Device, or the Device is not yet
-synchronized.
+An attach job must not write stale state if, for example:
 
-A detach job must not call Traccar if the local association exists again.
+-   the Geofence or Vehicle no longer exists
+-   the local association no longer exists
+-   a required Traccar identifier is unavailable
+-   the Vehicle no longer has the required synchronized Device
+
+A detach job must not remove the Traccar permission if the local
+association has been recreated.
 
 **Rationale**
 
 Queue execution is asynchronous. The state that caused a job to be
 queued may no longer be valid when that job executes.
 
-In particular, the detach guard protects this race:
+In particular:
 
 ``` text
 detach locally
 → detach job queued
-→ vehicle reattached locally
+→ Vehicle reattached locally
 → stale detach job executes
 ```
 
-Without a current-state check, the stale job could incorrectly remove a
-permission that FleetTrack now expects to exist.
+must not result in removal of a permission FleetTrack now expects to
+exist.
 
 ------------------------------------------------------------------------
 
@@ -686,22 +712,21 @@ permission that FleetTrack now expects to exist.
 Do not require the Geofence, Device, and local association to become
 synchronized in a particular order.
 
-Association jobs may safely return when a required Traccar ID is not yet
-available. Later lifecycle synchronization performs reconciliation.
+Association synchronization may safely defer when a required Traccar ID
+is not yet available. Later lifecycle synchronization performs
+reconciliation.
 
-Two reconciliation paths are required:
+Required reconciliation paths:
 
 **Geofence-side reconciliation**
 
-After `SyncGeofenceToTraccar` stores a new `traccar_geofence_id`, dispatch
-`AttachGeofenceToDeviceInTraccar` for every Vehicle currently associated
-with that Geofence.
+After initial Geofence synchronization stores its Traccar ID,
+synchronize the currently associated Vehicles.
 
 **Device-side reconciliation**
 
-After `SyncDeviceToTraccar` stores a new `traccar_device_id`, dispatch
-`AttachGeofenceToDeviceInTraccar` for every Geofence currently associated
-with that Device's Vehicle.
+After initial Device synchronization stores its Traccar ID, synchronize
+the Geofences currently associated with that Device's Vehicle.
 
 **Rationale**
 
@@ -721,6 +746,408 @@ Neither reconciliation path replaces the other.
 
 ------------------------------------------------------------------------
 
+# ADR-021: Traccar Webhook Events Use a Dedicated Authentication Boundary
+
+**Status:** Accepted
+
+**Decision**
+
+Receive supported Traccar events through:
+
+``` text
+POST /api/v1/traccar/events
+```
+
+and protect that endpoint with `VerifyTraccarWebhook` instead of
+Sanctum.
+
+Traccar is a service caller rather than an authenticated FleetTrack
+user.
+
+**Current supported event types**
+
+``` text
+geofenceEnter
+geofenceExit
+deviceOverspeed
+ignitionOn
+ignitionOff
+deviceOffline
+```
+
+**Rationale**
+
+-   Keeps machine-to-machine authentication separate from user
+    authentication.
+-   Prevents the external webhook from requiring a FleetTrack user
+    token.
+-   Gives the Traccar integration a dedicated verification boundary.
+-   Allows normal authenticated API routes to remain protected by
+    Sanctum and permission-team middleware.
+
+------------------------------------------------------------------------
+
+# ADR-022: Translate Traccar Events Before Triggering Application Behavior
+
+**Status:** Accepted
+
+**Decision**
+
+Do not pass raw Traccar webhook payloads directly into Alert
+persistence.
+
+Supported Traccar events are validated and translated through
+event-specific DTOs/handlers before FleetTrack application events are
+dispatched.
+
+Conceptual flow:
+
+``` text
+Traccar payload
+→ event-specific validation
+→ DTO
+→ Handler
+→ FleetTrack application event
+→ queued listener
+→ Alert Action
+```
+
+**Rationale**
+
+-   Isolates Traccar payload shape from application logic.
+-   Produces typed, testable boundaries.
+-   Keeps Alert Actions independent of webhook/controller details.
+-   Makes each supported event type explicit.
+
+------------------------------------------------------------------------
+
+# ADR-023: Alerts Are Persistent FleetTrack Business Records
+
+**Status:** Accepted
+
+**Decision**
+
+Persist supported tracking events as FleetTrack Alert records when they
+enter the Alert pipeline.
+
+Current supported Alert types:
+
+``` text
+geofence_enter
+geofence_exit
+overspeed
+ignition_on
+ignition_off
+device_offline
+```
+
+The Alerts API provides:
+
+``` text
+GET   /api/v1/alerts
+GET   /api/v1/alerts/{alert}
+PATCH /api/v1/alerts/{alert}/acknowledge
+```
+
+Alerts are company-scoped and acknowledgement is idempotent.
+
+Where an external Traccar event identifier is available, Alert creation
+uses it as part of the idempotency strategy.
+
+**Rationale**
+
+-   Alerts are application/business state rather than transient HTTP
+    responses.
+-   Persistence supports history and acknowledgement.
+-   Tenant-scoped records can be authorized independently of Traccar.
+-   Idempotency protects against repeated external event delivery.
+
+------------------------------------------------------------------------
+
+# ADR-024: Custom Alert Rules Augment Default Alert Generation
+
+**Status:** Accepted
+
+**Decision**
+
+Support configurable Alert Rules while preserving default Alert
+generation when no custom rule matches.
+
+An Alert Rule belongs to a Company and may optionally target a Vehicle.
+
+``` text
+vehicle_id = null
+    → company-wide rule
+
+vehicle_id = value
+    → Vehicle-specific rule
+```
+
+Current supported rule types:
+
+``` text
+overspeed
+geofence_enter
+geofence_exit
+ignition_on
+ignition_off
+device_offline
+```
+
+Current severity values:
+
+``` text
+info
+warning
+critical
+```
+
+**Rationale**
+
+Custom configuration should allow a Company to change relevant Alert
+behavior without making the existence of a rule mandatory for normal
+Alert generation.
+
+This preserves the established alert pipeline for Companies that have
+not configured custom rules.
+
+------------------------------------------------------------------------
+
+# ADR-025: Alert Rule Resolution Prefers Vehicle-Specific Rules with Company-Wide Fallback
+
+**Status:** Accepted
+
+**Decision**
+
+Centralize runtime Alert Rule matching in `ResolveAlertRule`.
+
+Resolution rules:
+
+1.  Match the Vehicle's Company.
+2.  Match the Alert type.
+3.  Consider active rules only.
+4.  Consider Vehicle-specific and company-wide candidates.
+5.  Evaluate Vehicle-specific candidates before company-wide candidates.
+6.  Return the first candidate whose conditions match.
+7.  Return `null` when no custom rule matches.
+
+A company-wide rule may therefore match when a Vehicle-specific
+candidate does not satisfy its condition.
+
+For overspeed rules:
+
+``` text
+conditions.speed_limit_kmh
+```
+
+is compared with the actual event speed converted to km/h.
+
+The match is strict:
+
+``` text
+actual_speed_kmh > speed_limit_kmh
+```
+
+Equality does not match.
+
+Currently supported non-overspeed rule types require no additional
+runtime condition.
+
+**Rationale**
+
+-   Vehicle-specific configuration should take precedence when
+    applicable.
+-   A non-matching specific threshold should not suppress an otherwise
+    applicable Company rule.
+-   Centralized resolution keeps individual Alert Actions simple and
+    consistent.
+-   Returning `null` preserves default Alert behavior.
+
+------------------------------------------------------------------------
+
+# ADR-026: Alert Rules Override Severity, Not the Entire Alert Pipeline
+
+**Status:** Accepted
+
+**Decision**
+
+For the currently implemented rule system, a matching Alert Rule
+overrides the Alert severity.
+
+If no custom rule matches, each Alert source retains its default
+severity.
+
+Current defaults include:
+
+``` text
+geofence entry/exit    info
+ignition on/off        info
+overspeed              warning
+device offline         warning
+```
+
+The Alert Rule `name` is configuration metadata and is not currently
+used as the generated Alert message.
+
+**Rationale**
+
+-   Keeps custom-rule behavior intentionally narrow.
+-   Preserves established Alert messages and event semantics.
+-   Avoids introducing undocumented suppression or message-template
+    behavior.
+-   Makes default behavior deterministic.
+
+------------------------------------------------------------------------
+
+# ADR-027: Reports Reuse Existing Tracking Application Logic
+
+**Status:** Accepted
+
+**Decision**
+
+Implement Reports as an API/reporting layer over existing FleetTrack
+application and Traccar integration capabilities rather than creating a
+second tracking subsystem.
+
+The first Reports endpoint is:
+
+``` text
+GET /api/v1/reports/vehicles/{vehicle}/trips?from=<datetime>&to=<datetime>
+```
+
+Its flow is:
+
+``` text
+VehicleTripReportRequest
+→ ReportController
+→ reports.view
+→ GetVehicleTrips
+→ tenant-visible Device
+→ ReportService
+→ Traccar /reports/trips
+→ VehicleTripResource
+```
+
+The Reports controller does not communicate with Traccar directly.
+
+**Rationale**
+
+-   `GetVehicleTrips` already represents the application behavior.
+-   `ReportService` already owns the Traccar trip-report boundary.
+-   `VehicleTripResource` already defines the normalized public
+    contract.
+-   Reuse prevents tracking and Reports from drifting into different
+    definitions of the same data.
+-   Reports can add report-specific authorization and validation without
+    duplicating GPS/tracking logic.
+
+------------------------------------------------------------------------
+
+# ADR-028: Reports Use Capability Permissions Rather Than a Model-Less Report Policy
+
+**Status:** Accepted
+
+**Decision**
+
+Authorize Reports through capability permissions.
+
+Current permissions:
+
+``` text
+reports.view
+reports.export
+```
+
+The implemented vehicle-trip report uses:
+
+``` text
+reports.view
+```
+
+A model-less `ReportPolicy` is not required for the current
+architecture.
+
+Tenant isolation remains enforced by the application logic that resolves
+FleetTrack-visible entities before Traccar data is requested.
+
+**Rationale**
+
+-   Reports are currently capabilities rather than persistent Report
+    models.
+-   This matches the existing capability-oriented authorization approach
+    used by tracking.
+-   It avoids creating a policy abstraction without a corresponding
+    domain model.
+-   `reports.export` provides a separate capability boundary for future
+    export functionality.
+
+------------------------------------------------------------------------
+
+# ADR-029: Report-Specific Request Contracts May Differ from Tracking Contracts
+
+**Status:** Accepted
+
+**Decision**
+
+Reports may use dedicated Form Requests and constraints rather than
+being forced to inherit every tracking HTTP validation rule.
+
+The current vehicle-trip report uses `VehicleTripReportRequest` with:
+
+``` text
+from    required date
+to      required date and after from
+```
+
+It still reuses `GetVehicleTrips` and `ReportService` after validation.
+
+**Rationale**
+
+-   Tracking and reporting are different HTTP use cases even when they
+    reuse the same application/integration behavior.
+-   Reporting may later require different date ranges or export
+    constraints.
+-   Reusing the Action does not require coupling the HTTP validation
+    contracts.
+-   Report-specific requirements can evolve without weakening tracking
+    limits.
+
+------------------------------------------------------------------------
+
+# ADR-030: External Notification Channels Require Explicit Product Requirements
+
+**Status:** Accepted
+
+**Decision**
+
+Do not add email, push, SMS, or other external Alert-delivery channels
+merely because persistent Alerts exist.
+
+Current implemented Alert requirements cover FleetTrack Alert
+persistence, history, acknowledgement, custom rules, and supported
+Traccar event sources.
+
+External delivery channels should be designed only when product
+requirements define:
+
+-   required channels
+-   recipients
+-   delivery timing
+-   retries/failure behavior
+-   preferences
+-   templates/content
+-   audit requirements
+
+**Rationale**
+
+-   Avoids inventing product behavior.
+-   Prevents unnecessary infrastructure.
+-   Keeps current Alert scope aligned with established requirements.
+-   Allows future delivery architecture to be designed around concrete
+    needs.
+
+------------------------------------------------------------------------
+
 # Current Architecture Baseline
 
 Implemented:
@@ -733,19 +1160,29 @@ Implemented:
 -   Drivers
 -   Vehicles
 -   Devices
--   Traccar device synchronization
+-   Traccar Device synchronization
 -   Live Tracking
--   Per-vehicle live position
--   Live-position fleet/vehicle filtering
+-   Per-Vehicle live position
+-   Live-position fleet/Vehicle filtering
 -   Online/offline tracking status
 -   Vehicle position history
--   Aggregate vehicle trip summary
--   Traccar-detected vehicle trip history
+-   Aggregate Vehicle trip summary
+-   Traccar-detected Vehicle trip history
 -   Geofence CRUD and tenant authorization
 -   Traccar Geofence lifecycle synchronization
 -   Geofence ↔ Vehicle associations
 -   Traccar Geofence ↔ Device permission synchronization
 -   Geofence/Device association reconciliation
+-   Secure Traccar webhook authentication
+-   Geofence entry/exit event handling
+-   Overspeed event handling
+-   Ignition event handling
+-   Device-offline event handling
+-   Persistent Alerts
+-   Alert history and acknowledgement
+-   Custom Alert Rule CRUD
+-   Runtime Alert Rule evaluation
+-   Reports vehicle-trip endpoint
 
 Current tracking endpoints:
 
@@ -760,28 +1197,110 @@ GET /api/v1/tracking/vehicles/{vehicle}/trips
 Current Geofence endpoints:
 
 ``` text
-GET /api/v1/geofences
-POST /api/v1/geofences
-GET /api/v1/geofences/{geofence}
-PUT/PATCH /api/v1/geofences/{geofence}
-DELETE /api/v1/geofences/{geofence}
-POST /api/v1/geofences/{geofence}/vehicles/{vehicle}
-DELETE /api/v1/geofences/{geofence}/vehicles/{vehicle}
+GET        /api/v1/geofences
+POST       /api/v1/geofences
+GET        /api/v1/geofences/{geofence}
+PUT/PATCH  /api/v1/geofences/{geofence}
+DELETE     /api/v1/geofences/{geofence}
+
+POST       /api/v1/geofences/{geofence}/vehicles/{vehicle}
+DELETE     /api/v1/geofences/{geofence}/vehicles/{vehicle}
 ```
 
-The Geofence module is currently in progress.
+Current Alert endpoints:
 
-The latest completed Geofence checkpoint is Geofence ↔ Vehicle
-association synchronization, including Traccar permission attach/detach,
-stale-job protection, and Geofence-side/Device-side reconciliation.
+``` text
+GET   /api/v1/alerts
+GET   /api/v1/alerts/{alert}
+PATCH /api/v1/alerts/{alert}/acknowledge
+```
 
-The next development slice is:
+Current Alert Rule endpoints:
 
-**Geofence entry/exit event handling.**
+``` text
+GET        /api/v1/alert-rules
+POST       /api/v1/alert-rules
+GET        /api/v1/alert-rules/{alertRule}
+PUT/PATCH  /api/v1/alert-rules/{alertRule}
+DELETE     /api/v1/alert-rules/{alertRule}
+```
 
-After the Geofence module is complete, the remaining major roadmap areas
-are:
+Current Reports endpoint:
 
-1.  Alerts
-2.  Reports
-3.  Dashboard
+``` text
+GET /api/v1/reports/vehicles/{vehicle}/trips
+```
+
+The latest completed functionality slice is the Reports vehicle-trip
+endpoint.
+
+It:
+
+-   is inside the authenticated/team-aware API group
+-   authorizes `reports.view`
+-   validates a required `from`/`to` range
+-   reuses `GetVehicleTrips`
+-   reuses `ReportService`
+-   reuses `VehicleTripResource`
+-   preserves tenant-safe Device resolution
+-   has eight passing focused feature tests
+
+The complete quality gate was green after the slice:
+
+``` bash
+sail composer lint
+sail composer lint:check
+sail composer types:check
+sail artisan test
+```
+
+The slice was committed as:
+
+``` text
+feat: add vehicle trip report endpoint
+```
+
+------------------------------------------------------------------------
+
+# Current Roadmap
+
+The Geofence module and the currently defined backend Alerts
+functionality are complete.
+
+The active module is:
+
+``` text
+Reports
+```
+
+Completed within Reports:
+
+1.  Vehicle trip report endpoint
+2.  `reports.view` authorization
+3.  Report-specific date-range validation
+4.  Reuse of existing tracking/Traccar trip-report infrastructure
+5.  Tenant-safe report access
+6.  Focused feature coverage
+7.  Full quality gate and commit
+
+Reports work remaining should be defined from product requirements and
+existing application capabilities.
+
+Likely areas include:
+
+-   report-oriented summary data
+-   additional required report metrics
+-   export/report generation
+-   `reports.export` authorization
+-   export format validation
+-   final Reports integration verification
+
+The exact export format should be defined before implementation.
+
+After Reports:
+
+1.  Dashboard
+2.  Final integration/documentation hardening as required
+
+Development is intentionally paused at the first completed Reports
+checkpoint.
