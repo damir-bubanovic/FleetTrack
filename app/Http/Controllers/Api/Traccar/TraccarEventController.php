@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Traccar;
 
+use App\Actions\Traccar\HandleDeviceOfflineEvent;
 use App\Actions\Traccar\HandleGeofenceEvent;
 use App\Actions\Traccar\HandleIgnitionEvent;
 use App\Actions\Traccar\HandleOverspeedEvent;
+use App\Data\Traccar\DeviceOfflineEventData;
 use App\Data\Traccar\GeofenceEventData;
 use App\Data\Traccar\IgnitionEventData;
 use App\Data\Traccar\OverspeedEventData;
@@ -22,6 +24,7 @@ final class TraccarEventController extends Controller
         private readonly HandleGeofenceEvent $handleGeofenceEvent,
         private readonly HandleOverspeedEvent $handleOverspeedEvent,
         private readonly HandleIgnitionEvent $handleIgnitionEvent,
+        private readonly HandleDeviceOfflineEvent $handleDeviceOfflineEvent,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -37,6 +40,7 @@ final class TraccarEventController extends Controller
                     'deviceOverspeed',
                     'ignitionOn',
                     'ignitionOff',
+                    'deviceOffline',
                 ]),
             ],
             'deviceId' => ['required', 'integer'],
@@ -106,6 +110,10 @@ final class TraccarEventController extends Controller
             'ignitionOn',
             'ignitionOff' => $this->handleIgnitionEvent->execute(
                 IgnitionEventData::fromArray($validated),
+            ),
+
+            'deviceOffline' => $this->handleDeviceOfflineEvent->execute(
+                DeviceOfflineEventData::fromArray($validated),
             ),
 
             default => throw new RuntimeException(
