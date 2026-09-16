@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Tracking;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\Traccar\ReportService;
@@ -26,7 +27,7 @@ final readonly class GetVehicleSummary
         CarbonInterface $to,
     ): Collection {
         if (
-            ! $user->hasRole('SuperAdmin')
+            ! $user->hasRole(UserRole::SuperAdmin->value)
             && $user->company_id !== $vehicle->company_id
         ) {
             return collect();

@@ -1115,3 +1115,64 @@ test('combined report requires authentication', function (): void {
         .'&to=2026-08-18T10:00:00Z'
     )->assertUnauthorized();
 });
+
+test('super admin can view report for vehicle from any company', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'deviceId' => 101,
+                'deviceName' => 'Vehicle 101',
+                'distance' => 12500.5,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/combined"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.deviceId', 101);
+
+    Http::assertSentCount(1);
+});
+
+test('combined report returns empty collection for vehicle without synced device', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/combined"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    Http::assertNothingSent();
+});
