@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Report;
 
+use App\Actions\Tracking\GetVehicleCombinedReport;
 use App\Actions\Tracking\GetVehicleEvents;
 use App\Actions\Tracking\GetVehicleHours;
 use App\Actions\Tracking\GetVehicleRoute;
@@ -13,6 +14,7 @@ use App\Actions\Tracking\GetVehicleTrips;
 use App\Actions\Tracking\GetVehicleTripSummary;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Report\VehicleTripReportRequest;
+use App\Http\Resources\Tracking\VehicleCombinedReportResource;
 use App\Http\Resources\Tracking\VehicleEventResource;
 use App\Http\Resources\Tracking\VehicleHoursResource;
 use App\Http\Resources\Tracking\VehicleRouteResource;
@@ -35,6 +37,7 @@ final class ReportController extends Controller
         private readonly GetVehicleRoute $getVehicleRoute,
         private readonly GetVehicleSummary $getVehicleSummary,
         private readonly GetVehicleHours $getVehicleHours,
+        private readonly GetVehicleCombinedReport $getVehicleCombinedReport,
     ) {}
 
     public function vehicleTrips(
@@ -224,5 +227,32 @@ final class ReportController extends Controller
         );
 
         return VehicleHoursResource::collection($hours);
+    }
+
+    public function vehicleCombinedReport(
+        VehicleTripReportRequest $request,
+        Vehicle $vehicle,
+    ): AnonymousResourceCollection {
+        $this->authorize('reports.view');
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $from = CarbonImmutable::parse(
+            $request->string('from')->toString(),
+        );
+
+        $to = CarbonImmutable::parse(
+            $request->string('to')->toString(),
+        );
+
+        $report = $this->getVehicleCombinedReport->handle(
+            $user,
+            $vehicle,
+            $from,
+            $to,
+        );
+
+        return VehicleCombinedReportResource::collection($report);
     }
 }

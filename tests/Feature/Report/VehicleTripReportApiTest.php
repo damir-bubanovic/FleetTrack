@@ -1010,3 +1010,108 @@ test('vehicle hours report requires authentication', function (): void {
         .'&to=2026-08-18T10:00:00Z'
     )->assertUnauthorized();
 });
+
+test('company admin can view combined report for own vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'deviceId' => 101,
+                'deviceName' => 'Vehicle 101',
+                'distance' => 12500.5,
+                'averageSpeed' => 20.5,
+                'maxSpeed' => 42.0,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/combined"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.deviceId', 101)
+        ->assertJsonPath('data.0.deviceName', 'Vehicle 101')
+        ->assertJsonPath('data.0.distance', 12500.5);
+});
+
+test('combined report returns empty collection for another company vehicle', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle($companyB, $fleetB);
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicleB->id}/combined"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    Http::assertNothingSent();
+});
+
+test('combined report validates required date range', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/combined"
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'from',
+            'to',
+        ]);
+});
+
+test('combined report requires authentication', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/combined"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )->assertUnauthorized();
+});

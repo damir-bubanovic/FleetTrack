@@ -98,6 +98,11 @@ Route::prefix('v1')->group(function (): void {
             [ReportController::class, 'vehicleHours'],
         )->name('reports.vehicles.hours');
 
+        Route::get(
+            'reports/vehicles/{vehicle}/combined',
+            [ReportController::class, 'vehicleCombinedReport'],
+        )->name('reports.vehicles.combined');
+
         Route::post(
             'geofences/{geofence}/vehicles/{vehicle}',
             [GeofenceVehicleController::class, 'store'],
