@@ -49,4 +49,12 @@ class ReportService
     {
         return $this->client->get('/reports/summary', $query);
     }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    public function hours(array $query = []): Response
+    {
+        return $this->client->get('/reports/hours', $query);
+    }
 }
