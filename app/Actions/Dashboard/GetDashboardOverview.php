@@ -7,6 +7,7 @@ namespace App\Actions\Dashboard;
 use App\Actions\Tracking\GetLivePositions;
 use App\Enums\UserRole;
 use App\Models\Company;
+use App\Models\Device;
 use App\Models\User;
 use App\Support\Tracking\VehicleOnlineStatus;
 
@@ -72,9 +73,24 @@ final readonly class GetDashboardOverview
                 ];
         }
 
+        $synchronizedDevices = Device::query()
+            ->visibleTo($user)
+            ->whereNotNull('traccar_device_id')
+            ->count();
+
         $positions = $this->getLivePositions->handle($user);
 
         $onlineVehicles = collect($positions)
+            ->filter(function (array $item): bool {
+                $fixTime = isset($item['position']['fixTime'])
+                    ? (string) $item['position']['fixTime']
+                    : null;
+
+                return VehicleOnlineStatus::isOnline($fixTime);
+            })
+            ->count();
+
+        $onlineDevices = collect($positions)
             ->filter(function (array $item): bool {
                 $fixTime = isset($item['position']['fixTime'])
                     ? (string) $item['position']['fixTime']
@@ -90,6 +106,10 @@ final readonly class GetDashboardOverview
             'offline_vehicles' => max(
                 0,
                 $overview['vehicles'] - $onlineVehicles,
+            ),
+            'offline_devices' => max(
+                0,
+                $synchronizedDevices - $onlineDevices,
             ),
         ];
     }

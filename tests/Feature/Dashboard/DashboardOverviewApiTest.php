@@ -277,6 +277,145 @@ test('dashboard online vehicle count is isolated to own company', function (): v
         ->assertJsonPath('data.offline_vehicles', 1);
 });
 
+test('dashboard reports synchronized device as offline when gps fix is stale', function (): void {
+    $this->travelTo('2026-09-16 10:00:00');
+
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-09-16T09:50:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.offline_devices', 1);
+});
+
+test('dashboard reports synchronized device as offline when position is missing', function (): void {
+    $company = $this->createCompany();
+
+    $this->createDevice($company, null, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.devices', 1)
+        ->assertJsonPath('data.offline_devices', 1);
+});
+
+test('dashboard does not count unsynchronized device as offline', function (): void {
+    $company = $this->createCompany();
+
+    $this->createDevice($company, null, [
+        'traccar_device_id' => null,
+        'last_sync_at' => null,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.devices', 1)
+        ->assertJsonPath('data.offline_devices', 0);
+});
+
+test('dashboard counts unassigned synchronized device connectivity', function (): void {
+    $this->travelTo('2026-09-16 10:00:00');
+
+    $company = $this->createCompany();
+
+    $this->createDevice($company, null, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-09-16T09:58:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.devices', 1)
+        ->assertJsonPath('data.offline_devices', 0);
+});
+
+test('dashboard offline device count is isolated to own company', function (): void {
+    $this->travelTo('2026-09-16 10:00:00');
+
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $this->createDevice($companyA, null, [
+        'traccar_device_id' => 101,
+    ]);
+
+    $this->createDevice($companyB, null, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'fixTime' => '2026-09-16T09:58:00+00:00',
+            ],
+            [
+                'id' => 1002,
+                'deviceId' => 202,
+                'fixTime' => '2026-09-16T09:50:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.devices', 1)
+        ->assertJsonPath('data.offline_devices', 0);
+});
+
 test('dashboard overview requires authentication', function (): void {
     $this->getJson('/api/v1/dashboard/overview')
         ->assertUnauthorized();
