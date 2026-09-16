@@ -285,3 +285,145 @@ test('trip report requires authentication', function (): void {
         .'&to=2026-08-18T10:00:00Z'
     )->assertUnauthorized();
 });
+
+test('company admin can view trip summary report for own vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'deviceId' => 101,
+                'fixTime' => '2026-08-18T08:00:00+00:00',
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'speed' => 10.0,
+            ],
+            [
+                'deviceId' => 101,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+                'latitude' => 45.8200,
+                'longitude' => 15.9900,
+                'speed' => 0.0,
+            ],
+            [
+                'deviceId' => 101,
+                'fixTime' => '2026-08-18T09:00:00+00:00',
+                'latitude' => 45.8250,
+                'longitude' => 16.0000,
+                'speed' => 20.0,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonPath('data.position_count', 3)
+        ->assertJsonPath(
+            'data.started_at',
+            '2026-08-18T08:00:00+00:00',
+        )
+        ->assertJsonPath(
+            'data.ended_at',
+            '2026-08-18T09:00:00+00:00',
+        )
+        ->assertJsonPath('data.duration_seconds', 3600)
+        ->assertJsonPath('data.average_speed', 10)
+        ->assertJsonPath('data.max_speed', 20)
+        ->assertJsonPath('data.moving_seconds', 1800)
+        ->assertJsonPath('data.stopped_seconds', 1800)
+        ->assertJsonPath('data.speed_unit', 'knots');
+});
+
+test('trip summary report returns empty summary for another company vehicle', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle(
+        $companyB,
+        $fleetB,
+    );
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicleB->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonPath('data.position_count', 0)
+        ->assertJsonPath('data.started_at', null)
+        ->assertJsonPath('data.ended_at', null)
+        ->assertJsonPath('data.duration_seconds', null)
+        ->assertJsonPath('data.distance_km', 0)
+        ->assertJsonPath('data.average_speed', 0)
+        ->assertJsonPath('data.max_speed', 0)
+        ->assertJsonPath('data.moving_seconds', 0)
+        ->assertJsonPath('data.stopped_seconds', 0)
+        ->assertJsonPath('data.speed_unit', 'knots');
+
+    Http::assertNothingSent();
+});
+
+test('trip summary report validates required date range', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/trip-summary"
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'from',
+            'to',
+        ]);
+});
+
+test('trip summary report requires authentication', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )->assertUnauthorized();
+});
