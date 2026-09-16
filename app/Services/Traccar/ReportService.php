@@ -41,4 +41,12 @@ class ReportService
     {
         return $this->client->get('/reports/route', $query);
     }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    public function summary(array $query = []): Response
+    {
+        return $this->client->get('/reports/summary', $query);
+    }
 }
