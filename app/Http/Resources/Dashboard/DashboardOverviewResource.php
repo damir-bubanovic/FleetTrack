@@ -19,6 +19,8 @@ final class DashboardOverviewResource extends JsonResource
             'fleets' => (int) ($this->resource['fleets'] ?? 0),
             'vehicles' => (int) ($this->resource['vehicles'] ?? 0),
             'devices' => (int) ($this->resource['devices'] ?? 0),
+            'online_vehicles' => (int) ($this->resource['online_vehicles'] ?? 0),
+            'offline_vehicles' => (int) ($this->resource['offline_vehicles'] ?? 0),
         ];
     }
 }

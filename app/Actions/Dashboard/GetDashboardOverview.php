@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Tracking\GetLivePositions;
 use App\Enums\UserRole;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Tracking\VehicleOnlineStatus;
 
 final readonly class GetDashboardOverview
 {
+    public function __construct(
+        private GetLivePositions $getLivePositions,
+    ) {}
+
     /**
      * @return array<string, int>
      */
@@ -29,45 +35,62 @@ final readonly class GetDashboardOverview
                 ])
                 ->get();
 
-            return [
+            $overview = [
                 'companies' => $companies->count(),
-                'fleets' => $companies->sum('fleets_count'),
-                'vehicles' => $companies->sum('vehicles_count'),
-                'devices' => $companies->sum('devices_count'),
+                'fleets' => (int) $companies->sum('fleets_count'),
+                'vehicles' => (int) $companies->sum('vehicles_count'),
+                'devices' => (int) $companies->sum('devices_count'),
             ];
-        }
-
-        if ($user->company_id === null) {
-            return [
+        } elseif ($user->company_id === null) {
+            $overview = [
                 'companies' => 0,
                 'fleets' => 0,
                 'vehicles' => 0,
                 'devices' => 0,
             ];
+        } else {
+            $company = Company::query()
+                ->withCount([
+                    'fleets',
+                    'vehicles',
+                    'devices',
+                ])
+                ->find($user->company_id);
+
+            $overview = $company === null
+                ? [
+                    'companies' => 0,
+                    'fleets' => 0,
+                    'vehicles' => 0,
+                    'devices' => 0,
+                ]
+                : [
+                    'companies' => 1,
+                    'fleets' => (int) $company->fleets_count,
+                    'vehicles' => (int) $company->vehicles_count,
+                    'devices' => (int) $company->devices_count,
+                ];
         }
 
-        $company = Company::query()
-            ->withCount([
-                'fleets',
-                'vehicles',
-                'devices',
-            ])
-            ->find($user->company_id);
+        $positions = $this->getLivePositions->handle($user);
 
-        if ($company === null) {
-            return [
-                'companies' => 0,
-                'fleets' => 0,
-                'vehicles' => 0,
-                'devices' => 0,
-            ];
-        }
+        $onlineVehicles = collect($positions)
+            ->filter(function (array $item): bool {
+                $fixTime = isset($item['position']['fixTime'])
+                    ? (string) $item['position']['fixTime']
+                    : null;
+
+                return VehicleOnlineStatus::isOnline($fixTime);
+            })
+            ->count();
 
         return [
-            'companies' => 1,
-            'fleets' => $company->fleets_count,
-            'vehicles' => $company->vehicles_count,
-            'devices' => $company->devices_count,
+            ...$overview,
+            'online_vehicles' => $onlineVehicles,
+            'offline_vehicles' => max(
+                0,
+                $overview['vehicles'] - $onlineVehicles,
+            ),
         ];
     }
 }

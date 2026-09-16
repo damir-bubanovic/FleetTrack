@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources\Tracking;
 
-use Carbon\CarbonImmutable;
+use App\Support\Tracking\VehicleOnlineStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,12 +17,10 @@ class LivePositionResource extends JsonResource
     {
         $device = $this->resource['device'];
         $position = $this->resource['position'];
-        $fixTime = isset($position['fixTime'])
-            ? CarbonImmutable::parse($position['fixTime'])
-            : null;
 
-        $isOnline = $fixTime !== null
-            && $fixTime->greaterThanOrEqualTo(now()->subMinutes(5));
+        $fixTime = isset($position['fixTime'])
+            ? (string) $position['fixTime']
+            : null;
 
         return [
             'device' => [
@@ -36,8 +34,8 @@ class LivePositionResource extends JsonResource
                 'name' => $device->vehicle->name,
             ] : null,
             'status' => [
-                'online' => $isOnline,
-                'last_seen_at' => $fixTime?->toISOString(),
+                'online' => VehicleOnlineStatus::isOnline($fixTime),
+                'last_seen_at' => VehicleOnlineStatus::lastSeenAt($fixTime),
             ],
             'position' => [
                 'id' => $position['id'] ?? null,
