@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Alert\AlertController;
 use App\Http\Controllers\Api\AlertRule\AlertRuleController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Company\CompanyController;
+use App\Http\Controllers\Api\Dashboard\DashboardController;
 use App\Http\Controllers\Api\Device\DeviceController;
 use App\Http\Controllers\Api\Driver\DriverController;
 use App\Http\Controllers\Api\Fleet\FleetController;
@@ -123,6 +124,11 @@ Route::prefix('v1')->group(function (): void {
             AlertController::class,
             'acknowledge',
         ])->name('alerts.acknowledge');
+
+        Route::get(
+            'dashboard/overview',
+            [DashboardController::class, 'overview'],
+        )->name('dashboard.overview');
 
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('fleets', FleetController::class);

@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Resources\Dashboard;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+final class DashboardOverviewResource extends JsonResource
+{
+    /**
+     * @return array<string, int>
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'companies' => (int) ($this->resource['companies'] ?? 0),
+            'fleets' => (int) ($this->resource['fleets'] ?? 0),
+            'vehicles' => (int) ($this->resource['vehicles'] ?? 0),
+            'devices' => (int) ($this->resource['devices'] ?? 0),
+        ];
+    }
+}
