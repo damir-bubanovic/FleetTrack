@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Alert;
 use App\Models\Fleet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -419,4 +420,82 @@ test('dashboard offline device count is isolated to own company', function (): v
 test('dashboard overview requires authentication', function (): void {
     $this->getJson('/api/v1/dashboard/overview')
         ->assertUnauthorized();
+});
+
+test('dashboard reports total and unacknowledged alerts', function (): void {
+    $company = $this->createCompany();
+
+    Alert::factory()->count(2)->create([
+        'company_id' => $company->id,
+        'acknowledged_at' => null,
+        'acknowledged_by' => null,
+    ]);
+
+    Alert::factory()->create([
+        'company_id' => $company->id,
+        'acknowledged_at' => now(),
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.alerts', 3)
+        ->assertJsonPath('data.unacknowledged_alerts', 2);
+});
+
+test('dashboard alert summary is isolated to own company', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    Alert::factory()->create([
+        'company_id' => $companyA->id,
+        'acknowledged_at' => null,
+    ]);
+
+    Alert::factory()->count(2)->create([
+        'company_id' => $companyB->id,
+        'acknowledged_at' => null,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.alerts', 1)
+        ->assertJsonPath('data.unacknowledged_alerts', 1);
+});
+
+test('super admin dashboard alert summary includes customer company alerts', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    Alert::factory()->create([
+        'company_id' => $companyA->id,
+        'acknowledged_at' => null,
+    ]);
+
+    Alert::factory()->create([
+        'company_id' => $companyB->id,
+        'acknowledged_at' => now(),
+    ]);
+
+    Http::fake([
+        '*' => Http::response([], 200),
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.alerts', 2)
+        ->assertJsonPath('data.unacknowledged_alerts', 1);
 });

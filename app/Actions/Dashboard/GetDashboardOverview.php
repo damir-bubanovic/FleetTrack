@@ -6,6 +6,7 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Tracking\GetLivePositions;
 use App\Enums\UserRole;
+use App\Models\Alert;
 use App\Models\Company;
 use App\Models\Device;
 use App\Models\User;
@@ -78,6 +79,15 @@ final readonly class GetDashboardOverview
             ->whereNotNull('traccar_device_id')
             ->count();
 
+        $alertsQuery = Alert::query()
+            ->visibleTo($user);
+
+        $totalAlerts = (clone $alertsQuery)->count();
+
+        $unacknowledgedAlerts = (clone $alertsQuery)
+            ->whereNull('acknowledged_at')
+            ->count();
+
         $positions = $this->getLivePositions->handle($user);
 
         $onlineVehicles = collect($positions)
@@ -111,6 +121,8 @@ final readonly class GetDashboardOverview
                 0,
                 $synchronizedDevices - $onlineDevices,
             ),
+            'alerts' => $totalAlerts,
+            'unacknowledged_alerts' => $unacknowledgedAlerts,
         ];
     }
 }
