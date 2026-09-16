@@ -499,3 +499,35 @@ test('super admin dashboard alert summary includes customer company alerts', fun
         ->assertJsonPath('data.alerts', 2)
         ->assertJsonPath('data.unacknowledged_alerts', 1);
 });
+
+test('dashboard does not count unassigned online device as online vehicle', function (): void {
+    $this->travelTo('2026-09-16 10:00:00');
+
+    $company = $this->createCompany();
+
+    $this->createDevice($company, null, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-09-16T09:58:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/dashboard/overview')
+        ->assertOk()
+        ->assertJsonPath('data.vehicles', 0)
+        ->assertJsonPath('data.devices', 1)
+        ->assertJsonPath('data.online_vehicles', 0)
+        ->assertJsonPath('data.offline_vehicles', 0)
+        ->assertJsonPath('data.offline_devices', 0);
+});

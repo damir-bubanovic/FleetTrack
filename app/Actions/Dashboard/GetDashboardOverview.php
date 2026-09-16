@@ -92,6 +92,10 @@ final readonly class GetDashboardOverview
 
         $onlineVehicles = collect($positions)
             ->filter(function (array $item): bool {
+                if ($item['device']?->vehicle === null) {
+                    return false;
+                }
+
                 $fixTime = isset($item['position']['fixTime'])
                     ? (string) $item['position']['fixTime']
                     : null;
