@@ -44,8 +44,8 @@ contracts, and dedicated services for Traccar integration.
 # Current Backend Status
 
 The core fleet-management backend, tracking foundation, Geofence module,
-Alerts module, and the first Reports API slice are implemented and
-tested.
+Alerts module, expanded Reports read API, and Dashboard overview API are
+implemented and tested.
 
 ## Authentication
 
@@ -222,37 +222,68 @@ DELETE     /api/v1/alert-rules/{alertRule}
 
 ## Reports
 
-The Reports module is now under active development.
-
-The first completed Reports slice exposes Traccar-detected vehicle trips
-through a report-specific API while reusing the existing tracking
-application layer.
-
-Implemented:
-
--   Authenticated report route
--   Team-aware permission middleware
--   `reports.view` authorization
--   Vehicle/date-range report request validation
--   Reuse of `GetVehicleTrips`
--   Reuse of `VehicleTripResource`
--   Tenant-safe device visibility
--   No direct Traccar access from the controller
--   Feature coverage for authentication, validation, tenant isolation,
-    Traccar request parameters, empty results, and normalized trip
-    output
+Reports reuse the existing tracking application layer and Traccar
+service boundary.
 
 Current Reports API:
 
 ``` text
-GET /api/v1/reports/vehicles/{vehicle}/trips?from=<datetime>&to=<datetime>
+GET /api/v1/reports/vehicles/{vehicle}/trips
+GET /api/v1/reports/vehicles/{vehicle}/trip-summary
+GET /api/v1/reports/vehicles/{vehicle}/stops
+GET /api/v1/reports/vehicles/{vehicle}/events
+GET /api/v1/reports/vehicles/{vehicle}/route
+GET /api/v1/reports/vehicles/{vehicle}/summary
+GET /api/v1/reports/vehicles/{vehicle}/hours
+GET /api/v1/reports/vehicles/{vehicle}/combined
 ```
 
-The targeted vehicle trip report feature suite contains eight passing
-tests, and the full project quality gate was green when this slice was
-committed.
+Implemented report behavior includes:
 
-------------------------------------------------------------------------
+-   Authenticated, team-aware routes
+-   `reports.view` authorization
+-   Required `from`/`to` date range with ordering validation
+-   Tenant-safe Vehicle/Device resolution
+-   Super Administrator access
+-   Trips, stops, events, route, summary, hours, and combined Traccar
+    report reads
+-   FleetTrack aggregate trip-summary reporting
+-   Normalized Resources where a stable FleetTrack contract exists
+-   Raw combined-report payload preservation
+-   Missing/unsynchronized Device handling
+-   Focused feature coverage
+
+`reports.export` is reserved but export/report generation is not
+implemented because the output contract has not been defined.
+
+## Dashboard
+
+Dashboard overview endpoint:
+
+``` text
+GET /api/v1/dashboard/overview
+```
+
+The response exposes tenant-aware operational metrics for:
+
+-   Companies
+-   Fleets
+-   Vehicles
+-   Devices
+-   Online Vehicles
+-   Offline Vehicles
+-   Offline synchronized Devices
+-   Total Alerts
+-   Unacknowledged Alerts
+
+Online/offline calculations reuse the tracking freshness rule. An
+unassigned synchronized Device can contribute to Device connectivity
+without being counted as an online Vehicle. Unsynchronized Devices are
+not counted as offline Devices.
+
+The current metrics are the initial fleet KPI set. Time-based KPIs
+should only be added when their reporting period and aggregation rules
+are defined.
 
 # Traccar Integration
 
@@ -679,87 +710,61 @@ documentation and implementation ever differ.
 -   Drivers
 -   Vehicles
 -   Devices
--   Traccar device synchronization
--   Live Tracking
--   Online/offline tracking status
+-   Traccar Device synchronization
+-   Live Tracking and online/offline status
 -   Vehicle position history
 -   Vehicle aggregate trip summary
 -   Traccar-detected vehicle trip history
--   Geofence CRUD and synchronization
--   Geofence ↔ Vehicle associations and Traccar permission
+-   Geofence CRUD, synchronization, associations, and Traccar permission
     synchronization
--   Secure Traccar geofence event handling
+-   Secure supported Traccar event ingestion
 -   Alerts and acknowledgement
--   Overspeed alerts
--   Ignition alerts
--   Device-offline alerts
--   Custom Alert Rule management
--   Runtime Alert Rule evaluation
+-   Custom Alert Rule management and runtime evaluation
+-   Reports read API: trips, trip summary, stops, events, route,
+    summary, hours, and combined
+-   Dashboard overview and initial fleet KPI metrics
 
-## Current Module --- Reports
+## Remaining Product Decisions
 
-Completed within Reports:
+-   Define report export/report-generation format before implementing
+    `reports.export`
+-   Define a reporting period and aggregation rules before adding
+    time-based Dashboard KPIs
+-   Add external Alert delivery only when channel/recipient/retry
+    requirements are defined
+-   Introduce a persistent FleetTrack Trip entity only if FleetTrack
+    needs to own Trip-specific business data
 
-1.  Vehicle trip report endpoint
-2.  `reports.view` authorization
-3.  Date-range validation
-4.  Reuse of existing Traccar trip reporting infrastructure
-5.  Tenant-safe report access
-6.  Focused API tests
-7.  Full quality gate and commit
-
-Planned next Reports work should continue from the existing
-reporting/tracking capabilities. The next concrete slice has not yet
-been implemented. Candidate work already supported by the current
-architecture includes exposing report-oriented summary data and then
-adding export behavior using the existing `reports.export` permission.
-
-## Remaining Roadmap
-
-1.  Complete Reports
-2.  Dashboard
-3.  Final documentation/integration hardening as required
-
-No email, push, or SMS notification delivery requirement is currently
-established by the implemented source; such delivery should only be
-added when product requirements define it.
-
-------------------------------------------------------------------------
+The current backend should otherwise move through final integration and
+documentation hardening rather than adding speculative behavior.
 
 # Current Development Checkpoint
 
-The latest completed functionality slice is the **vehicle trip report
-endpoint**.
+The latest source snapshot includes the expanded Reports API and
+Dashboard overview.
 
 At this checkpoint:
 
--   Core fleet-management CRUD and tenant isolation are implemented.
--   Device and Geofence lifecycle synchronization with Traccar is
-    implemented.
--   Geofence ↔ Vehicle permission synchronization is implemented.
--   Secure Traccar event handling exists for geofence transitions,
-    overspeed, ignition changes, and device-offline events.
--   The Alerts backend supports persistent alert history and
-    acknowledgement.
--   Custom Alert Rules support company-wide and vehicle-specific
-    behavior, severity overrides, activation state, and overspeed
-    thresholds.
--   Runtime Alert Rule resolution is integrated into alert generation
-    with default behavior preserved when no rule matches.
--   Tracking provides live positions, position history, aggregate trip
-    summaries, and Traccar-detected trip history.
--   Reports now exposes its first dedicated endpoint: vehicle trip
-    history by date range.
--   The vehicle trip report endpoint is authenticated, team-aware,
-    protected by `reports.view`, tenant-safe, and backed by the existing
-    `GetVehicleTrips`/`ReportService` flow.
--   The vehicle trip report feature suite contains eight passing tests.
--   Laravel Pint formatting and lint checks pass.
--   PHPStan / Larastan reports no errors.
--   The full test suite passes.
--   The vehicle trip report slice was committed as
-    `feat: add vehicle trip report endpoint`.
+-   Reports exposes eight vehicle report endpoints.
+-   Report reads remain behind existing tracking Actions and
+    `ReportService`.
+-   Dashboard overview exposes fleet totals, vehicle connectivity,
+    synchronized-Device offline counts, and Alert summary metrics.
+-   Tenant isolation and Super Administrator behavior are covered.
+-   Vehicle and Device connectivity semantics are separated for
+    unassigned Devices.
+-   The latest full quality gate was green:
 
-Development is intentionally paused at this checkpoint. The next
-implementation work should resume with the remaining **Reports**
-functionality, followed by **Dashboard**.
+``` bash
+sail composer lint
+sail composer lint:check
+sail composer types:check
+sail artisan test
+```
+
+The remaining explicit Reports capability is export/report generation
+through `reports.export`; its format has not been defined.
+
+Use the source code as the final authority and do not add undefined
+export, notification-delivery, persistent Trip, or time-based Dashboard
+behavior without a concrete product contract.

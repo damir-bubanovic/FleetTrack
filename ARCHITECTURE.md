@@ -1034,28 +1034,32 @@ The normalized trip contract includes:
 
 # 25. Reports Architecture
 
-Reports is the current active development module.
+Reports is a report-specific HTTP layer over existing FleetTrack
+tracking/application behavior.
 
-The architectural rule for Reports is:
+Architectural rule:
 
 ``` text
 Report-specific HTTP API
     ↓
-reuse existing FleetTrack application logic
+reuse existing FleetTrack tracking Actions
     ↓
 reuse Traccar service boundary
     ↓
 reuse stable API Resources where appropriate
 ```
 
-Reports should not create a second tracking subsystem.
-
-## First implemented report
-
-Endpoint:
+Current endpoints:
 
 ``` text
-GET /api/v1/reports/vehicles/{vehicle}/trips?from=<datetime>&to=<datetime>
+GET /api/v1/reports/vehicles/{vehicle}/trips
+GET /api/v1/reports/vehicles/{vehicle}/trip-summary
+GET /api/v1/reports/vehicles/{vehicle}/stops
+GET /api/v1/reports/vehicles/{vehicle}/events
+GET /api/v1/reports/vehicles/{vehicle}/route
+GET /api/v1/reports/vehicles/{vehicle}/summary
+GET /api/v1/reports/vehicles/{vehicle}/hours
+GET /api/v1/reports/vehicles/{vehicle}/combined
 ```
 
 Route middleware:
@@ -1072,51 +1076,32 @@ Controller authorization:
 reports.view
 ```
 
-Flow:
+The controller delegates to existing tracking Actions:
 
-``` text
-Report route
- ↓
-VehicleTripReportRequest
- ↓
-ReportController::vehicleTrips
- ↓
-reports.view
- ↓
-GetVehicleTrips
- ↓
-tenant-visible synchronized Device
- ↓
-ReportService
- ↓
-Traccar /reports/trips
- ↓
-VehicleTripResource
- ↓
-JSON response
-```
+-   `GetVehicleTrips`
+-   `GetVehicleTripSummary`
+-   `GetVehicleStops`
+-   `GetVehicleEvents`
+-   `GetVehicleRoute`
+-   `GetVehicleSummary`
+-   `GetVehicleHours`
+-   `GetVehicleCombinedReport`
+
+Traccar report reads remain behind `ReportService`, which currently owns
+the `/reports/trips`, `/reports/stops`, `/reports/events`,
+`/reports/route`, `/reports/summary`, `/reports/hours`, and
+`/reports/combined` boundaries.
 
 The Reports controller does not perform Traccar HTTP calls directly.
 
-The existing `GetVehicleTrips`, `ReportService`, and
-`VehicleTripResource` remain the reusable application/integration path.
+Stable FleetTrack Resources normalize report output where a contract has
+been established. The combined report intentionally preserves the raw
+combined payload rather than inventing a narrower schema.
 
-This first Reports slice has focused coverage for:
-
--   authentication
--   report authorization through the configured role permission
--   required date range
--   date ordering
--   own-company vehicle access
--   cross-company isolation
--   unsynced Device behavior
--   empty Traccar results
--   Traccar request parameters
--   normalized trip response
-
-The focused suite contains eight passing tests.
-
-------------------------------------------------------------------------
+Focused report coverage includes authentication, authorization,
+validation, tenant isolation, Super Administrator access, missing or
+unsynchronized Devices, Traccar request parameters, and report response
+contracts.
 
 # 26. Reports Permissions
 
@@ -1145,48 +1130,80 @@ authorization.
 
 # 27. Reports Work Remaining
 
-Reports is not complete.
+Reports read endpoints are implemented.
 
-The next implementation should continue to reuse existing application
-and tracking capabilities.
+The remaining reserved capability is export/report generation through:
 
-Potential next slices supported by the current architecture include:
+``` text
+reports.export
+```
 
--   report-oriented vehicle trip summary
--   additional required report metrics
--   export/report generation
--   export authorization through `reports.export`
--   export format validation
--   tenant-isolation coverage
--   integration verification
-
-The exact export format and report contract should be established before
-implementation.
+The export architecture must not be finalized until product requirements
+define the output format, included data, validation, and
+response/download contract.
 
 No duplicate GPS trip-detection algorithm should be introduced.
 
-------------------------------------------------------------------------
-
 # 28. Dashboard
 
-Dashboard work has not started.
+Dashboard overview is implemented as a thin aggregation layer over
+existing FleetTrack domain visibility and tracking semantics.
 
-It follows Reports in the current roadmap.
+Endpoint:
 
-Likely dashboard inputs can reuse existing FleetTrack capabilities such
-as:
+``` text
+GET /api/v1/dashboard/overview
+```
 
--   visible Vehicles
--   synchronized Devices
--   live tracking status
--   Alerts
--   report/tracking aggregates
+Flow:
 
-Dashboard-specific contracts should be designed when that module begins
-rather than coupling Dashboard requirements into current tracking/report
-Actions.
+``` text
+DashboardController
+ ↓
+GetDashboardOverview
+ ├─ Company counts
+ ├─ visible synchronized Devices
+ ├─ visible Alerts
+ └─ GetLivePositions
+      ↓
+   VehicleOnlineStatus
+ ↓
+DashboardOverviewResource
+```
 
-------------------------------------------------------------------------
+Current response metrics:
+
+``` text
+companies
+fleets
+vehicles
+devices
+online_vehicles
+offline_vehicles
+offline_devices
+alerts
+unacknowledged_alerts
+```
+
+Architectural rules:
+
+-   Dashboard does not create a second connectivity definition.
+-   Online/offline freshness is centralized in `VehicleOnlineStatus`.
+-   Device connectivity is based on synchronized Devices with non-null
+    `traccar_device_id`.
+-   Unsynchronized Devices are not classified as offline tracking
+    Devices.
+-   Unassigned online Devices may contribute to Device connectivity but
+    not Vehicle connectivity.
+-   Alert aggregation reuses `Alert::visibleTo($user)`.
+-   Unacknowledged Alerts are represented by null `acknowledged_at`.
+-   Super Administrator customer totals exclude the internal system
+    Company.
+
+The current metrics are the initial fleet KPI contract. Time-based
+distance, duration, speed, utilization, or similar KPIs require an
+explicit reporting period and aggregation contract before they are
+added.
 
 # 29. Error and Failure Boundaries
 
@@ -1321,124 +1338,84 @@ This keeps feedback fast without sacrificing commit-level quality.
 
 # 33. Current Architectural Checkpoint
 
-The current codebase has completed:
+The current backend architecture includes:
 
 ``` text
-Authentication
+Authentication / Authorization / Multi-Tenancy
  ↓
-Authorization / multi-tenancy
- ↓
-Companies
- ↓
-Fleets
- ↓
-Drivers
- ↓
-Vehicles
- ↓
-Devices
+Companies / Fleets / Drivers / Vehicles / Devices
  ↓
 Traccar Device synchronization
  ↓
-Live Tracking
+Live Tracking / Position History
  ↓
-Position History
+Aggregate Trip Summary / Traccar Trip History
  ↓
-Aggregate Trip Summary
+Geofences / Traccar Geofence synchronization
  ↓
-Traccar-detected Trip History
+Geofence ↔ Vehicle permission synchronization
  ↓
-Geofence CRUD
+Secure supported Traccar event ingestion
  ↓
-Traccar Geofence synchronization
+Alerts / Acknowledgement / Custom Alert Rules
  ↓
-Geofence ↔ Vehicle associations
+Reports read API
  ↓
-Traccar permission synchronization
- ↓
-Secure Geofence event handling
- ↓
-Alert persistence / acknowledgement
- ↓
-Overspeed Alerts
- ↓
-Ignition Alerts
- ↓
-Device Offline Alerts
- ↓
-Custom Alert Rule management
- ↓
-Runtime Alert Rule evaluation
- ↓
-Reports: Vehicle Trip Report
+Dashboard Overview / Initial Fleet KPIs
 ```
 
-The latest completed functionality slice is:
+Reports currently exposes:
 
 ``` text
-GET /api/v1/reports/vehicles/{vehicle}/trips
+trips
+trip-summary
+stops
+events
+route
+summary
+hours
+combined
 ```
 
-with:
+Dashboard currently exposes:
 
 ``` text
-reports.view
+GET /api/v1/dashboard/overview
 ```
 
-authorization and reuse of:
+The latest reported quality gate was green:
 
-``` text
-GetVehicleTrips
-ReportService
-VehicleTripResource
-```
-
-The slice passed:
-
-``` text
+``` bash
 sail composer lint
 sail composer lint:check
 sail composer types:check
 sail artisan test
 ```
 
-and was committed as:
-
-``` text
-feat: add vehicle trip report endpoint
-```
-
-Development is intentionally paused at this checkpoint.
-
-------------------------------------------------------------------------
+The remaining explicit Reports capability is export/report generation
+through `reports.export`; its output contract is not yet defined.
 
 # 34. Next Architectural Work
 
-When implementation resumes:
+The next architectural work should be driven by explicit remaining
+product requirements rather than by speculative backend expansion.
+
+Current unresolved contract:
 
 ``` text
-Reports
+Define Reports export format/content
  ↓
-complete remaining reporting requirements
+Implement reports.export when defined
  ↓
-define/export report output where required
- ↓
-reports.export authorization
- ↓
-Reports integration verification
- ↓
-Dashboard
- ↓
-final integration/documentation hardening
+Final integration/documentation hardening
 ```
 
-The next concrete Reports implementation has not yet been committed.
+If additional Dashboard KPIs are requested, first define their reporting
+period and aggregation semantics, then reuse existing tracking/report
+Actions where possible.
 
-Before adding it, inspect the existing tracking Actions, Resources, and
-Traccar services and reuse them where they already express the required
-behavior.
-
-------------------------------------------------------------------------
+External Alert delivery and a persistent FleetTrack Trip entity remain
+future product decisions rather than current architectural requirements.
 
 # 35. Architectural Principles
 
@@ -1467,9 +1444,13 @@ The current architecture should continue to follow these rules:
     replacing the default pipeline when no rule matches.
 16. Reports reuse tracking/application infrastructure instead of
     duplicating it.
-17. Stable output contracts belong in API Resources.
-18. New behavior receives focused tests.
-19. Meaningful commits must pass formatting, static analysis, and the
+17. Dashboard reuses existing visibility, Alert, and connectivity
+    semantics instead of defining parallel rules.
+18. Time-based Dashboard KPIs require an explicit reporting period and
+    aggregation contract.
+19. Stable output contracts belong in API Resources.
+20. New behavior receives focused tests.
+21. Meaningful commits must pass formatting, static analysis, and the
     full test suite.
-20. The latest source code is authoritative when documentation and
+22. The latest source code is authoritative when documentation and
     implementation diverge.

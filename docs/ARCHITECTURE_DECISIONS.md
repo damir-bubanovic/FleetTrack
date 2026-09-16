@@ -1009,39 +1009,35 @@ Implement Reports as an API/reporting layer over existing FleetTrack
 application and Traccar integration capabilities rather than creating a
 second tracking subsystem.
 
-The first Reports endpoint is:
+Current report endpoints cover:
 
 ``` text
-GET /api/v1/reports/vehicles/{vehicle}/trips?from=<datetime>&to=<datetime>
+trips
+trip-summary
+stops
+events
+route
+summary
+hours
+combined
 ```
 
-Its flow is:
-
-``` text
-VehicleTripReportRequest
-→ ReportController
-→ reports.view
-→ GetVehicleTrips
-→ tenant-visible Device
-→ ReportService
-→ Traccar /reports/trips
-→ VehicleTripResource
-```
+The Reports controller delegates to existing tracking Actions.
+Traccar-backed report reads remain behind `ReportService`.
 
 The Reports controller does not communicate with Traccar directly.
 
 **Rationale**
 
--   `GetVehicleTrips` already represents the application behavior.
--   `ReportService` already owns the Traccar trip-report boundary.
--   `VehicleTripResource` already defines the normalized public
-    contract.
--   Reuse prevents tracking and Reports from drifting into different
+-   Existing tracking Actions already represent tenant-safe application
+    behavior.
+-   `ReportService` owns the Traccar report boundary.
+-   Existing Resources define normalized public contracts where
+    appropriate.
+-   Reuse prevents Tracking and Reports from drifting into competing
     definitions of the same data.
 -   Reports can add report-specific authorization and validation without
     duplicating GPS/tracking logic.
-
-------------------------------------------------------------------------
 
 # ADR-028: Reports Use Capability Permissions Rather Than a Model-Less Report Policy
 
@@ -1058,7 +1054,7 @@ reports.view
 reports.export
 ```
 
-The implemented vehicle-trip report uses:
+All implemented report-read endpoints use:
 
 ``` text
 reports.view
@@ -1070,18 +1066,17 @@ architecture.
 Tenant isolation remains enforced by the application logic that resolves
 FleetTrack-visible entities before Traccar data is requested.
 
+`reports.export` remains reserved for export/report generation once its
+output contract is defined.
+
 **Rationale**
 
--   Reports are currently capabilities rather than persistent Report
-    models.
+-   Reports are capabilities rather than persistent Report models.
 -   This matches the existing capability-oriented authorization approach
     used by tracking.
 -   It avoids creating a policy abstraction without a corresponding
     domain model.
--   `reports.export` provides a separate capability boundary for future
-    export functionality.
-
-------------------------------------------------------------------------
+-   Export remains a separate authorization boundary from report reads.
 
 # ADR-029: Report-Specific Request Contracts May Differ from Tracking Contracts
 
@@ -1148,22 +1143,73 @@ requirements define:
 
 ------------------------------------------------------------------------
 
+# ADR-031: Dashboard Reuses Existing Visibility and Connectivity Semantics
+
+**Status:** Accepted
+
+**Decision**
+
+Implement Dashboard overview as an aggregation layer over existing
+FleetTrack visibility and tracking behavior.
+
+Dashboard must reuse:
+
+-   Company-scoped model visibility
+-   synchronized Device identity through `traccar_device_id`
+-   `GetLivePositions`
+-   `VehicleOnlineStatus`
+-   `Alert::visibleTo($user)`
+
+Dashboard must not define a competing online/offline algorithm.
+
+An online synchronized Device without an assigned Vehicle contributes to
+Device connectivity but does not count as an online Vehicle.
+
+**Rationale**
+
+-   Keeps Dashboard numbers consistent with tracking behavior.
+-   Prevents duplicate connectivity rules.
+-   Preserves tenant isolation at the same application boundaries.
+-   Separates Device connectivity from Vehicle connectivity.
+
+------------------------------------------------------------------------
+
+# ADR-032: Time-Based Dashboard KPIs Require an Explicit Reporting Contract
+
+**Status:** Accepted
+
+**Decision**
+
+Treat the current Dashboard overview metrics as the initial fleet KPI
+contract.
+
+Do not add distance, duration, speed, utilization, fuel, or similar
+time-based KPIs until requirements define the reporting period and
+aggregation semantics.
+
+Existing tracking/report Actions may be reused once that contract
+exists.
+
+**Rationale**
+
+-   Time-based metrics are meaningless without a defined period.
+-   Aggregation rules can materially change KPI interpretation.
+-   Existing report capabilities should be reused rather than
+    duplicated.
+-   Avoids inventing product behavior merely to populate Dashboard
+    fields.
+
+------------------------------------------------------------------------
+
 # Current Architecture Baseline
 
 Implemented:
 
 -   Authentication
 -   Authorization and company-based multi-tenancy
--   Companies
--   Fleets
--   Users
--   Drivers
--   Vehicles
--   Devices
+-   Companies, Fleets, Users, Drivers, Vehicles, and Devices
 -   Traccar Device synchronization
--   Live Tracking
--   Per-Vehicle live position
--   Live-position fleet/Vehicle filtering
+-   Live Tracking and per-Vehicle position reads
 -   Online/offline tracking status
 -   Vehicle position history
 -   Aggregate Vehicle trip summary
@@ -1173,79 +1219,34 @@ Implemented:
 -   Geofence ↔ Vehicle associations
 -   Traccar Geofence ↔ Device permission synchronization
 -   Geofence/Device association reconciliation
--   Secure Traccar webhook authentication
--   Geofence entry/exit event handling
--   Overspeed event handling
--   Ignition event handling
--   Device-offline event handling
--   Persistent Alerts
--   Alert history and acknowledgement
--   Custom Alert Rule CRUD
--   Runtime Alert Rule evaluation
--   Reports vehicle-trip endpoint
+-   Secure Traccar webhook authentication and supported event handling
+-   Persistent Alerts and acknowledgement
+-   Custom Alert Rule CRUD and runtime evaluation
+-   Reports read endpoints for trips, trip summary, stops, events,
+    route, summary, hours, and combined
+-   Dashboard overview with fleet, connectivity, Device, and Alert
+    metrics
 
-Current tracking endpoints:
-
-``` text
-GET /api/v1/tracking/positions
-GET /api/v1/tracking/vehicles/{vehicle}
-GET /api/v1/tracking/vehicles/{vehicle}/positions
-GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
-GET /api/v1/tracking/vehicles/{vehicle}/trips
-```
-
-Current Geofence endpoints:
-
-``` text
-GET        /api/v1/geofences
-POST       /api/v1/geofences
-GET        /api/v1/geofences/{geofence}
-PUT/PATCH  /api/v1/geofences/{geofence}
-DELETE     /api/v1/geofences/{geofence}
-
-POST       /api/v1/geofences/{geofence}/vehicles/{vehicle}
-DELETE     /api/v1/geofences/{geofence}/vehicles/{vehicle}
-```
-
-Current Alert endpoints:
-
-``` text
-GET   /api/v1/alerts
-GET   /api/v1/alerts/{alert}
-PATCH /api/v1/alerts/{alert}/acknowledge
-```
-
-Current Alert Rule endpoints:
-
-``` text
-GET        /api/v1/alert-rules
-POST       /api/v1/alert-rules
-GET        /api/v1/alert-rules/{alertRule}
-PUT/PATCH  /api/v1/alert-rules/{alertRule}
-DELETE     /api/v1/alert-rules/{alertRule}
-```
-
-Current Reports endpoint:
+Current Reports endpoints:
 
 ``` text
 GET /api/v1/reports/vehicles/{vehicle}/trips
+GET /api/v1/reports/vehicles/{vehicle}/trip-summary
+GET /api/v1/reports/vehicles/{vehicle}/stops
+GET /api/v1/reports/vehicles/{vehicle}/events
+GET /api/v1/reports/vehicles/{vehicle}/route
+GET /api/v1/reports/vehicles/{vehicle}/summary
+GET /api/v1/reports/vehicles/{vehicle}/hours
+GET /api/v1/reports/vehicles/{vehicle}/combined
 ```
 
-The latest completed functionality slice is the Reports vehicle-trip
-endpoint.
+Current Dashboard endpoint:
 
-It:
+``` text
+GET /api/v1/dashboard/overview
+```
 
--   is inside the authenticated/team-aware API group
--   authorizes `reports.view`
--   validates a required `from`/`to` range
--   reuses `GetVehicleTrips`
--   reuses `ReportService`
--   reuses `VehicleTripResource`
--   preserves tenant-safe Device resolution
--   has eight passing focused feature tests
-
-The complete quality gate was green after the slice:
+The latest reported complete quality gate was green:
 
 ``` bash
 sail composer lint
@@ -1254,53 +1255,18 @@ sail composer types:check
 sail artisan test
 ```
 
-The slice was committed as:
-
-``` text
-feat: add vehicle trip report endpoint
-```
-
-------------------------------------------------------------------------
-
 # Current Roadmap
 
-The Geofence module and the currently defined backend Alerts
-functionality are complete.
+The currently defined backend fleet-management, tracking, Geofence,
+Alerts, Reports-read, and Dashboard overview functionality is
+implemented.
 
-The active module is:
+The remaining explicit Reports capability is export/report generation
+through `reports.export`.
 
-``` text
-Reports
-```
+Its format and contract must be defined before implementation.
 
-Completed within Reports:
-
-1.  Vehicle trip report endpoint
-2.  `reports.view` authorization
-3.  Report-specific date-range validation
-4.  Reuse of existing tracking/Traccar trip-report infrastructure
-5.  Tenant-safe report access
-6.  Focused feature coverage
-7.  Full quality gate and commit
-
-Reports work remaining should be defined from product requirements and
-existing application capabilities.
-
-Likely areas include:
-
--   report-oriented summary data
--   additional required report metrics
--   export/report generation
--   `reports.export` authorization
--   export format validation
--   final Reports integration verification
-
-The exact export format should be defined before implementation.
-
-After Reports:
-
-1.  Dashboard
-2.  Final integration/documentation hardening as required
-
-Development is intentionally paused at the first completed Reports
-checkpoint.
+After that requirement is defined, continue with final integration and
+documentation hardening. Additional time-based Dashboard KPIs, external
+Alert delivery channels, or persistent FleetTrack Trip business data
+should only be added from explicit product requirements.
