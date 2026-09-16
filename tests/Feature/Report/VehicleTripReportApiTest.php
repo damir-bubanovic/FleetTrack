@@ -546,3 +546,124 @@ test('stops report requires authentication', function (): void {
         .'&to=2026-08-18T10:00:00Z'
     )->assertUnauthorized();
 });
+
+test('company admin can view events report for own vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 501,
+                'deviceId' => 101,
+                'type' => 'geofenceEnter',
+                'eventTime' => '2026-08-18T08:30:00+00:00',
+                'positionId' => 1001,
+                'geofenceId' => 201,
+                'maintenanceId' => 0,
+                'attributes' => [
+                    'alarm' => 'geofenceEnter',
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/events"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', 501)
+        ->assertJsonPath('data.0.device_id', 101)
+        ->assertJsonPath('data.0.type', 'geofenceEnter')
+        ->assertJsonPath(
+            'data.0.event_time',
+            '2026-08-18T08:30:00+00:00',
+        )
+        ->assertJsonPath('data.0.position_id', 1001)
+        ->assertJsonPath('data.0.geofence_id', 201)
+        ->assertJsonPath('data.0.maintenance_id', 0)
+        ->assertJsonPath(
+            'data.0.attributes.alarm',
+            'geofenceEnter',
+        );
+});
+
+test('events report returns empty collection for another company vehicle', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $vehicleB = $this->createVehicle($companyB, $fleetB);
+
+    $this->createDevice($companyB, $vehicleB, [
+        'traccar_device_id' => 202,
+    ]);
+
+    Http::fake();
+
+    $this->actingAsCompanyAdmin($companyA);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicleB->id}/events"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+
+    Http::assertNothingSent();
+});
+
+test('events report validates required date range', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/events"
+    )
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'from',
+            'to',
+        ]);
+});
+
+test('events report requires authentication', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/events"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )->assertUnauthorized();
+});

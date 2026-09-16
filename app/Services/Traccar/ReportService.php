@@ -25,4 +25,12 @@ class ReportService
     {
         return $this->client->get('/reports/stops', $query);
     }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    public function events(array $query = []): Response
+    {
+        return $this->client->get('/reports/events', $query);
+    }
 }
