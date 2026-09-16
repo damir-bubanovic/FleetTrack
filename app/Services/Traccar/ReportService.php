@@ -17,4 +17,12 @@ class ReportService
     {
         return $this->client->get('/reports/trips', $query);
     }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    public function stops(array $query = []): Response
+    {
+        return $this->client->get('/reports/stops', $query);
+    }
 }
