@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import AppFooter from '@/components/app/AppFooter.vue';
 import AppHeader from '@/components/app/AppHeader.vue';
 import AppSidebar from '@/components/app/AppSidebar.vue';
 
@@ -110,7 +111,7 @@ onBeforeUnmount(() => {
             </div>
         </Transition>
 
-        <div class="lg:pl-64">
+        <div class="flex min-h-screen flex-col lg:pl-64">
             <AppHeader
                 :title="title"
                 :description="description"
@@ -120,11 +121,13 @@ onBeforeUnmount(() => {
                 @open-navigation="openMobileNavigation"
             />
 
-            <main class="p-4 sm:p-5 lg:p-8">
+            <main class="flex-1 p-4 sm:p-5 lg:p-8">
                 <div class="mx-auto max-w-[1600px]">
                     <slot />
                 </div>
             </main>
+
+            <AppFooter />
         </div>
     </div>
 </template>
