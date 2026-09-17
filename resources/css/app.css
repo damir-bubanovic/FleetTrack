@@ -8,4 +8,53 @@
         Instrument Sans, ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+
+    /*
+     * FleetTrack brand
+     */
+    --color-brand: #f59e0b;
+    --color-brand-hover: #d97706;
+    --color-brand-dark: #b45309;
+    --color-brand-soft: #fffbeb;
+
+    /*
+     * Application surfaces
+     */
+    --color-app: #f8fafc;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f8fafc;
+    --color-sidebar: #020617;
+
+    /*
+     * Content
+     */
+    --color-content: #0f172a;
+    --color-content-secondary: #334155;
+    --color-muted: #64748b;
+    --color-subtle: #94a3b8;
+
+    /*
+     * Borders
+     */
+    --color-border-default: #e2e8f0;
+    --color-border-strong: #cbd5e1;
+
+    /*
+     * Semantic statuses
+     */
+    --color-success: #10b981;
+    --color-success-dark: #047857;
+    --color-success-soft: #ecfdf5;
+
+    --color-warning: #f97316;
+    --color-warning-dark: #c2410c;
+    --color-warning-soft: #fff7ed;
+
+    --color-danger: #ef4444;
+    --color-danger-dark: #b91c1c;
+    --color-danger-soft: #fef2f2;
+
+    --color-info: #3b82f6;
+    --color-info-dark: #1d4ed8;
+    --color-info-soft: #eff6ff;
 }
