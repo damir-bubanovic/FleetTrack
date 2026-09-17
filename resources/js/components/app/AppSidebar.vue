@@ -1,20 +1,25 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
+
 import AppLogo from '@/components/app/AppLogo.vue';
 import AppIcon from '@/components/ui/AppIcon.vue';
+import web from '@/routes/web';
+
+type NavigationIcon =
+    | 'dashboard'
+    | 'fleets'
+    | 'vehicles'
+    | 'drivers'
+    | 'devices'
+    | 'tracking'
+    | 'geofences'
+    | 'alerts'
+    | 'reports';
 
 type NavigationItem = {
     name: string;
-    icon:
-        | 'dashboard'
-        | 'fleets'
-        | 'vehicles'
-        | 'drivers'
-        | 'devices'
-        | 'tracking'
-        | 'geofences'
-        | 'alerts'
-        | 'reports';
-    href: string;
+    icon: NavigationIcon;
+    href?: string;
 };
 
 const props = withDefaults(
@@ -39,15 +44,23 @@ const emit = defineEmits<{
 }>();
 
 const navigation: readonly NavigationItem[] = [
-    { name: 'Dashboard', icon: 'dashboard', href: '#' },
-    { name: 'Fleets', icon: 'fleets', href: '#' },
-    { name: 'Vehicles', icon: 'vehicles', href: '#' },
-    { name: 'Drivers', icon: 'drivers', href: '#' },
-    { name: 'Devices', icon: 'devices', href: '#' },
-    { name: 'Live Tracking', icon: 'tracking', href: '#' },
-    { name: 'Geofences', icon: 'geofences', href: '#' },
-    { name: 'Alerts', icon: 'alerts', href: '#' },
-    { name: 'Reports', icon: 'reports', href: '#' },
+    {
+        name: 'Dashboard',
+        icon: 'dashboard',
+        href: web.dashboard.url(),
+    },
+    {
+        name: 'Fleets',
+        icon: 'fleets',
+        href: web.fleets.index.url(),
+    },
+    { name: 'Vehicles', icon: 'vehicles' },
+    { name: 'Drivers', icon: 'drivers' },
+    { name: 'Devices', icon: 'devices' },
+    { name: 'Live Tracking', icon: 'tracking' },
+    { name: 'Geofences', icon: 'geofences' },
+    { name: 'Alerts', icon: 'alerts' },
+    { name: 'Reports', icon: 'reports' },
 ];
 
 function handleNavigation(): void {
@@ -81,25 +94,39 @@ function handleNavigation(): void {
         </div>
 
         <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-6">
-            <a
-                v-for="item in navigation"
-                :key="item.name"
-                :href="item.href"
-                class="group flex h-10 items-center rounded-lg px-3 text-sm font-medium transition"
-                :class="
-                    item.name === activeItem
-                        ? 'bg-brand text-sidebar'
-                        : 'text-subtle hover:bg-white/5 hover:text-white'
-                "
-                @click="handleNavigation"
-            >
-                <AppIcon
-                    :name="item.icon"
-                    class="mr-3 h-[18px] w-[18px] shrink-0"
-                />
+            <template v-for="item in navigation" :key="item.name">
+                <Link
+                    v-if="item.href"
+                    :href="item.href"
+                    class="group flex h-10 items-center rounded-lg px-3 text-sm font-medium transition"
+                    :class="
+                        item.name === activeItem
+                            ? 'bg-brand text-sidebar'
+                            : 'text-subtle hover:bg-white/5 hover:text-white'
+                    "
+                    @click="handleNavigation"
+                >
+                    <AppIcon
+                        :name="item.icon"
+                        class="mr-3 h-[18px] w-[18px] shrink-0"
+                    />
 
-                {{ item.name }}
-            </a>
+                    {{ item.name }}
+                </Link>
+
+                <div
+                    v-else
+                    class="flex h-10 cursor-not-allowed items-center rounded-lg px-3 text-sm font-medium text-subtle opacity-40"
+                    :aria-label="`${item.name} page not available yet`"
+                >
+                    <AppIcon
+                        :name="item.icon"
+                        class="mr-3 h-[18px] w-[18px] shrink-0"
+                    />
+
+                    {{ item.name }}
+                </div>
+            </template>
         </nav>
 
         <div v-if="userName" class="shrink-0 border-t border-white/10 p-4">
