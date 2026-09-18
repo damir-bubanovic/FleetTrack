@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { router } from '@inertiajs/vue3';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import AppFooter from '@/components/app/AppFooter.vue';
 import AppHeader from '@/components/app/AppHeader.vue';
 import AppSidebar from '@/components/app/AppSidebar.vue';
+import web from '@/routes/web';
+import { authState } from '@/services/authState';
 
 withDefaults(
     defineProps<{
@@ -12,9 +15,6 @@ withDefaults(
         activeNavigation?: string;
         companyName?: string;
         companyLocation?: string;
-        userName?: string;
-        userRole?: string;
-        userInitials?: string;
         hasNotifications?: boolean;
     }>(),
     {
@@ -23,9 +23,6 @@ withDefaults(
         activeNavigation: undefined,
         companyName: undefined,
         companyLocation: undefined,
-        userName: undefined,
-        userRole: undefined,
-        userInitials: undefined,
         hasNotifications: false,
     },
 );
@@ -50,8 +47,14 @@ watch(mobileNavigationOpen, (isOpen) => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
 });
 
-onMounted(() => {
+onMounted(async () => {
     window.addEventListener('keydown', handleKeydown);
+
+    await authState.initialize();
+
+    if (!authState.authenticated.value) {
+        router.visit(web.login.url());
+    }
 });
 
 onBeforeUnmount(() => {
@@ -61,13 +64,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-app font-sans text-content">
-        <AppSidebar
-            :active-item="activeNavigation"
-            :user-name="userName"
-            :user-role="userRole"
-            :user-initials="userInitials"
-        />
+    <div
+        v-if="authState.initialized.value && authState.authenticated.value"
+        class="min-h-screen bg-app font-sans text-content"
+    >
+        <AppSidebar :active-item="activeNavigation" />
 
         <Transition
             enter-active-class="transition-opacity duration-200"
@@ -103,9 +104,6 @@ onBeforeUnmount(() => {
                 <AppSidebar
                     mobile
                     :active-item="activeNavigation"
-                    :user-name="userName"
-                    :user-role="userRole"
-                    :user-initials="userInitials"
                     @close="closeMobileNavigation"
                 />
             </div>
@@ -129,5 +127,9 @@ onBeforeUnmount(() => {
 
             <AppFooter />
         </div>
+    </div>
+
+    <div v-else class="flex min-h-screen items-center justify-center bg-app">
+        <span class="text-sm text-muted">Loading...</span>
     </div>
 </template>

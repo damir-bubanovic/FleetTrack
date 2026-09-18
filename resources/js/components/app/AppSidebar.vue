@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 import AppLogo from '@/components/app/AppLogo.vue';
 import AppIcon from '@/components/ui/AppIcon.vue';
 import web from '@/routes/web';
+import { authState } from '@/services/authState';
 
 type NavigationIcon =
     | 'dashboard'
@@ -25,16 +27,10 @@ type NavigationItem = {
 const props = withDefaults(
     defineProps<{
         activeItem?: string;
-        userName?: string;
-        userRole?: string;
-        userInitials?: string;
         mobile?: boolean;
     }>(),
     {
         activeItem: undefined,
-        userName: undefined,
-        userRole: undefined,
-        userInitials: undefined,
         mobile: false,
     },
 );
@@ -42,6 +38,8 @@ const props = withDefaults(
 const emit = defineEmits<{
     close: [];
 }>();
+
+const loggingOut = ref(false);
 
 const navigation: readonly NavigationItem[] = [
     {
@@ -63,9 +61,55 @@ const navigation: readonly NavigationItem[] = [
     { name: 'Reports', icon: 'reports' },
 ];
 
+const userName = computed(() => authState.user.value?.name ?? '');
+
+const userRole = computed(() => {
+    const role = authState.user.value?.roles[0];
+
+    if (!role) {
+        return '';
+    }
+
+    return role
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+});
+
+const userInitials = computed(() => {
+    const name = userName.value.trim();
+
+    if (!name) {
+        return '';
+    }
+
+    return name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('');
+});
+
 function handleNavigation(): void {
     if (props.mobile) {
         emit('close');
+    }
+}
+
+async function handleLogout(): Promise<void> {
+    if (loggingOut.value) {
+        return;
+    }
+
+    loggingOut.value = true;
+
+    try {
+        await authState.logout();
+
+        emit('close');
+
+        router.visit(web.login.url());
+    } finally {
+        loggingOut.value = false;
     }
 }
 </script>
@@ -130,7 +174,7 @@ function handleNavigation(): void {
         </nav>
 
         <div v-if="userName" class="shrink-0 border-t border-white/10 p-4">
-            <div class="flex items-center rounded-lg px-2 py-2">
+            <div class="flex items-center px-2 py-2">
                 <div
                     v-if="userInitials"
                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-brand"
@@ -147,12 +191,16 @@ function handleNavigation(): void {
                         {{ userRole }}
                     </div>
                 </div>
-
-                <AppIcon
-                    name="chevron-right"
-                    class="ml-auto h-4 w-4 shrink-0 text-subtle"
-                />
             </div>
+
+            <button
+                type="button"
+                class="mt-2 flex h-9 w-full items-center rounded-lg px-3 text-sm font-medium text-subtle transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="loggingOut"
+                @click="handleLogout"
+            >
+                {{ loggingOut ? 'Signing out...' : 'Sign out' }}
+            </button>
         </div>
     </aside>
 </template>
