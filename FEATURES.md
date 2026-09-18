@@ -1,407 +1,393 @@
 # FleetTrack Features
 
-## Overview
+## Status
 
-This document tracks the functional capabilities currently implemented
-in FleetTrack and the remaining product roadmap.
+This document records the implemented FleetTrack capabilities and the
+remaining product/frontend work at the `FleetTrack_Laravel(7).zip`
+checkpoint.
 
-The current backend checkpoint includes the core fleet-management
-modules, Traccar tracking integration, Geofences, Alerts with custom
-Alert Rules, the expanded Reports API, and the Dashboard overview API.
+Status is separated between backend/API implementation and frontend/UI
+implementation so that an available API is not mistaken for a completed
+user-facing feature.
 
-Reports now exposes vehicle trips, trip summary, stops, events, route,
-summary, hours, and combined report reads. Dashboard now exposes
-tenant-aware fleet counts, vehicle connectivity, synchronized-device
-offline counts, and Alert summary metrics.
-
-The only explicitly reserved Reports capability that is not implemented
-is export/report generation through `reports.export`; its output format
-has not yet been defined.
 ------------------------------------------------------------------------
 
-# Implemented Features
+# Authentication and Access
 
-## Authentication
+## Backend --- Implemented
 
--   API authentication with Laravel Sanctum
--   Login
--   Authenticated user endpoint
--   Logout
+-   Laravel Sanctum authentication
+-   Login endpoint
+-   Current authenticated-user endpoint
+-   Logout endpoint
 -   Personal access tokens
--   Protected API routes
+-   Company-based tenancy
+-   Role and permission authorization
+-   Spatie Laravel Permission with Teams
+-   Model Policies and capability checks
+-   Active seeded development users
 
-## Authorization and Multi-Tenancy
+API:
 
--   Spatie Laravel Permission
--   Teams for company-based permissions
--   Policy-based authorization
--   Company-scoped data access
--   `SetPermissionTeam` middleware
--   Super Administrator access
--   Company Administrator access
--   Fleet Manager access
--   Driver role support
--   Tenant isolation tests
--   Tracking authorization through `tracking.view`
--   Geofence authorization through `geofences.*`
--   Alert authorization through `alerts.*`
--   Alert Rule authorization through `alert-rules.*`
--   Report authorization through `reports.view`
--   Report export permission reserved through `reports.export`
+``` text
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
+```
 
-## Companies
+## Frontend --- Implemented
 
--   List companies
--   Create company
--   View company
--   Update company
--   Delete company
--   Validation
--   API Resources
--   Authorization
--   Feature tests
+-   Sign-in page
+-   Bearer-token storage
+-   Shared authenticated API client
+-   Authentication restoration after refresh
+-   Invalid/expired token handling
+-   Protected application shell
+-   Redirect to `/login` when unauthenticated
+-   Real authenticated user displayed in sidebar
+-   User initials
+-   User role display
+-   Sign out
+-   Redirect to Login after sign out
+-   Authentication works across Dashboard and Fleets
 
-## Fleets
+Current development credentials after a fresh seeded database:
 
--   Full CRUD
--   Company ownership
--   Company isolation
--   Policies
--   Validation
--   Feature tests
+``` text
+admin@fleettrack.test
+password
+```
 
-## Users
-
--   Company users
--   Super Administrator role
--   Company Administrator role
--   Fleet Manager role
--   Driver role
--   Team-aware permissions
-
-## Drivers
-
--   Driver backend module
--   Company ownership and isolation
--   Actions
--   Requests and API Resources
--   Authorization
--   Feature coverage
-
-## Vehicles
-
--   Full CRUD
--   Company isolation
--   Fleet assignment
--   Validation
--   Authorization
--   Feature tests
--   Many-to-many Geofence associations
-
-## Devices
-
--   Full CRUD
--   Vehicle assignment
--   Company isolation
--   Validation
--   Authorization
--   Traccar synchronization state
--   Traccar device ID storage
--   Synchronization timestamp tracking
--   Queue-based Traccar synchronization
--   Geofence permission reconciliation after synchronization
--   Feature and queue-job coverage
+These are development seed credentials, not production credentials.
 
 ------------------------------------------------------------------------
 
-# Traccar Integration
+# Application Shell and Design System
 
-## Core Integration
+## Frontend --- Implemented
 
--   `TraccarClient`
--   `TraccarDeviceService`
--   `TraccarGeofenceService`
--   `PositionService`
--   `ReportService`
--   `DeviceData` DTO
--   `GeofenceData` DTO
--   Event DTOs for supported Traccar events
--   Centralized Traccar HTTP communication
+-   Vue 3 + TypeScript application
+-   Inertia navigation
+-   Tailwind CSS styling
+-   Laravel Wayfinder typed routes
+-   Responsive application layout
+-   Desktop sidebar
+-   Mobile navigation drawer
+-   Mobile backdrop
+-   Escape-key drawer close
+-   Body scroll locking while mobile navigation is open
+-   Header
+-   Footer
+-   FleetTrack branding/logo
+-   Semantic application colors
+-   Reusable loading, error, and empty states
+-   Reusable forms and table components
 
-## Device Synchronization
-
-FleetTrack synchronizes device lifecycle changes to Traccar.
-
-Implemented:
-
--   Create device in Traccar
--   Update device in Traccar
--   Delete device from Traccar
--   Store Traccar device ID
--   Track synchronization state/timestamp
--   Queue-based synchronization
--   Events
--   Listeners
--   Queue Jobs
--   Retryable integration flow
--   Reconcile existing Geofence associations after initial Device
-    synchronization
-
-Device synchronization writes follow:
+Current reusable UI components:
 
 ``` text
-Action
-→ Event
-→ Listener
-→ Queue Job
-→ Traccar service
-→ Traccar REST API
+AppButton
+AppCard
+AppCheckbox
+AppIcon
+AppInput
+AppPagination
+AppSelect
+AppTable
+AppTextarea
+EmptyState
+ErrorState
+FormField
+LoadingState
+PageHeader
+StatusBadge
 ```
 
-## Geofence Synchronization
-
-FleetTrack synchronizes Geofence lifecycle changes to Traccar.
-
-Implemented:
-
--   Create Geofence in Traccar
--   Update Geofence in Traccar
--   Delete Geofence from Traccar
--   Store Traccar geofence ID
--   Track synchronization timestamp
--   Queue-based synchronization
--   Events
--   Listeners
--   Queue Jobs
--   Retryable integration flow
--   Reconcile existing Vehicle associations after initial Geofence
-    synchronization
-
-## Geofence ↔ Vehicle Permission Synchronization
-
-FleetTrack models the business-domain association as Geofence ↔ Vehicle.
-
-For Traccar synchronization, FleetTrack resolves the Vehicle's assigned
-Device and uses the Device's `traccar_device_id` together with the
-Geofence's `traccar_geofence_id`.
-
-Implemented:
-
--   Traccar permission association
--   Traccar permission disassociation
--   Queue-based permission synchronization
--   Stale attach-job protection
--   Stale detach-job protection
--   Reconciliation when the Geofence receives its Traccar ID
--   Reconciliation when the Device receives its Traccar ID
-
-## Traccar Event Ingestion
-
-Endpoint:
+Current application components:
 
 ``` text
-POST /api/v1/traccar/events
+AppLogo
+AppHeader
+AppSidebar
+AppFooter
+AppLayout
 ```
 
-The endpoint is protected by `VerifyTraccarWebhook` rather than Sanctum
-because it is called by Traccar.
+------------------------------------------------------------------------
 
-Supported event types:
+# Companies
 
--   `geofenceEnter`
--   `geofenceExit`
--   `deviceOverspeed`
--   `ignitionOn`
--   `ignitionOff`
--   `deviceOffline`
+## Backend --- Implemented
+
+-   Company model
+-   Company CRUD API
+-   Validation
+-   Authorization
+-   API Resources
+-   Factory and seeding support
+-   Automated tests
+-   Company relationships to tenant-owned domain data
+
+## Frontend --- Not Yet Implemented
+
+There is no current user-facing Company management page in the Vue
+application.
+
+Company frontend requirements should be defined before adding
+navigation/UI.
+
+------------------------------------------------------------------------
+
+# Fleets
+
+## Backend --- Implemented
+
+-   Fleet model
+-   Company ownership
+-   Fleet CRUD API
+-   Create Action
+-   Update Action
+-   Delete Action
+-   Store/Update validation
+-   Policy authorization
+-   Tenant visibility
+-   API Resource
+-   Factory and seeding support
+-   Automated tests
+
+API:
+
+``` text
+GET    /api/v1/fleets
+POST   /api/v1/fleets
+GET    /api/v1/fleets/{fleet}
+PUT    /api/v1/fleets/{fleet}
+PATCH  /api/v1/fleets/{fleet}
+DELETE /api/v1/fleets/{fleet}
+```
+
+Fleet fields currently include:
+
+``` text
+company_id
+name
+code
+email
+phone
+address
+latitude
+longitude
+timezone
+description
+is_active
+```
+
+## Frontend --- Partially Implemented
 
 Implemented:
 
--   Webhook token verification
--   Event-specific payload validation
--   Event DTOs
--   Event handlers
--   Application/domain events
--   Queued alert listeners
--   Tenant-aware FleetTrack entity resolution
--   Focused webhook and event tests
+-   `/fleets` Inertia route
+-   Fleets page
+-   real authenticated Fleet API loading
+-   typed Fleet response
+-   Fleet service
+-   loading state
+-   API error state
+-   empty state
+-   Fleet table
+-   code display
+-   contact display
+-   timezone display
+-   active/inactive status badge
+-   pagination metadata
+-   refresh action
+-   responsive application shell
 
-## Tracking and Report Reads
+Verified with seeded Fleet records in the browser.
 
-Tracking and report data is read synchronously through the Traccar
-service layer because the API caller requires the current result.
+Remaining:
 
-Implemented services include:
+-   Create Fleet UI
+-   Edit Fleet UI
+-   Delete Fleet UI
+-   Fleet detail UI if required
+-   create/update form validation UX
+-   confirmation UX for destructive actions
+-   fully interactive pagination controls
+-   final Fleet CRUD browser verification
 
--   Latest position retrieval through `PositionService`
--   Historical position retrieval through `PositionService`
--   Detected trip reports through `ReportService`
+This is the current next development slice.
+
+------------------------------------------------------------------------
+
+# Drivers
+
+## Backend --- Implemented
+
+-   Driver model
+-   Company ownership
+-   Driver CRUD API
+-   Actions
+-   validation
+-   authorization
+-   API Resource
+-   factory and seeding support
+-   automated tests
+
+API:
+
+``` text
+GET    /api/v1/drivers
+POST   /api/v1/drivers
+GET    /api/v1/drivers/{driver}
+PUT    /api/v1/drivers/{driver}
+PATCH  /api/v1/drivers/{driver}
+DELETE /api/v1/drivers/{driver}
+```
+
+## Frontend --- Not Yet Implemented
+
+The sidebar contains Drivers as part of the planned information
+architecture, but the item is currently unavailable/disabled.
+
+------------------------------------------------------------------------
+
+# Vehicles
+
+## Backend --- Implemented
+
+-   Vehicle model
+-   Company ownership
+-   Fleet relationship
+-   Vehicle CRUD API
+-   Actions
+-   validation
+-   authorization
+-   tenant visibility
+-   API Resource
+-   factory and seeding support
+-   automated tests
+-   Device relationship
+-   Geofence associations
+
+API:
+
+``` text
+GET    /api/v1/vehicles
+POST   /api/v1/vehicles
+GET    /api/v1/vehicles/{vehicle}
+PUT    /api/v1/vehicles/{vehicle}
+PATCH  /api/v1/vehicles/{vehicle}
+DELETE /api/v1/vehicles/{vehicle}
+```
+
+## Frontend --- Not Yet Implemented
+
+The Vehicles navigation item is present but unavailable/disabled.
+
+------------------------------------------------------------------------
+
+# Devices
+
+## Backend --- Implemented
+
+-   Device model
+-   Company ownership
+-   Vehicle association
+-   Device CRUD API
+-   validation
+-   authorization
+-   API Resource
+-   Traccar Device ID
+-   Device status
+-   synchronization timestamp/state
+-   asynchronous Traccar lifecycle synchronization
+-   create/update/delete synchronization
+-   queue retry behavior
+-   reconciliation of Geofence permissions after Device synchronization
+-   factory and seeding support
+-   automated tests
+
+API:
+
+``` text
+GET    /api/v1/devices
+POST   /api/v1/devices
+GET    /api/v1/devices/{device}
+PUT    /api/v1/devices/{device}
+PATCH  /api/v1/devices/{device}
+DELETE /api/v1/devices/{device}
+```
+
+## Frontend --- Not Yet Implemented
+
+The Devices navigation item is present but unavailable/disabled.
 
 ------------------------------------------------------------------------
 
 # Live Tracking
 
-Live Tracking is implemented.
+## Backend --- Implemented
 
-## Fleet-Wide Live Positions
-
-Endpoint:
+Current API:
 
 ``` text
 GET /api/v1/tracking/positions
-```
-
-Capabilities:
-
--   Latest positions for visible synchronized devices
--   Company tenant isolation
--   Super Administrator visibility
--   Fleet filtering
--   Vehicle filtering
--   Combined fleet and vehicle filtering
--   Unsynced devices excluded
--   Device and vehicle context in API response
-
-## Per-Vehicle Live Position
-
-Endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}
-```
-
-Capabilities:
-
--   Latest position for a specific vehicle
--   Company isolation
--   Synced-device resolution
--   Not-found behavior when no current Traccar position exists
-
-## Online / Offline Status
-
-Live position responses include vehicle tracking status.
-
-Implemented:
-
--   Online status for recent GPS fixes
--   Offline status for stale GPS fixes
--   Offline status when GPS fix time is missing
--   Last-seen timestamp
--   Current freshness threshold based on latest GPS fix
-
-------------------------------------------------------------------------
-
-# Vehicle Position History
-
-Endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}/positions
-```
-
-Implemented:
-
--   Historical positions for a vehicle
--   `from` and `to` date range
--   Date-order validation
--   Maximum 7-day range
--   Exactly 7 days allowed
--   More than 7 days rejected
--   Company tenant isolation
--   Unsynced vehicle handling
--   Traccar query verification
--   Historical position API Resource
-
-------------------------------------------------------------------------
-
-# Vehicle Trip Summary
-
-Endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
-```
-
-This endpoint calculates an aggregate summary over the explicitly
-requested vehicle position-history range.
-
-Implemented metrics:
-
--   Position count
--   Start time
--   End time
--   Duration in seconds
--   Distance in kilometers
--   Average sampled speed
--   Maximum speed
--   Moving time in seconds
--   Stopped time in seconds
--   Explicit speed unit (`knots`)
-
-Additional behavior:
-
--   Empty-history summary
--   Missing speed-data handling
--   Company tenant isolation
--   Shared historical date-range validation
-
-This is an aggregate range summary and is separate from Traccar's
-detected trip history.
-
-------------------------------------------------------------------------
-
-# Vehicle Trip History
-
-Endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}/trips
 ```
 
-Trip detection is delegated to Traccar.
+Implemented behavior includes:
 
-FleetTrack uses Traccar's `/reports/trips` report rather than
-implementing a competing GPS trip-detection algorithm.
+-   live position retrieval
+-   Fleet filtering
+-   Vehicle filtering
+-   tenant-safe Vehicle visibility
+-   position history
+-   bounded date-range validation
+-   trip retrieval through Traccar
+-   trip summary
+-   synchronized Device resolution
+-   online/offline Vehicle status
+-   last-seen behavior
+-   shared GPS-fix freshness semantics
+-   automated tests
 
-Implemented:
+FleetTrack does not duplicate Traccar GPS trip detection.
 
--   Traccar-detected trip history
--   Vehicle-to-synchronized-device resolution
--   Company tenant isolation
--   Empty report handling
--   Unsynced device handling
--   Date-range validation
--   Traccar request parameter verification
--   Normalized FleetTrack API Resource
+## Frontend --- Not Yet Implemented
 
-Normalized trip response includes:
+The Live Tracking navigation item is present but unavailable/disabled.
 
--   Traccar device reference
--   Driver unique reference when available
--   Start time
--   End time
--   Start coordinates
--   End coordinates
--   Distance in kilometers
--   Duration in seconds
--   Average speed
--   Maximum speed
--   Speed unit (`knots`)
--   Start address
--   End address
-
-Traccar remains the source of truth for GPS trip detection.
+The future page should consume the existing tracking API rather than
+query Traccar directly.
 
 ------------------------------------------------------------------------
 
 # Geofences
 
-The backend Geofence module is complete for the currently defined
-requirements.
+## Backend --- Implemented
 
-## Geofence CRUD and Authorization
+-   Geofence model
+-   Company ownership
+-   CRUD API
+-   validation
+-   authorization
+-   API Resource
+-   Traccar Geofence synchronization
+-   asynchronous create/update/delete synchronization
+-   Geofence ↔ Vehicle many-to-many relationship
+-   attach Vehicle API
+-   detach Vehicle API
+-   Traccar Device/Geofence permission synchronization
+-   reconciliation when external IDs become available later
+-   stale queued-job protection
+-   idempotent association behavior
+-   automated tests
 
-Endpoints:
+API includes:
 
 ``` text
 GET    /api/v1/geofences
@@ -410,95 +396,40 @@ GET    /api/v1/geofences/{geofence}
 PUT    /api/v1/geofences/{geofence}
 PATCH  /api/v1/geofences/{geofence}
 DELETE /api/v1/geofences/{geofence}
-```
 
-Implemented:
-
--   Full Geofence CRUD
--   Company ownership and tenant isolation
--   Policy and permission-based authorization
--   Validation through Form Requests
--   API Resource responses
--   Protection of Traccar-managed fields from client writes
--   Company assignment enforcement for non-super-admin users
--   Feature coverage for CRUD and tenant boundaries
-
-## Geofence Traccar Synchronization
-
-Implemented:
-
--   Create Geofence in Traccar
--   Update Geofence in Traccar
--   Delete Geofence from Traccar
--   Store Traccar geofence ID
--   Track geofence synchronization timestamp
--   Event/listener/queue-job synchronization flow
--   Retryable synchronization jobs
--   Dedicated Traccar geofence DTO/service coverage
-
-## Geofence Vehicle Associations
-
-Endpoints:
-
-``` text
 POST   /api/v1/geofences/{geofence}/vehicles/{vehicle}
 DELETE /api/v1/geofences/{geofence}/vehicles/{vehicle}
 ```
 
-Implemented:
+## Frontend --- Not Yet Implemented
 
--   Many-to-many Geofence ↔ Vehicle relationship
--   `geofence_vehicle` pivot table with duplicate protection
--   Same-company association enforcement
--   Idempotent attach and detach operations
--   Company-admin authorization through the Geofence update policy
--   Association events and listeners
--   Queue-based Traccar permission synchronization
--   Traccar `POST /permissions` association
--   Traccar `DELETE /permissions` disassociation
--   Stale attach-job protection when an association has been removed
--   Stale detach-job protection when an association has been recreated
--   Reconciliation after a Geofence receives its Traccar ID
--   Reconciliation after a Device receives its Traccar ID
--   Dedicated action, API, service, relationship, and job tests
-
-## Geofence Event Handling
-
-Implemented:
-
--   Secure Traccar webhook ingestion
--   `geofenceEnter` handling
--   `geofenceExit` handling
--   Geofence event DTO
--   Event handler
--   `GeofenceTransitionOccurred` application event
--   Queued alert creation
--   Tenant-safe Device/Vehicle/Geofence resolution
--   Focused event and webhook coverage
-
-No email, push, or SMS delivery behavior is currently required by the
-implemented product requirements. Such delivery should be added only
-when explicit requirements define it.
+The Geofences navigation item is present but unavailable/disabled.
 
 ------------------------------------------------------------------------
 
 # Alerts
 
-The backend Alerts module is implemented for the currently defined alert
-sources and management requirements.
+## Backend --- Implemented
 
-## Supported Alert Sources
+-   persistent Alert model
+-   Company ownership
+-   tenant visibility
+-   Alert listing
+-   Alert detail
+-   Alert acknowledgement
+-   idempotent acknowledgement
+-   Device offline Alerts
+-   Geofence enter Alerts
+-   Geofence exit Alerts
+-   Ignition-on Alerts
+-   Ignition-off Alerts
+-   Overspeed Alerts
+-   Traccar event translation
+-   queued Alert handling
+-   duplicate-prevention support where external event IDs are available
+-   automated tests
 
--   Geofence entry
--   Geofence exit
--   Overspeed
--   Ignition on
--   Ignition off
--   Device offline
-
-## Alert History and Acknowledgement
-
-Endpoints:
+API:
 
 ``` text
 GET   /api/v1/alerts
@@ -506,168 +437,102 @@ GET   /api/v1/alerts/{alert}
 PATCH /api/v1/alerts/{alert}/acknowledge
 ```
 
-Implemented:
+## Frontend --- Not Yet Implemented
 
--   Persistent Alert model
--   Company and Vehicle association
--   Alert type
--   Severity
--   Alert message
--   Traccar event idempotency
--   Alert listing
--   Individual Alert retrieval
--   Alert acknowledgement
--   Idempotent acknowledgement behavior
--   Company tenant isolation
--   `alerts.view` permission
--   `alerts.acknowledge` permission
--   Policy authorization
--   API Resource
--   Focused API and Action tests
+The Alerts navigation item is present but unavailable/disabled.
 
-## Overspeed Alerts
-
-Implemented:
-
--   `deviceOverspeed` Traccar event handling
--   Overspeed event DTO
--   Overspeed application event
--   Queued alert listener
--   Knots-to-km/h conversion for alert messaging and rule evaluation
--   Default `warning` severity
--   Traccar event idempotency
--   Custom Alert Rule severity override
--   Custom speed-threshold evaluation
-
-## Ignition Alerts
-
-Implemented:
-
--   `ignitionOn`
--   `ignitionOff`
--   Ignition event DTO
--   Ignition application event
--   Queued alert listener
--   `ignition_on` and `ignition_off` alert types
--   Default `info` severity
--   Custom Alert Rule severity override
-
-## Device Offline Alerts
-
-Implemented:
-
--   `deviceOffline`
--   Device-offline event DTO
--   Device-offline application event
--   Queued alert listener
--   `device_offline` alert type
--   Default `warning` severity
--   Custom Alert Rule severity override
-
-## Geofence Alerts
-
-Implemented:
-
--   Geofence entry alerts
--   Geofence exit alerts
--   Queued alert generation from Geofence transition events
--   Default `info` severity
--   Custom Alert Rule severity override
+External Alert delivery such as email, SMS, or push is not currently a
+defined project requirement.
 
 ------------------------------------------------------------------------
 
 # Custom Alert Rules
 
-Custom Alert Rule management and runtime evaluation are implemented.
+## Backend --- Implemented
 
-Endpoints:
-
-``` text
-GET        /api/v1/alert-rules
-POST       /api/v1/alert-rules
-GET        /api/v1/alert-rules/{alertRule}
-PUT/PATCH  /api/v1/alert-rules/{alertRule}
-DELETE     /api/v1/alert-rules/{alertRule}
-```
-
-## Alert Rule Management
-
-Implemented:
-
--   Company-scoped Alert Rules
--   Optional Vehicle scope
--   Company-wide rules when `vehicle_id` is null
--   Vehicle-specific rules when `vehicle_id` is set
--   Rule name
--   Alert type
--   Severity
+-   Alert Rule model
+-   Company ownership
+-   optional Vehicle scope
+-   CRUD API
+-   validation
+-   authorization
+-   tenant visibility
+-   active/inactive rules
+-   severity
 -   JSON conditions
--   Active/inactive state
--   Company tenant isolation
--   Cross-company Vehicle protection
--   Super Administrator company handling
--   `alert-rules.view`
--   `alert-rules.create`
--   `alert-rules.update`
--   `alert-rules.delete`
--   Policies
--   Form Requests
--   Actions
--   API Resource
--   Model, Request, Policy, Action, and API tests
+-   runtime rule resolution
+-   Vehicle-specific precedence
+-   Company-wide fallback
+-   overspeed threshold evaluation
+-   integration with supported incoming events
+-   automated tests
 
 Supported rule types:
 
--   `overspeed`
--   `geofence_enter`
--   `geofence_exit`
--   `ignition_on`
--   `ignition_off`
--   `device_offline`
+``` text
+overspeed
+geofence_enter
+geofence_exit
+ignition_on
+ignition_off
+device_offline
+```
 
-Supported severity values:
+API:
 
--   `info`
--   `warning`
--   `critical`
+``` text
+GET    /api/v1/alert-rules
+POST   /api/v1/alert-rules
+GET    /api/v1/alert-rules/{alertRule}
+PUT    /api/v1/alert-rules/{alertRule}
+PATCH  /api/v1/alert-rules/{alertRule}
+DELETE /api/v1/alert-rules/{alertRule}
+```
 
-## Runtime Alert Rule Evaluation
+## Frontend --- Not Yet Implemented
 
-Implemented:
+No Alert Rule management page is currently active in the Vue
+application.
 
--   Active rules only
--   Company matching
--   Alert-type matching
--   Vehicle-specific rules ordered before company-wide rules
--   Company-wide fallback when a vehicle-specific rule does not match
--   Overspeed threshold through `conditions.speed_limit_kmh`
--   Strict overspeed comparison: actual speed must be greater than the
-    configured limit
--   Non-overspeed event rules require no additional condition
--   Default alert behavior preserved when no custom rule matches
--   Matching rule severity overrides the default alert severity
--   Runtime integration into:
-    -   Overspeed alerts
-    -   Ignition alerts
-    -   Device-offline alerts
-    -   Geofence alerts
--   Dedicated resolver tests
--   Alert Action integration tests
+------------------------------------------------------------------------
+
+# Traccar Event Ingestion
+
+## Backend --- Implemented
+
+Webhook endpoint:
+
+``` text
+POST /api/v1/traccar/events
+```
+
+Protected by:
+
+``` text
+VerifyTraccarWebhook
+```
+
+Supported event families include:
+
+``` text
+deviceOffline
+geofenceEnter
+geofenceExit
+ignitionOn
+ignitionOff
+deviceOverspeed
+```
+
+Events are translated into FleetTrack application behavior before Alerts
+are persisted.
 
 ------------------------------------------------------------------------
 
 # Reports
 
-The Reports API is implemented as a reporting layer over existing
-FleetTrack tracking/application capabilities. It reuses existing
-Actions, the Traccar `ReportService`, tenant-visible Device resolution,
-and tracking Resources rather than creating a second tracking subsystem.
+## Backend --- Implemented
 
-All current report endpoints require authentication, the
-`SetPermissionTeam` middleware, `reports.view`, and a valid `from`/`to`
-date range.
-
-Current endpoints:
+Current Vehicle report API:
 
 ``` text
 GET /api/v1/reports/vehicles/{vehicle}/trips
@@ -680,198 +545,346 @@ GET /api/v1/reports/vehicles/{vehicle}/hours
 GET /api/v1/reports/vehicles/{vehicle}/combined
 ```
 
-Implemented:
+Implemented behavior includes:
 
--   Vehicle trip report through Traccar `/reports/trips`
--   FleetTrack aggregate trip summary over the requested position range
--   Stop report through Traccar `/reports/stops`
--   Event report through Traccar `/reports/events`
--   Route report through Traccar `/reports/route`
--   Vehicle summary report through Traccar `/reports/summary`
--   Vehicle hours report through Traccar `/reports/hours`
--   Combined report through Traccar `/reports/combined`
--   Dedicated Reports controller
--   Shared report Form Request
--   Required `from` and `to` dates
--   `to` must be after `from`
+-   tenant-safe Vehicle access
 -   `reports.view` authorization
--   Company tenant isolation
--   Super Administrator access
--   Missing/unsynchronized Device handling
--   Empty Traccar report handling
--   Traccar request parameter verification
--   API Resource normalization where a stable FleetTrack contract exists
--   Raw combined-report payload preservation where no narrower combined
-    schema has been established
--   Focused feature coverage across the report endpoints
+-   date-range validation
+-   Trips
+-   Trip Summary
+-   Stops
+-   Events
+-   Route
+-   Summary
+-   Hours
+-   Combined report
+-   reuse of Tracking Actions
+-   reuse of Traccar ReportService
+-   FleetTrack Resources
+-   automated tests
 
-## Reports Work Remaining
+## Frontend --- Not Yet Implemented
 
-Report export/report generation is not implemented.
+The Reports navigation item is present but unavailable/disabled.
 
-The permission boundary already reserves:
+## Intentionally Undefined
 
-``` text
-reports.export
-```
+`reports.export` exists as a capability, but the product contract for
+export format, content, and delivery has not been defined.
 
-The exact export format, content, and validation contract must be
-defined before implementation. FleetTrack should not invent
-CSV/PDF/export behavior without that product requirement.
+Do not implement an export format based on assumptions.
+
+------------------------------------------------------------------------
 
 # Dashboard
 
-Dashboard overview is implemented.
+## Backend --- Implemented
 
-Endpoint:
+API:
 
 ``` text
 GET /api/v1/dashboard/overview
 ```
 
-Implemented metrics:
+Current metrics:
 
--   Visible Company count
--   Fleet count
--   Vehicle count
--   Device count
--   Online Vehicle count
--   Offline Vehicle count
--   Offline synchronized Device count
--   Total Alert count
--   Unacknowledged Alert count
+``` text
+companies
+fleets
+vehicles
+devices
+online_vehicles
+offline_vehicles
+offline_devices
+alerts
+unacknowledged_alerts
+```
 
-Behavior:
+Implemented behavior includes:
 
--   Company-scoped overview for tenant users
--   Super Administrator overview across customer Companies
--   Internal system Company excluded from Super Administrator Company
-    totals
--   Online status reuses the shared tracking freshness rule
--   Unassigned online Devices affect Device connectivity but do not
-    count as online Vehicles
--   Unsynchronized Devices are excluded from the offline Device metric
--   Alert totals use existing tenant visibility
--   Unacknowledged Alerts are identified by `acknowledged_at = null`
--   Authentication and tenant-isolation feature coverage
+-   Company-scoped overview
+-   Super Administrator overview
+-   tenant-safe counts
+-   live Vehicle connectivity
+-   shared `VehicleOnlineStatus`
+-   Alert totals
+-   unacknowledged Alert totals
+-   automated tests
 
-The current Dashboard metrics form the initial fleet KPI set. Additional
-time-based KPIs such as distance, duration, or speed should only be
-added when a reporting period and aggregation contract are explicitly
-defined.
+## Frontend --- UI Implemented, Live Data Pending
 
-# Technical Features
+Current Dashboard components:
 
--   Laravel 13
--   PHP 8.3+
--   Laravel Sail development environment
--   Laravel Sanctum
--   Spatie Laravel Permission with Teams
--   Redis queues
--   Queue retry support
--   Event-driven Device and Geofence synchronization
--   Secure Traccar webhook event ingestion
--   Service layer for Traccar
--   DTO pattern
--   Action pattern
--   Form Requests
--   API Resources
--   Policies
--   Permission-based capability gates
--   Multi-tenant visibility scopes
--   Custom Alert Rule resolution
--   PHPStan / Larastan
--   Laravel Pint
--   Pest tests
--   Laravel HTTP fakes for Traccar integration tests
+``` text
+DashboardMetricCard
+DeviceConnectivity
+FleetStatusTable
+RecentAlerts
+```
+
+The Dashboard is responsive and integrated into the shared application
+shell.
+
+However, its displayed data is currently static/mock.
+
+The Vue Dashboard is not yet wired to:
+
+``` text
+GET /api/v1/dashboard/overview
+```
+
+Therefore the Dashboard frontend is visually implemented but not yet
+live-data complete.
 
 ------------------------------------------------------------------------
 
-# Future Product Decisions
+# Database, Factories, and Seeders
 
-The following should be designed only when product requirements require
-them.
+## Implemented
 
-## Persistent FleetTrack Trip Entity
+Current database domain includes:
 
-FleetTrack does not currently need to persist Traccar-detected trips as
-its own business entity.
+-   Companies
+-   Users
+-   permissions/roles
+-   Sanctum personal access tokens
+-   Fleets
+-   Drivers
+-   Vehicles
+-   Devices
+-   Geofences
+-   Geofence ↔ Vehicle associations
+-   Alerts
+-   Alert Rules
 
-A FleetTrack `Trip` model may become appropriate if trips require
-application-owned data such as:
+Factories exist for the primary domain models.
 
--   Notes
--   Approval workflows
--   Billing
--   Corrections
--   Audit history
--   Business classifications
+Current seeders include:
 
-If introduced, it should build on Traccar-detected GPS trips rather than
-creating a second GPS trip-detection algorithm.
+``` text
+CompanyRoleSeeder
+CompanySeeder
+DatabaseSeeder
+DeviceSeeder
+DriverSeeder
+FleetSeeder
+PermissionSeeder
+RoleSeeder
+TestingRoleSeeder
+UserSeeder
+VehicleSeeder
+```
 
-## Stops
+The current development database was successfully rebuilt using fresh
+migrations and seed data.
 
-Traccar supports stop reporting, but a dedicated FleetTrack Stops
-API/module has not yet been implemented.
+Verified seeded counts at the current checkpoint:
 
-Add it when required by the product roadmap.
-
-## External Alert Delivery
-
-Persistent in-app Alert records and acknowledgement are implemented.
-
-Email, push, SMS, or other external notification delivery should be
-designed only if product requirements explicitly require those channels.
+``` text
+Companies: 4
+Fleets:    4
+Users:     22
+```
 
 ------------------------------------------------------------------------
 
-# Current Quality Status
+# Responsive Frontend
 
-At the latest completed checkpoint:
+## Implemented Foundation
 
--   Authentication and authorization foundation implemented
--   Core Company/Fleet/Driver/Vehicle/Device backend implemented
--   Traccar Device synchronization implemented
--   Live Tracking implemented
--   Vehicle position history implemented
--   Aggregate vehicle trip summary implemented
--   Traccar-detected trip history implemented
--   Geofence CRUD, synchronization, associations, and permission
-    reconciliation implemented
--   Secure Traccar event ingestion implemented for supported events
--   Persistent Alerts and acknowledgement implemented
--   Custom Alert Rule CRUD and runtime evaluation implemented
--   Reports implemented for trips, trip summary, stops, events, route,
-    summary, hours, and combined report reads
--   Dashboard overview implemented with fleet, connectivity, Device, and
-    Alert metrics
--   Targeted Dashboard and Reports suites passing at the latest
-    checkpoint
--   Full test suite passing at the latest checkpoint
--   PHPStan / Larastan clean
--   Laravel Pint formatting/lint checks passing
+The shared frontend is designed for desktop and mobile use.
 
-Report export remains intentionally undefined and unimplemented.
+Implemented responsive behavior includes:
 
-# Next Development Point
+-   desktop sidebar
+-   mobile drawer
+-   responsive page spacing
+-   responsive header behavior
+-   responsive Dashboard components
+-   responsive Fleet page shell
+-   scroll-safe tables
+-   reusable responsive UI primitives
 
-The currently defined backend fleet-management, tracking, Geofence,
-Alerts, Reports-read, and Dashboard overview functionality is
-implemented.
+Every new page should be tested at both desktop and mobile widths.
 
-The remaining explicit product decision is Reports export/report
-generation through `reports.export`. Its output format and contract must
-be defined before implementation.
+Responsive behavior is a feature requirement, not a cleanup task to
+postpone until the end.
 
-Until that requirement exists, the appropriate next work is final
-integration verification and documentation hardening rather than
-inventing additional backend behavior.
+------------------------------------------------------------------------
 
-Before any new feature work, review the latest source and confirm the
-required domain contract, especially for:
+# Frontend Quality and Code Standards
 
-1.  Report export format and content
-2.  Any additional Dashboard time-based KPIs
-3.  External Alert delivery channels
-4.  Any future persistent FleetTrack Trip business entity
+Current frontend scripts support:
+
+``` bash
+npm run format
+npm run format:check
+npm run lint:check
+npm run types:check
+npm run build
+```
+
+The authentication/frontend foundation passed the relevant checks at the
+current checkpoint.
+
+Application UI should continue using semantic tokens from:
+
+``` text
+resources/css/app.css
+```
+
+rather than hard-coded feature-specific Tailwind palette colors.
+
+------------------------------------------------------------------------
+
+# Backend Quality and Code Standards
+
+At meaningful backend/full-stack boundaries, run:
+
+``` bash
+sail composer lint
+sail composer lint:check
+sail composer types:check
+sail artisan test
+```
+
+The project also provides:
+
+``` bash
+sail composer ci:check
+```
+
+for a combined CI-oriented check.
+
+------------------------------------------------------------------------
+
+# Current Product Status Summary
+
+## Backend/API
+
+Substantially implemented:
+
+``` text
+Authentication
+Authorization
+Multi-tenancy
+Companies
+Fleets
+Drivers
+Vehicles
+Devices
+Traccar Device synchronization
+Live Tracking
+Trip/Position history
+Geofences
+Geofence/Vehicle permissions
+Traccar event ingestion
+Alerts
+Custom Alert Rules
+Reports
+Dashboard Overview
+```
+
+## Frontend
+
+Implemented foundation:
+
+``` text
+Application shell
+Responsive layout
+Design tokens
+Reusable UI components
+Wayfinder navigation
+Login
+Authentication persistence/restoration
+Authenticated API client
+Authenticated user sidebar
+Logout
+Dashboard visual UI
+Fleet list with real API data
+```
+
+Frontend domain CRUD remains much less complete than the backend.
+
+------------------------------------------------------------------------
+
+# Next Development Work
+
+## Immediate
+
+Complete Fleet frontend CRUD using the already implemented Fleet API:
+
+``` text
+1. Create Fleet
+2. Edit Fleet
+3. Delete Fleet
+4. Complete interactive pagination
+5. Validate loading/error/empty/form states
+6. Validate responsive behavior
+7. Run full frontend quality gate
+8. Commit the completed Fleet frontend slice
+```
+
+## Then
+
+Apply the established frontend architecture to the remaining backend
+modules.
+
+Likely progression:
+
+``` text
+Vehicles
+Drivers
+Devices
+Live Tracking
+Geofences
+Alerts
+Reports
+Dashboard live-data wiring
+```
+
+The exact order can follow product priority.
+
+------------------------------------------------------------------------
+
+# Known Remaining / Undefined Work
+
+The following should not be reported as completed:
+
+-   Fleet create/edit/delete frontend
+-   Vehicle frontend
+-   Driver frontend
+-   Device frontend
+-   Live Tracking frontend
+-   Geofence frontend
+-   Alert frontend
+-   Alert Rule frontend
+-   Reports frontend
+-   Dashboard live-data wiring
+-   Reports export contract
+-   additional time-period Dashboard KPI contract
+-   external Alert notification channels
+
+FleetTrack also intentionally does not maintain a competing persistent
+GPS Trip detection model at this stage; Traccar remains responsible for
+detected trips.
+
+------------------------------------------------------------------------
+
+# Feature Implementation Principle
+
+A backend API being implemented does not mean the corresponding end-user
+feature is complete.
+
+For documentation and planning, use these distinctions:
+
+``` text
+Backend implemented
+Frontend implemented
+Fully integrated / user-facing complete
+```
+
+The current project has a mature backend foundation and an established
+frontend foundation. The next phase is primarily to expose the existing
+backend capabilities through consistent, responsive Vue pages using the
+architecture already in place.

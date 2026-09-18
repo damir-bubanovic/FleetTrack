@@ -2,39 +2,32 @@
 
 ## 1. Purpose
 
-This document describes the current backend architecture of FleetTrack
-at the latest completed development checkpoint.
+This document describes the current FleetTrack architecture at the
+`FleetTrack_Laravel(7).zip` checkpoint.
 
-FleetTrack is a multi-tenant Laravel fleet-management application that
-uses Traccar as the external GPS/tracking engine. FleetTrack owns
-business-domain data and authorization. Traccar owns GPS positions,
-detected trips, and the tracking-specific representation of devices,
-geofences, and their permissions.
+FleetTrack is a multi-tenant fleet-management and GPS-tracking
+application. Laravel owns the business domain, tenancy, authorization,
+API contracts, and application workflows. Traccar remains the external
+GPS/tracking engine and owns GPS positions, GPS trip detection,
+Traccar-side Devices and Geofences, tracking permissions, and supported
+tracking events.
 
-The architecture is designed around:
+The project now has two established application layers:
 
--   strict company tenancy
--   thin HTTP controllers
--   Form Requests for input validation
--   Policies and permission gates for authorization
--   Actions for application/business logic
--   API Resources for response contracts
--   Services and DTOs for Traccar integration
--   Events, Listeners, and Queue Jobs for asynchronous writes
--   synchronous Traccar reads for tracking and reporting
--   Pest feature tests
--   PHPStan / Larastan
--   Laravel Pint
+``` text
+Laravel backend/API
+Vue 3 + Inertia frontend
+```
 
-The current backend includes the core fleet-management modules,
-tracking, Geofences, Alerts, Custom Alert Rules, and the first Reports
-API slice.
+The frontend is no longer only a placeholder. It has a reusable
+application shell, semantic design system, authentication flow,
+authenticated API client, and the first real API-backed domain page.
 
 ------------------------------------------------------------------------
 
-# 2. Technology
+# 2. Technology Stack
 
-Core stack:
+## Backend
 
 ``` text
 PHP ^8.3
@@ -50,27 +43,41 @@ Laravel Pint
 Traccar REST API
 ```
 
+## Frontend
+
+``` text
+Vue 3
+TypeScript
+Inertia.js 3
+Tailwind CSS 4
+Vite 8
+Laravel Wayfinder
+vue-tsc
+ESLint
+Prettier
+```
+
 ------------------------------------------------------------------------
 
 # 3. High-Level System Architecture
 
 ``` text
-Mobile / Web Client
+Browser / Mobile Client
         |
         v
-FleetTrack Laravel API
+FleetTrack
         |
-        +-----------------------------+
-        |                             |
-        v                             v
-FleetTrack Database             Traccar Server
-        |                             |
-        |                             +--> GPS positions
-        |                             +--> GPS trip detection
-        |                             +--> Traccar devices
-        |                             +--> Traccar geofences
-        |                             +--> Device/geofence permissions
-        |                             +--> Tracking events
+        +-------------------------------+
+        |                               |
+        v                               v
+Laravel / Inertia / API           Traccar Server
+        |                               |
+        v                               +--> GPS positions
+Vue Web Application                    +--> GPS trip detection
+        |                               +--> Traccar Devices
+        v                               +--> Traccar Geofences
+FleetTrack Database                    +--> Device/Geofence permissions
+        |                               +--> Tracking events
         |
         +--> Companies
         +--> Users / roles / permissions
@@ -88,48 +95,48 @@ FleetTrack remains the business-domain authority.
 
 Traccar remains the tracking/GPS authority.
 
-FleetTrack does not expose Traccar identifiers as a substitute for its
-own authorization model.
+External Traccar identifiers never replace FleetTrack tenancy or
+authorization.
 
 ------------------------------------------------------------------------
 
-# 4. Application Layers
+# 4. Backend Application Layers
 
-The primary synchronous HTTP flow is:
+The primary synchronous backend flow is:
 
 ``` text
 Route
-  ↓
+ ↓
 Middleware
-  ↓
+ ↓
 Form Request
-  ↓
+ ↓
 Controller
-  ↓
+ ↓
 Policy / Permission Gate
-  ↓
+ ↓
 Action
-  ↓
+ ↓
 Model / Service
-  ↓
+ ↓
 API Resource
-  ↓
+ ↓
 JSON Response
 ```
 
-Asynchronous external synchronization adds:
+Asynchronous external writes use:
 
 ``` text
 Action
-  ↓
+ ↓
 Domain Event
-  ↓
+ ↓
 Listener
-  ↓
+ ↓
 Queue Job
-  ↓
+ ↓
 Traccar Service
-  ↓
+ ↓
 Traccar REST API
 ```
 
@@ -137,166 +144,135 @@ Incoming Traccar events use:
 
 ``` text
 Traccar
-  ↓
-Webhook
-  ↓
+ ↓
 VerifyTraccarWebhook
-  ↓
+ ↓
 TraccarEventController
-  ↓
-Event-specific DTO / Handler
-  ↓
+ ↓
+Event DTO / Handler
+ ↓
 Application Event
-  ↓
+ ↓
 Queued Listener
-  ↓
+ ↓
 Alert Action
-  ↓
-AlertRule Resolver
-  ↓
+ ↓
+Alert Rule resolution
+ ↓
 Alert persistence
 ```
 
+Tracking and Reports reads remain synchronous because callers need the
+current Traccar result.
+
 ------------------------------------------------------------------------
 
-# 5. Controllers
+# 5. Controllers, Requests, Actions, Services, Resources
 
-Controllers are intentionally thin.
+## Controllers
 
-Their responsibilities are limited to:
+Controllers remain intentionally thin.
 
--   receiving validated requests
--   invoking authorization
--   resolving the authenticated user
--   converting request values into required value objects where
-    appropriate
--   calling Actions
--   returning API Resources or HTTP responses
+Responsibilities:
 
-Controllers should not contain:
+-   authorize
+-   obtain the authenticated user
+-   consume validated input
+-   parse values where needed
+-   invoke Actions
+-   return Resources/responses
 
--   Traccar HTTP implementation
--   tenant ownership mutation logic
--   synchronization orchestration
--   complex alert-rule evaluation
--   GPS trip-detection logic
+Controllers should not contain raw Traccar HTTP logic, tenant-transfer
+rules, substantial business logic, GPS trip detection, or Alert Rule
+evaluation.
 
-Examples include:
+Current controller areas include:
 
 ``` text
-Api\Auth\AuthController
-Api\Company\CompanyController
-Api\Fleet\FleetController
-Api\Driver\DriverController
-Api\Vehicle\VehicleController
-Api\Device\DeviceController
-Api\Geofence\GeofenceController
-Api\Geofence\GeofenceVehicleController
-Api\Tracking\LiveTrackingController
-Api\Traccar\TraccarEventController
-Api\Alert\AlertController
-Api\AlertRule\AlertRuleController
-Api\Report\ReportController
+Auth
+Company
+Fleet
+Driver
+Vehicle
+Device
+Geofence
+GeofenceVehicle
+Tracking
+TraccarEvent
+Alert
+AlertRule
+Report
+Dashboard
 ```
 
-------------------------------------------------------------------------
+## Form Requests
 
-# 6. Form Requests
+Form Requests own HTTP validation.
 
-Form Requests define input validation.
-
-Current examples include requests for:
-
--   Companies
--   Fleets
--   Drivers
--   Vehicles
--   Devices
--   Geofences
--   Alert Rules
--   Tracking date ranges
--   Report date ranges
-
-The first Reports endpoint uses a dedicated `VehicleTripReportRequest`.
-
-Its current contract requires:
+Current validation areas include:
 
 ``` text
-from    required date
-to      required date and after from
+Companies
+Fleets
+Drivers
+Vehicles
+Devices
+Geofences
+Alert Rules
+Tracking ranges
+Report ranges
 ```
 
-Validation remains separate from Actions and controllers.
+## Actions
 
-------------------------------------------------------------------------
+Actions own application/business operations.
 
-# 7. Actions
-
-Actions contain application/business logic.
-
-Examples of responsibilities include:
-
--   enforcing company ownership
--   preventing tenant transfer
--   resolving related models
--   creating/updating/deleting domain models
--   initiating synchronization events
--   retrieving visible tracking data
--   resolving custom Alert Rules
--   generating Alerts
-
-Representative areas:
+Current Action areas include:
 
 ``` text
-Actions/
-├── Alert/
-├── AlertRule/
-├── Company/
-├── Device/
-├── Driver/
-├── Fleet/
-├── Geofence/
-├── Tracking/
-└── Vehicle/
+Alert
+AlertRule
+Company
+Dashboard
+Device
+Driver
+Fleet
+Geofence
+Tracking
+Vehicle
 ```
 
-The Reports layer currently reuses the existing tracking Action
-`GetVehicleTrips` instead of introducing duplicate reporting logic.
+Reports intentionally reuse Tracking Actions rather than duplicating
+report-domain logic.
+
+## Services
+
+External Traccar communication is isolated behind integration services
+such as:
+
+``` text
+TraccarClient
+TraccarDeviceService
+TraccarGeofenceService
+PositionService
+ReportService
+```
+
+## API Resources
+
+Resources define stable FleetTrack response contracts and normalize
+model/external data before it reaches clients.
+
+Tracking and Reports reuse common Resources where the same contract
+applies.
 
 ------------------------------------------------------------------------
 
-# 8. API Resources
+# 6. Authentication Architecture
 
-API Resources define stable response contracts.
+Backend authentication uses Laravel Sanctum.
 
-Resources isolate external or model-specific representation from the
-HTTP contract.
-
-Current examples include resources for:
-
--   Companies
--   Fleets
--   Drivers
--   Vehicles
--   Devices
--   Geofences
--   Tracking positions
--   Vehicle trip summaries
--   Vehicle trips
--   Alerts
--   Alert Rules
-
-The Reports vehicle-trip endpoint reuses `VehicleTripResource`, ensuring
-that tracking and reporting expose the same normalized trip
-representation.
-
-------------------------------------------------------------------------
-
-# 9. Authentication
-
-Laravel Sanctum protects authenticated API routes.
-
-Primary authentication endpoints:
+Current API endpoints:
 
 ``` text
 POST /api/v1/auth/login
@@ -304,41 +280,119 @@ GET  /api/v1/auth/me
 POST /api/v1/auth/logout
 ```
 
-The Traccar event webhook is intentionally outside Sanctum because
-Traccar is the caller.
+The current Vue web client uses the existing Sanctum
+personal-access-token flow rather than Laravel web-session
+authentication.
 
-Instead it is protected by:
+Frontend authentication architecture:
 
 ``` text
-VerifyTraccarWebhook
+Auth/Login.vue
+ ↓
+authService.login()
+ ↓
+POST /api/v1/auth/login
+ ↓
+Sanctum bearer token
+ ↓
+authToken.ts
+ ↓
+browser localStorage
 ```
+
+The token key is:
+
+``` text
+fleettrack_auth_token
+```
+
+Authenticated API flow:
+
+``` text
+Vue feature service
+ ↓
+apiRequest()
+ ↓
+Authorization: Bearer <token>
+ ↓
+Laravel auth:sanctum
+ ↓
+API controller
+```
+
+Authentication restoration:
+
+``` text
+AppLayout mounts
+ ↓
+authState.initialize()
+ ↓
+stored token exists?
+ ↓
+GET /api/v1/auth/me
+ ↓
+authenticated User restored
+```
+
+If authentication cannot be restored:
+
+``` text
+token removed
+ ↓
+auth state cleared
+ ↓
+redirect to /login
+```
+
+Logout:
+
+``` text
+AppSidebar
+ ↓
+authState.logout()
+ ↓
+POST /api/v1/auth/logout
+ ↓
+remove local token
+ ↓
+clear User state
+ ↓
+redirect /login
+```
+
+A `401` returned through the shared API client also removes the stored
+token.
+
+Important current boundary: the Inertia web routes are not protected by
+Laravel's session-based `auth` middleware. The application shell
+performs the frontend guard, while all protected data remains
+server-side protected through Sanctum and authorization.
+
+Changing this to session-based SPA authentication would be an
+architectural change and should be done intentionally rather than
+layered on top of the current bearer-token design.
 
 ------------------------------------------------------------------------
 
-# 10. Authorization and Multi-Tenancy
+# 7. Authorization and Multi-Tenancy
 
 FleetTrack uses company-based tenancy.
 
-Spatie Laravel Permission is configured with Teams.
-
-Authenticated tenant-aware routes use:
+Authenticated tenant-aware API routes use:
 
 ``` text
 auth:sanctum
 SetPermissionTeam
 ```
 
-The middleware establishes the correct permission-team context for the
-authenticated company user.
+Spatie Laravel Permission is configured with Teams.
 
-## Authorization mechanisms
-
-FleetTrack uses both:
+Authorization uses:
 
 1.  model Policies
-2.  permission gates for capability-oriented endpoints
+2.  capability/permission gates
 
-Examples:
+Representative permissions include:
 
 ``` text
 tracking.view
@@ -352,41 +406,29 @@ alert-rules.update
 alert-rules.delete
 ```
 
-Model-specific CRUD modules use Policies where ownership checks are
-required.
-
-## Tenant visibility
-
-Models that belong to companies use company visibility patterns,
-including the shared `BelongsToCompany` concern.
-
-The concern provides company relationship and visibility/query helpers
-such as:
-
-``` text
-company()
-forCompany()
-visibleTo()
-```
+Models belonging to Companies use shared visibility patterns, including
+the `BelongsToCompany` concern.
 
 Core rule:
 
 ``` text
 Company user
-    ↓
-may access only entities visible to that company
+ ↓
+only Company-visible FleetTrack entities
+ ↓
+only then external Traccar data
 ```
 
-Super Administrators may have global visibility where explicitly
-supported.
+Super Administrator behavior follows the explicit policy/visibility
+behavior already implemented.
 
-External Traccar IDs never override this rule.
+External IDs never bypass tenant visibility.
 
 ------------------------------------------------------------------------
 
-# 11. Core Domain Model
+# 8. Core Domain Model
 
-The current domain can be represented approximately as:
+The current domain is approximately:
 
 ``` text
 Company
@@ -396,7 +438,7 @@ Company
 ├── Vehicles
 │   ├── Device
 │   ├── Alerts
-│   ├── Alert Rules (optional vehicle scope)
+│   ├── Alert Rules (optional Vehicle scope)
 │   └── Geofences (many-to-many)
 ├── Devices
 ├── Geofences
@@ -404,43 +446,30 @@ Company
 └── Alert Rules
 ```
 
-A Geofence belongs to one Company.
+A Vehicle belongs to a Company and may belong to a Fleet.
 
-A Vehicle belongs to one Company and may belong to a Fleet.
+A Device belongs to a Company and is associated with a Vehicle according
+to the existing Device rules.
 
-A Device belongs to a Company and is assigned to a Vehicle according to
-the existing Device domain rules.
+A Geofence belongs to a Company.
 
-A Geofence may be associated with multiple Vehicles.
+Geofences and Vehicles have a many-to-many FleetTrack relationship.
 
-A Vehicle may be associated with multiple Geofences.
+Alerts are Company-scoped business entities.
 
-An Alert belongs to a Company and is associated with the relevant
-vehicle/event context.
-
-An Alert Rule belongs to a Company and may optionally be scoped to a
-Vehicle.
+Alert Rules belong to a Company and may optionally target a Vehicle.
 
 ------------------------------------------------------------------------
 
-# 12. Traccar Boundary
+# 9. Traccar Boundary
 
-All Traccar HTTP communication is isolated behind dedicated integration
-classes.
+Traccar payloads and HTTP behavior are kept outside controllers and
+domain models.
 
-Core services include:
+FleetTrack uses dedicated services and DTOs to isolate the external
+contract.
 
-``` text
-TraccarClient
-TraccarDeviceService
-TraccarGeofenceService
-PositionService
-ReportService
-```
-
-DTOs isolate Traccar payloads from FleetTrack application code.
-
-Examples include:
+Representative DTOs include:
 
 ``` text
 DeviceData
@@ -451,26 +480,36 @@ IgnitionEventData
 DeviceOfflineEventData
 ```
 
-This boundary prevents controllers and domain models from becoming
-coupled to Traccar's raw HTTP API.
+Architectural rule:
+
+``` text
+FleetTrack domain
+ ↓
+Service / DTO boundary
+ ↓
+Traccar
+```
+
+Do not expose raw Traccar behavior directly in Vue pages or Laravel
+controllers.
 
 ------------------------------------------------------------------------
 
-# 13. Device Synchronization
+# 10. Device Synchronization
 
 Device lifecycle writes are asynchronous.
 
 ``` text
 Device Action
-    ↓
+ ↓
 Device Event
-    ↓
+ ↓
 Listener
-    ↓
+ ↓
 Queue Job
-    ↓
+ ↓
 TraccarDeviceService
-    ↓
+ ↓
 Traccar REST API
 ```
 
@@ -480,66 +519,24 @@ Implemented behavior includes:
 -   update Traccar Device
 -   delete Traccar Device
 -   persist Traccar Device ID
--   persist synchronization timestamp/state
+-   persist synchronization state/timestamp
 -   retry failed queue work
--   reconcile existing Geofence associations after initial Device
-    synchronization
+-   reconcile existing Geofence associations after synchronization
 
-The local FleetTrack write is not coupled to immediate Traccar
+FleetTrack local writes therefore do not require immediate Traccar
 availability.
 
 ------------------------------------------------------------------------
 
-# 14. Geofence Architecture
+# 11. Geofence Architecture
 
-The Geofence module contains four major concerns:
+The Geofence module owns:
 
 1.  local CRUD and authorization
 2.  Traccar lifecycle synchronization
-3.  Geofence ↔ Vehicle association synchronization
-4.  Traccar geofence transition event handling
-
-## Local Geofence lifecycle
-
-``` text
-API
- ↓
-GeofenceController
- ↓
-Policy
- ↓
-Create / Update / Delete Geofence Action
- ↓
-Geofence model
-```
-
-Tenant rules prevent company users from creating or transferring
-Geofences outside their own Company.
-
-Traccar-managed fields are not writable by ordinary API clients.
-
-## Traccar lifecycle synchronization
-
-``` text
-Geofence Action
- ↓
-Domain Event
- ↓
-Listener
- ↓
-Queue Job
- ↓
-TraccarGeofenceService
- ↓
-Traccar REST API
-```
-
-The local Geofence stores the external Traccar geofence ID after
-successful synchronization.
-
-------------------------------------------------------------------------
-
-# 15. Geofence ↔ Vehicle Association Architecture
+3.  Geofence ↔ Vehicle associations
+4.  Traccar permission synchronization
+5.  supported geofence transition events
 
 FleetTrack intentionally models:
 
@@ -547,147 +544,67 @@ FleetTrack intentionally models:
 Geofence ↔ Vehicle
 ```
 
-rather than exposing a Traccar-specific:
+rather than exposing Traccar's Device relationship as the CRM domain.
 
-``` text
-Geofence ↔ Device
-```
-
-relationship to the CRM domain.
-
-The local association is stored in the `geofence_vehicle` pivot table.
+The local association is stored in the `geofence_vehicle` pivot.
 
 Synchronization resolves:
 
 ``` text
-Geofence
-    ↓
-traccar_geofence_id
-
-Vehicle
-    ↓
-Device
-    ↓
-traccar_device_id
+Geofence.traccar_geofence_id
+Vehicle -> Device -> traccar_device_id
 ```
 
-Then FleetTrack synchronizes the resulting Traccar permission.
-
-## Attach flow
-
-``` text
-POST /geofences/{geofence}/vehicles/{vehicle}
- ↓
-GeofenceVehicleController
- ↓
-Geofence update authorization
- ↓
-AttachVehicleToGeofence
- ↓
-geofence_vehicle pivot
- ↓
-VehicleAttachedToGeofence
- ↓
-Listener
- ↓
-SyncGeofenceVehiclePermission
- ↓
-Traccar POST /permissions
-```
-
-## Detach flow
-
-``` text
-DELETE /geofences/{geofence}/vehicles/{vehicle}
- ↓
-GeofenceVehicleController
- ↓
-Geofence update authorization
- ↓
-DetachVehicleFromGeofence
- ↓
-geofence_vehicle pivot removal
- ↓
-VehicleDetachedFromGeofence
- ↓
-Listener
- ↓
-RemoveGeofenceVehiclePermission
- ↓
-Traccar DELETE /permissions
-```
+and synchronizes the resulting Traccar permission.
 
 Attach and detach behavior is idempotent.
 
-Cross-company associations are rejected.
-
 ------------------------------------------------------------------------
 
-# 16. Eventual Consistency and Stale Queue Protection
+# 12. Eventual Consistency and Stale Job Protection
 
-Device and Geofence synchronization is asynchronous.
+Device and Geofence synchronization is asynchronous, so external IDs may
+become available after local relationships are created.
 
-Therefore this sequence is valid:
-
-``` text
-Create local Geofence
- ↓
-Attach Vehicle
- ↓
-Geofence Traccar ID does not exist yet
- ↓
-Initial permission job cannot synchronize
- ↓
-Geofence synchronization completes later
- ↓
-Existing Vehicle associations are reconciled
-```
-
-The inverse is also valid when the Device receives its Traccar ID later.
-
-Both sides therefore participate in reconciliation:
+Both sides participate in reconciliation:
 
 ``` text
 Geofence sync completion
-    ↓
+ ↓
 reconcile associated Vehicles
 
 Device sync completion
-    ↓
+ ↓
 reconcile associated Geofences
 ```
 
-## Stale attach protection
+Queued permission jobs protect against stale desired state.
 
-Before creating a Traccar permission, the queued job checks that the
-local Geofence ↔ Vehicle association still exists.
+Before a queued attach writes to Traccar, it verifies the local
+relationship still exists.
 
-If it was removed after the job was queued, the job exits without
-writing stale state.
+Before a queued detach removes a Traccar permission, it verifies the
+relationship has not been recreated.
 
-## Stale detach protection
-
-Before deleting a Traccar permission, the queued job checks that the
-local association has not been recreated.
-
-If it exists again, the stale detach job exits.
-
-This makes the local FleetTrack relationship the desired-state
-authority.
+FleetTrack's local relationship remains the desired-state authority.
 
 ------------------------------------------------------------------------
 
-# 17. Traccar Event Architecture
+# 13. Traccar Event and Alert Architecture
 
-FleetTrack receives supported Traccar events through:
+Supported Traccar events enter through:
 
 ``` text
 POST /api/v1/traccar/events
 ```
 
-The endpoint is protected by `VerifyTraccarWebhook`.
+protected by:
 
-Current event types:
+``` text
+VerifyTraccarWebhook
+```
+
+Current supported event types include:
 
 ``` text
 geofenceEnter
@@ -698,9 +615,6 @@ ignitionOff
 deviceOffline
 ```
 
-The controller validates the event-specific payload and delegates to the
-corresponding handler.
-
 Typical flow:
 
 ``` text
@@ -708,40 +622,22 @@ Traccar
  ↓
 TraccarEventController
  ↓
-Event DTO
- ↓
-Handle<Event>
+event DTO / handler
  ↓
 FleetTrack application event
  ↓
-Queued listener
+queued listener
  ↓
-Create<Event>Alert
+Alert Action
  ↓
-AlertRule resolution
+ResolveAlertRule
  ↓
 Alert persistence
 ```
 
-This prevents raw Traccar payload handling from leaking into Alert
-Actions.
-
-------------------------------------------------------------------------
-
-# 18. Alert Architecture
-
 Alerts are persistent FleetTrack business entities.
 
-Current supported sources:
-
--   Geofence entry
--   Geofence exit
--   Overspeed
--   Ignition on
--   Ignition off
--   Device offline
-
-The Alerts API provides:
+Current Alert API:
 
 ``` text
 GET   /api/v1/alerts
@@ -749,29 +645,16 @@ GET   /api/v1/alerts/{alert}
 PATCH /api/v1/alerts/{alert}/acknowledge
 ```
 
-Authorization uses:
-
-``` text
-alerts.view
-alerts.acknowledge
-```
-
-Alerts are company-scoped and tenant-safe.
-
 Alert acknowledgement is idempotent.
 
-Where a Traccar event ID is available, alert creation uses it as part of
-the idempotency strategy to avoid duplicate persisted alerts for the
-same external event.
+Where available, external event IDs participate in duplicate-prevention
+behavior.
 
 ------------------------------------------------------------------------
 
-# 19. Custom Alert Rule Architecture
+# 14. Custom Alert Rules
 
-Alert Rules provide configurable behavior without replacing the default
-alert pipeline.
-
-An Alert Rule contains:
+Alert Rules contain:
 
 ``` text
 company_id
@@ -783,17 +666,11 @@ conditions JSON
 is_active
 ```
 
-Meaning:
+`vehicle_id = null` means Company-wide.
 
-``` text
-vehicle_id = null
-    → company-wide rule
+A Vehicle value means Vehicle-specific.
 
-vehicle_id = value
-    → vehicle-specific rule
-```
-
-Supported rule types currently match the implemented Alert sources:
+Supported rule types currently align with supported Alert event sources:
 
 ``` text
 overspeed
@@ -804,73 +681,22 @@ ignition_off
 device_offline
 ```
 
-## Rule resolution
+Runtime evaluation is centralized in `ResolveAlertRule`.
 
-Runtime rule evaluation is centralized in:
+Vehicle-specific rules take precedence where applicable, with
+Company-wide fallback.
 
-``` text
-ResolveAlertRule
-```
+For overspeed rules, `conditions.speed_limit_kmh` is compared against
+actual speed in km/h using a strict greater-than comparison.
 
-Conceptual flow:
-
-``` text
-Alert event
- ↓
-Resolve Vehicle
- ↓
-ResolveAlertRule
- ↓
-active rules for Company + event type
- ↓
-vehicle-specific rules first
- ↓
-company-wide fallback
- ↓
-condition evaluation
- ↓
-matching rule or null
-```
-
-For overspeed rules:
-
-``` text
-conditions.speed_limit_kmh
-```
-
-is compared against the actual event speed converted to km/h.
-
-The comparison is strict:
-
-``` text
-actual speed > configured limit
-```
-
-A speed equal to the configured threshold does not match.
-
-If a vehicle-specific rule does not satisfy its condition, a matching
-company-wide rule may still be selected.
-
-For the other currently supported event types, no additional runtime
-condition is required.
-
-If a matching rule exists, its severity overrides the default Alert
-severity.
-
-If no rule matches, the existing default Alert behavior remains
-unchanged.
-
-This fallback is important: custom rules augment Alert generation rather
-than silently disabling default Alerts.
+Custom rules augment the default Alert pipeline. If no custom rule
+matches, default Alert behavior remains.
 
 ------------------------------------------------------------------------
 
-# 20. Tracking Read Architecture
+# 15. Tracking Architecture
 
-Tracking reads are synchronous.
-
-The client needs the current Traccar response, so they do not use queue
-jobs.
+Tracking reads are synchronous:
 
 ``` text
 Tracking API
@@ -881,172 +707,55 @@ Tracking Action
  ↓
 PositionService / ReportService
  ↓
-Traccar REST API
+Traccar
  ↓
-Tracking API Resource
+FleetTrack Resource
  ↓
 JSON
 ```
 
-Tracking routes require authentication, permission-team middleware, and
-`tracking.view` authorization.
-
-------------------------------------------------------------------------
-
-# 21. Live Position Tracking
-
-Fleet-wide live tracking:
+Current tracking endpoints include:
 
 ``` text
 GET /api/v1/tracking/positions
-```
-
-Per-vehicle live tracking:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}
-```
-
-FleetTrack first resolves visible FleetTrack entities and synchronized
-Devices. Only then are Traccar position requests made.
-
-This ensures external tracking data cannot bypass FleetTrack tenancy.
-
-Online/offline status is derived from the freshness of the latest GPS
-fix.
-
-------------------------------------------------------------------------
-
-# 22. Position History
-
-Endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}/positions
-```
-
-Flow:
-
-``` text
-Vehicle
- ↓
-tenant-visible Device
- ↓
-traccar_device_id
- ↓
-PositionService
- ↓
-Traccar positions API
- ↓
-HistoricalPositionResource
-```
-
-The tracking request validates a bounded date range.
-
-The current position-history contract allows a maximum seven-day range.
-
-------------------------------------------------------------------------
-
-# 23. Aggregate Vehicle Trip Summary
-
-Endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
-```
-
-This endpoint is calculated from the requested position-history range.
-
-It provides aggregate statistics such as:
-
--   position count
--   start/end time
--   duration
--   distance
--   average speed
--   maximum speed
--   moving time
--   stopped time
-
-It is intentionally distinct from Traccar-detected trip history.
-
-The summary answers:
-
-``` text
-What happened across this selected position range?
-```
-
-It does not answer:
-
-``` text
-Which individual GPS trips did Traccar detect?
-```
-
-------------------------------------------------------------------------
-
-# 24. Traccar-Detected Vehicle Trips
-
-Tracking endpoint:
-
-``` text
 GET /api/v1/tracking/vehicles/{vehicle}/trips
 ```
 
-FleetTrack delegates GPS trip detection to Traccar's:
+FleetTrack resolves visible local entities and synchronized Devices
+before requesting external tracking data.
 
-``` text
-/reports/trips
-```
+Online/offline status is derived from GPS-fix freshness through shared
+FleetTrack semantics.
 
-The flow is:
+Position-history requests use a bounded date range.
 
-``` text
-Vehicle
- ↓
-GetVehicleTrips
- ↓
-tenant-visible synchronized Device
- ↓
-ReportService
- ↓
-Traccar /reports/trips
- ↓
-VehicleTripResource
-```
-
-FleetTrack does not currently maintain a competing trip-detection
-algorithm.
-
-The normalized trip contract includes:
-
--   device reference
--   optional driver unique reference
--   start/end timestamps
--   start/end coordinates
--   distance in kilometers
--   duration
--   average speed
--   maximum speed
--   explicit speed unit
--   start/end addresses
+FleetTrack delegates detected trip history to Traccar `/reports/trips`;
+it does not maintain a competing trip-detection algorithm.
 
 ------------------------------------------------------------------------
 
-# 25. Reports Architecture
+# 16. Reports Architecture
 
 Reports is a report-specific HTTP layer over existing FleetTrack
-tracking/application behavior.
-
-Architectural rule:
+tracking/application infrastructure.
 
 ``` text
-Report-specific HTTP API
-    ↓
-reuse existing FleetTrack tracking Actions
-    ↓
-reuse Traccar service boundary
-    ↓
-reuse stable API Resources where appropriate
+Report HTTP API
+ ↓
+ReportController
+ ↓
+reports.view
+ ↓
+existing Tracking Actions
+ ↓
+ReportService
+ ↓
+Traccar report endpoints
+ ↓
+FleetTrack Resource / response
 ```
 
 Current endpoints:
@@ -1062,116 +771,50 @@ GET /api/v1/reports/vehicles/{vehicle}/hours
 GET /api/v1/reports/vehicles/{vehicle}/combined
 ```
 
-Route middleware:
+Current Actions include:
 
 ``` text
-api
-auth:sanctum
-SetPermissionTeam
+GetVehicleTrips
+GetVehicleTripSummary
+GetVehicleStops
+GetVehicleEvents
+GetVehicleRoute
+GetVehicleSummary
+GetVehicleHours
+GetVehicleCombinedReport
 ```
 
-Controller authorization:
+The Reports controller does not call Traccar directly.
 
-``` text
-reports.view
-```
-
-The controller delegates to existing tracking Actions:
-
--   `GetVehicleTrips`
--   `GetVehicleTripSummary`
--   `GetVehicleStops`
--   `GetVehicleEvents`
--   `GetVehicleRoute`
--   `GetVehicleSummary`
--   `GetVehicleHours`
--   `GetVehicleCombinedReport`
-
-Traccar report reads remain behind `ReportService`, which currently owns
-the `/reports/trips`, `/reports/stops`, `/reports/events`,
-`/reports/route`, `/reports/summary`, `/reports/hours`, and
-`/reports/combined` boundaries.
-
-The Reports controller does not perform Traccar HTTP calls directly.
-
-Stable FleetTrack Resources normalize report output where a contract has
-been established. The combined report intentionally preserves the raw
-combined payload rather than inventing a narrower schema.
-
-Focused report coverage includes authentication, authorization,
-validation, tenant isolation, Super Administrator access, missing or
-unsynchronized Devices, Traccar request parameters, and report response
-contracts.
-
-# 26. Reports Permissions
-
-Report permissions already exist in the authorization model:
-
-``` text
-reports.view
-reports.export
-```
-
-The current trip report uses:
-
-``` text
-reports.view
-```
-
-`reports.export` is reserved for export functionality when the output
-contract is defined.
-
-A model-less `ReportPolicy` is not required for the current
-architecture. Capability authorization is performed through Laravel's
-permission gate, in the same general style as tracking capability
-authorization.
+`reports.export` exists as a reserved capability, but the export
+format/content/download contract has not been defined. Do not invent it.
 
 ------------------------------------------------------------------------
 
-# 27. Reports Work Remaining
+# 17. Dashboard Backend Architecture
 
-Reports read endpoints are implemented.
-
-The remaining reserved capability is export/report generation through:
-
-``` text
-reports.export
-```
-
-The export architecture must not be finalized until product requirements
-define the output format, included data, validation, and
-response/download contract.
-
-No duplicate GPS trip-detection algorithm should be introduced.
-
-# 28. Dashboard
-
-Dashboard overview is implemented as a thin aggregation layer over
-existing FleetTrack domain visibility and tracking semantics.
-
-Endpoint:
+Backend endpoint:
 
 ``` text
 GET /api/v1/dashboard/overview
 ```
 
-Flow:
+Conceptual flow:
 
 ``` text
 DashboardController
  ↓
 GetDashboardOverview
- ├─ Company counts
- ├─ visible synchronized Devices
+ ├─ Company/Fleet/Vehicle/Device counts
  ├─ visible Alerts
- └─ GetLivePositions
+ └─ live position/connectivity behavior
       ↓
    VehicleOnlineStatus
  ↓
 DashboardOverviewResource
 ```
 
-Current response metrics:
+Current metrics:
 
 ``` text
 companies
@@ -1185,121 +828,498 @@ alerts
 unacknowledged_alerts
 ```
 
-Architectural rules:
+The Dashboard does not define a second connectivity model.
 
--   Dashboard does not create a second connectivity definition.
--   Online/offline freshness is centralized in `VehicleOnlineStatus`.
--   Device connectivity is based on synchronized Devices with non-null
-    `traccar_device_id`.
--   Unsynchronized Devices are not classified as offline tracking
-    Devices.
--   Unassigned online Devices may contribute to Device connectivity but
-    not Vehicle connectivity.
--   Alert aggregation reuses `Alert::visibleTo($user)`.
--   Unacknowledged Alerts are represented by null `acknowledged_at`.
--   Super Administrator customer totals exclude the internal system
-    Company.
+Online/offline semantics reuse `VehicleOnlineStatus`.
 
-The current metrics are the initial fleet KPI contract. Time-based
-distance, duration, speed, utilization, or similar KPIs require an
-explicit reporting period and aggregation contract before they are
-added.
+Unsynchronized Devices are not treated as offline synchronized tracking
+Devices.
 
-# 29. Error and Failure Boundaries
+Alert aggregation reuses tenant visibility.
 
-FleetTrack distinguishes between local business state and external
-Traccar state.
+Time-based distance, duration, speed, utilization, or similar KPIs
+require an explicit period and aggregation contract before being added.
+
+------------------------------------------------------------------------
+
+# 18. Frontend Application Architecture
+
+The current Vue application has an established reusable architecture.
+
+``` text
+Inertia web route
+ ↓
+Vue Page
+ ↓
+AppLayout
+ ↓
+App components + reusable UI components
+ ↓
+feature service
+ ↓
+apiRequest()
+ ↓
+generated Wayfinder API route
+ ↓
+Laravel API
+```
+
+Current active web pages:
+
+``` text
+/        -> Dashboard.vue
+/login   -> Auth/Login.vue
+/fleets  -> Fleets/Index.vue
+```
+
+`Welcome.vue` remains in the source tree but is not part of the current
+authenticated application flow.
+
+------------------------------------------------------------------------
+
+# 19. Frontend Application Shell
+
+Core application components:
+
+``` text
+resources/js/components/app/AppLogo.vue
+resources/js/components/app/AppHeader.vue
+resources/js/components/app/AppSidebar.vue
+resources/js/components/app/AppFooter.vue
+resources/js/layouts/AppLayout.vue
+```
+
+`AppLayout` owns the shared authenticated page shell.
+
+Current responsive behavior includes:
+
+-   fixed desktop sidebar
+-   mobile navigation drawer
+-   backdrop
+-   Escape-key close behavior
+-   body scroll locking while mobile navigation is open
+-   responsive content padding
+-   integrated footer
+-   authentication initialization before protected content is displayed
+-   unauthenticated redirect to `/login`
+
+`AppSidebar` owns navigation and authenticated-user presentation.
+
+It reads the User from `authState`, derives initials and role
+presentation, and owns Sign out behavior.
+
+------------------------------------------------------------------------
+
+# 20. Reusable Frontend UI Layer
+
+Current reusable UI components:
+
+``` text
+AppButton.vue
+AppCard.vue
+AppCheckbox.vue
+AppIcon.vue
+AppInput.vue
+AppPagination.vue
+AppSelect.vue
+AppTable.vue
+AppTextarea.vue
+EmptyState.vue
+ErrorState.vue
+FormField.vue
+LoadingState.vue
+PageHeader.vue
+StatusBadge.vue
+```
+
+Page implementations should reuse these components before introducing
+feature-specific duplicates.
+
+Dashboard-specific reusable components currently include:
+
+``` text
+DashboardMetricCard.vue
+DeviceConnectivity.vue
+FleetStatusTable.vue
+RecentAlerts.vue
+```
+
+------------------------------------------------------------------------
+
+# 21. Frontend Design System
+
+Application styling is centralized in:
+
+``` text
+resources/css/app.css
+```
+
+The frontend uses semantic application tokens rather than feature pages
+directly choosing arbitrary Tailwind palette colors.
+
+Current semantic concepts include:
+
+``` text
+brand
+brand-hover
+brand-dark
+brand-soft
+
+app
+surface
+surface-muted
+sidebar
+
+content
+content-secondary
+muted
+subtle
+
+border-default
+border-strong
+
+success
+warning
+danger
+info
+```
+
+A previous frontend audit found no direct application use of the checked
+amber/slate/emerald/orange/red/blue palette utility classes under
+`resources/js`.
+
+This semantic-token approach should continue as additional pages are
+implemented.
+
+------------------------------------------------------------------------
+
+# 22. Wayfinder and Routing
+
+Laravel Wayfinder generates typed frontend route helpers.
+
+Generated route/action code lives under:
+
+``` text
+resources/js/routes/
+resources/js/actions/
+resources/js/wayfinder/
+```
+
+Current generated web helpers include:
+
+``` text
+resources/js/routes/web/index.ts
+resources/js/routes/web/fleets/index.ts
+```
+
+When Laravel routes change:
+
+``` bash
+sail artisan wayfinder:generate
+```
+
+Generated Wayfinder files should not be manually edited.
+
+Feature services and navigation should use generated helpers where
+appropriate.
+
+------------------------------------------------------------------------
+
+# 23. Frontend API Boundary
+
+Authenticated API behavior is centralized in:
+
+``` text
+resources/js/services/apiClient.ts
+```
+
+`apiRequest<T>()` currently handles:
+
+-   `Accept: application/json`
+-   bearer-token attachment
+-   centralized API errors
+-   token removal on `401`
+-   `ApiError`
+-   `204 No Content`
+
+Feature services should remain thin and use this shared boundary.
+
+Current services:
+
+``` text
+apiClient.ts
+authService.ts
+authState.ts
+authToken.ts
+fleetService.ts
+```
+
+Current frontend domain types include:
+
+``` text
+types/auth.ts
+types/fleet.ts
+```
+
+Do not duplicate authorization headers or generic fetch/error handling
+in individual feature pages.
+
+------------------------------------------------------------------------
+
+# 24. Current Dashboard Frontend
+
+The Dashboard page exists and uses the shared application shell and
+reusable Dashboard components.
+
+Important distinction:
+
+``` text
+Dashboard backend API      implemented
+Dashboard Vue live wiring  not yet implemented
+```
+
+The current Vue Dashboard still uses static/mock display data.
+
+Therefore the Dashboard frontend must not yet be described as live-data
+complete.
+
+When wired later, it should use the shared API client and the existing
+backend `/api/v1/dashboard/overview` contract rather than creating a
+second data path.
+
+------------------------------------------------------------------------
+
+# 25. Current Fleets Frontend
+
+The Fleets page is the first domain page connected to real authenticated
+API data.
+
+Current files:
+
+``` text
+resources/js/pages/Fleets/Index.vue
+resources/js/services/fleetService.ts
+resources/js/types/fleet.ts
+```
+
+Current flow:
+
+``` text
+/fleets
+ ↓
+Fleets/Index.vue
+ ↓
+getFleets(page)
+ ↓
+apiRequest()
+ ↓
+Wayfinder fleets.index URL
+ ↓
+GET /api/v1/fleets?page=...
+ ↓
+FleetResource collection
+ ↓
+Vue table
+```
+
+Implemented frontend behavior:
+
+-   authenticated Fleet list
+-   loading state
+-   error state
+-   empty state
+-   Fleet table
+-   semantic status badge
+-   pagination metadata display
+-   refresh action
+-   responsive layout
+
+Manual browser verification confirmed seeded Fleets load successfully
+after authentication.
+
+Not yet implemented in the Vue frontend:
+
+``` text
+Create Fleet
+Edit Fleet
+Delete Fleet
+Fleet detail page
+fully interactive API pagination
+Fleet create/update validation UX
+```
+
+The backend Fleet CRUD API already exists, so the next slice should
+extend the existing frontend rather than redesigning the backend.
+
+------------------------------------------------------------------------
+
+# 26. Remaining Frontend Modules
+
+Sidebar navigation already represents the broader application
+information architecture:
+
+``` text
+Dashboard
+Fleets
+Vehicles
+Drivers
+Devices
+Live Tracking
+Geofences
+Alerts
+Reports
+```
+
+Only Dashboard and Fleets currently have active application pages in
+that navigation.
+
+The remaining entries are intentionally unavailable/disabled until their
+frontend routes/pages are implemented.
+
+Backend APIs for these domains largely already exist.
+
+The established frontend architecture should be applied to each module
+rather than creating independent page architectures.
+
+------------------------------------------------------------------------
+
+# 27. Database Architecture and Seed State
+
+Current migrations cover the active FleetTrack domain, including:
+
+``` text
+Companies
+Users
+Permissions
+Sanctum personal access tokens
+Fleets
+Vehicles
+Devices
+Geofences
+Geofence ↔ Vehicle
+Alerts
+Alert Rules
+Drivers
+```
+
+Factories exist for the primary current domain models.
+
+Current seeders include:
+
+``` text
+CompanyRoleSeeder
+CompanySeeder
+DatabaseSeeder
+DeviceSeeder
+DriverSeeder
+FleetSeeder
+PermissionSeeder
+RoleSeeder
+TestingRoleSeeder
+UserSeeder
+VehicleSeeder
+```
+
+A current `migrate:fresh --seed` was manually verified at this
+checkpoint.
+
+Observed seeded counts:
+
+``` text
+4 Companies
+4 Fleets
+22 Users
+```
+
+The seeded System Administrator account exists, is active, and the
+factory-generated development password was verified with Laravel
+`Hash::check`.
+
+------------------------------------------------------------------------
+
+# 28. Error and Failure Boundaries
+
+FleetTrack separates local business state from external tracking state.
 
 ## Local writes
 
-Local model changes can succeed before external synchronization
-completes.
+Local changes may succeed before Traccar synchronization completes.
 
 Queue jobs provide eventual synchronization.
 
-## External read failures
+## External reads
 
-Tracking and Reports are synchronous reads, so Traccar failures can
+Tracking and Reports are synchronous, so Traccar read failures may
 affect the current API request.
 
-Those failures remain behind the Traccar service layer.
+These failures remain behind Traccar services.
 
-## External webhook failures
+## Authentication failures
+
+The frontend API client handles `401` centrally by removing the invalid
+local bearer token.
+
+The application shell then prevents unauthenticated protected content
+from being used and redirects to Login.
+
+## Webhook failures
 
 Traccar webhook requests must pass webhook authentication and payload
-validation before application events are dispatched.
+validation before application behavior is triggered.
 
 ## Tenant failures
 
-FleetTrack authorization and visibility checks happen before external
+FleetTrack visibility and authorization are enforced before external
 tracking data is exposed.
 
 ------------------------------------------------------------------------
 
-# 30. Testing Architecture
+# 29. Testing Architecture
 
-FleetTrack uses Pest.
+FleetTrack uses Pest for backend behavior.
 
-Testing is organized around behavior rather than relying only on broad
-end-to-end coverage.
-
-Current test areas include:
-
--   API endpoints
--   Actions
--   Policies
--   Form Requests
--   Models and relationships
--   Traccar services
--   Queue Jobs
--   Listeners
--   Traccar event handling
--   Alert generation
--   Alert Rule resolution
--   Reports
-
-External Traccar HTTP calls are faked in tests.
-
-The first Reports feature suite is:
+Coverage areas include:
 
 ``` text
-tests/Feature/Report/VehicleTripReportApiTest.php
+API endpoints
+Actions
+Policies
+Form Requests
+Models / relationships
+Traccar services
+Queue Jobs
+Listeners
+Traccar event handling
+Alert generation
+Alert Rule resolution
+Tracking
+Reports
+Dashboard
 ```
 
-It contains eight passing tests at the current checkpoint.
+External Traccar HTTP behavior is faked in tests.
+
+Frontend correctness is currently enforced primarily through
+static/build quality gates:
+
+``` text
+Prettier
+ESLint
+vue-tsc
+Vite build
+```
+
+As the frontend grows, behavioral frontend testing can be added
+deliberately if/when the project establishes a test framework for it. Do
+not invent a second testing stack without a project decision.
 
 ------------------------------------------------------------------------
 
-# 31. Development Quality Gate
+# 30. Quality Gates
 
-FleetTrack uses Composer scripts and Sail.
+## Backend
 
-Formatting:
-
-``` bash
-sail composer lint
-```
-
-Formatting verification:
-
-``` bash
-sail composer lint:check
-```
-
-Static analysis:
-
-``` bash
-sail composer types:check
-```
-
-Tests:
-
-``` bash
-sail artisan test
-```
-
-The expected quality gate before committing a meaningful functionality
-slice is:
+At a meaningful backend/full-stack commit boundary:
 
 ``` bash
 sail composer lint
@@ -1308,37 +1328,38 @@ sail composer types:check
 sail artisan test
 ```
 
-Do not use:
+## Frontend
 
-``` text
-sail artisan lint
+Frontend quality gate:
+
+``` bash
+npm run format
+npm run format:check
+npm run lint:check
+npm run types:check
+npm run build
 ```
 
-All failures should be fixed before committing the slice.
+`npm run format` modifies files.
+
+The other frontend commands validate formatting, linting, TypeScript/Vue
+types, and production build output.
+
+The project also exposes a combined Composer CI script:
+
+``` bash
+sail composer ci:check
+```
+
+Use targeted checks during implementation, then run the complete
+relevant gate at a meaningful commit boundary.
 
 ------------------------------------------------------------------------
 
-# 32. Development Workflow
+# 31. Current Architectural Checkpoint
 
-The established development workflow is:
-
-1.  Work through one implementation concern/file at a time.
-2.  Explain the intended change before or while implementing it.
-3.  Prefer Sail and Artisan generators where appropriate.
-4.  Avoid running the entire quality gate after every individual file.
-5.  Run targeted tests while developing a focused behavior.
-6.  At a meaningful feature/section boundary, run the full quality gate.
-7.  Fix all failures before proceeding.
-8.  Commit the completed green slice.
-9.  Continue to the next slice.
-
-This keeps feedback fast without sacrificing commit-level quality.
-
-------------------------------------------------------------------------
-
-# 33. Current Architectural Checkpoint
-
-The current backend architecture includes:
+Backend architecture is substantially established through Reports and
+Dashboard.
 
 ``` text
 Authentication / Authorization / Multi-Tenancy
@@ -1347,110 +1368,130 @@ Companies / Fleets / Drivers / Vehicles / Devices
  ↓
 Traccar Device synchronization
  ↓
-Live Tracking / Position History
- ↓
-Aggregate Trip Summary / Traccar Trip History
+Tracking / Position History / Trip behavior
  ↓
 Geofences / Traccar Geofence synchronization
  ↓
 Geofence ↔ Vehicle permission synchronization
  ↓
-Secure supported Traccar event ingestion
+Secure Traccar event ingestion
  ↓
-Alerts / Acknowledgement / Custom Alert Rules
+Alerts / acknowledgement / Custom Alert Rules
  ↓
 Reports read API
  ↓
-Dashboard Overview / Initial Fleet KPIs
+Dashboard Overview API
 ```
 
-Reports currently exposes:
+Frontend foundation is now established:
 
 ``` text
-trips
-trip-summary
-stops
-events
-route
-summary
-hours
-combined
-```
-
-Dashboard currently exposes:
-
-``` text
-GET /api/v1/dashboard/overview
-```
-
-The latest reported quality gate was green:
-
-``` bash
-sail composer lint
-sail composer lint:check
-sail composer types:check
-sail artisan test
-```
-
-The remaining explicit Reports capability is export/report generation
-through `reports.export`; its output contract is not yet defined.
-
-# 34. Next Architectural Work
-
-The next architectural work should be driven by explicit remaining
-product requirements rather than by speculative backend expansion.
-
-Current unresolved contract:
-
-``` text
-Define Reports export format/content
+Vue/Inertia application
  ↓
-Implement reports.export when defined
+semantic design system
  ↓
-Final integration/documentation hardening
+reusable UI components
+ ↓
+responsive AppLayout
+ ↓
+Wayfinder web routing
+ ↓
+Login
+ ↓
+bearer-token authentication
+ ↓
+auth restoration / guard
+ ↓
+shared authenticated API client
+ ↓
+real authenticated sidebar User
+ ↓
+Logout
+ ↓
+Fleets list connected to real API
 ```
 
-If additional Dashboard KPIs are requested, first define their reporting
-period and aggregation semantics, then reuse existing tracking/report
-Actions where possible.
+The next concrete implementation slice is:
 
-External Alert delivery and a persistent FleetTrack Trip entity remain
-future product decisions rather than current architectural requirements.
+``` text
+Fleet frontend CRUD
+```
 
-# 35. Architectural Principles
+Recommended sequence:
 
-The current architecture should continue to follow these rules:
+``` text
+Create Fleet
+ ↓
+Edit Fleet
+ ↓
+Delete Fleet
+ ↓
+finish pagination/interactions
+ ↓
+full Fleet page UX validation
+ ↓
+quality gate
+ ↓
+commit
+```
+
+------------------------------------------------------------------------
+
+# 32. Known Architectural Gaps
+
+These are intentionally not treated as completed:
+
+1.  Dashboard Vue still uses static/mock data.
+2.  Fleet frontend is list/read only at the current checkpoint.
+3.  Vehicles, Drivers, Devices, Live Tracking, Geofences, Alerts, and
+    Reports frontend pages are not yet implemented.
+4.  Reports export contract remains undefined.
+5.  Additional time-based Dashboard KPI semantics remain undefined.
+6.  External Alert delivery such as email/SMS/push is not a defined
+    current requirement.
+7.  FleetTrack does not currently require its own persistent Trip entity
+    because Traccar remains the GPS trip-detection authority.
+8.  Current web-route guarding is frontend-based around bearer-token
+    auth rather than Laravel session middleware.
+
+------------------------------------------------------------------------
+
+# 33. Architectural Principles
+
+Continue to follow these rules:
 
 1.  FleetTrack owns business-domain state and authorization.
 2.  Traccar owns GPS tracking data and GPS trip detection.
 3.  Controllers stay thin.
 4.  Validation belongs in Form Requests.
-5.  Business/application logic belongs in Actions.
-6.  External Traccar communication belongs in dedicated Services.
+5.  Application/business logic belongs in Actions.
+6.  External Traccar communication belongs in Services.
 7.  Traccar payload translation belongs in DTOs.
-8.  External writes use Events, Listeners, and Queue Jobs where eventual
-    consistency is appropriate.
-9.  Synchronous tracking/report reads remain synchronous when the caller
-    needs the result immediately.
+8.  Appropriate external writes use Events, Listeners, and Queue Jobs.
+9.  Tracking and Reports reads remain synchronous where the caller
+    requires the result.
 10. Company tenancy is enforced before external data is exposed.
 11. Local Geofence ↔ Vehicle state is the desired-state authority for
     Traccar permission synchronization.
-12. Queue jobs must protect against stale desired state.
-13. Asynchronous external-ID dependencies must be reconciled after
+12. Queue jobs protect against stale desired state.
+13. External-ID dependencies are reconciled after asynchronous
     synchronization.
-14. Incoming Traccar webhooks must be authenticated and translated
-    before application behavior is triggered.
-15. Custom Alert Rules augment default alert behavior rather than
-    replacing the default pipeline when no rule matches.
-16. Reports reuse tracking/application infrastructure instead of
-    duplicating it.
-17. Dashboard reuses existing visibility, Alert, and connectivity
-    semantics instead of defining parallel rules.
+14. Traccar webhooks are authenticated and translated before application
+    behavior.
+15. Custom Alert Rules augment default Alert behavior.
+16. Reports reuse tracking/application infrastructure.
+17. Dashboard reuses established visibility and connectivity semantics.
 18. Time-based Dashboard KPIs require an explicit reporting period and
     aggregation contract.
-19. Stable output contracts belong in API Resources.
-20. New behavior receives focused tests.
-21. Meaningful commits must pass formatting, static analysis, and the
-    full test suite.
-22. The latest source code is authoritative when documentation and
-    implementation diverge.
+19. Vue pages reuse the shared application shell and UI components.
+20. Authenticated frontend API calls use `apiRequest()`.
+21. Authentication state is centralized in `authState`.
+22. Feature services remain thin.
+23. Application colors use semantic tokens from `app.css`.
+24. New frontend pages remain responsive.
+25. Laravel route changes are followed by Wayfinder regeneration.
+26. Generated Wayfinder code is not manually edited.
+27. Backend-complete and frontend-complete functionality are documented
+    separately.
+28. New frontend modules should extend the established architecture
+    rather than introduce parallel infrastructure.
