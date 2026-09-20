@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCheckbox from '@/components/ui/AppCheckbox.vue';
@@ -7,6 +7,7 @@ import AppInput from '@/components/ui/AppInput.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import AppTextarea from '@/components/ui/AppTextarea.vue';
 import FormField from '@/components/ui/FormField.vue';
+import { ApiError } from '@/services/apiClient';
 import { createVehicle, updateVehicle } from '@/services/vehicleService';
 import type {
     CreateVehiclePayload,
@@ -53,8 +54,11 @@ const form = reactive({
     is_active: props.vehicle?.is_active ?? true,
 });
 
+type FormFieldName = keyof typeof form;
+
 const submitting = ref(false);
 const error = ref<string | null>(null);
+const validationErrors = ref<Record<string, string[]>>({});
 
 const fuelTypeOptions = [
     { value: 'petrol', label: 'Petrol' },
@@ -80,15 +84,43 @@ function optionalNumber(value: string): number | null {
     return trimmedValue === '' ? null : Number(trimmedValue);
 }
 
+function fieldError(field: FormFieldName): string | null {
+    return validationErrors.value[field]?.[0] ?? null;
+}
+
+function clearFieldError(field: FormFieldName): void {
+    if (!(field in validationErrors.value)) {
+        return;
+    }
+
+    const errors = { ...validationErrors.value };
+
+    delete errors[field];
+
+    validationErrors.value = errors;
+}
+
+for (const field of Object.keys(form) as FormFieldName[]) {
+    watch(
+        () => form[field],
+        () => {
+            clearFieldError(field);
+        },
+    );
+}
+
 async function submit(): Promise<void> {
     if (form.fleet_id === null) {
-        error.value = 'Please select a fleet.';
+        validationErrors.value = {
+            fleet_id: ['The fleet field is required.'],
+        };
 
         return;
     }
 
     submitting.value = true;
     error.value = null;
+    validationErrors.value = {};
 
     const payload: CreateVehiclePayload | UpdateVehiclePayload = {
         fleet_id: Number(form.fleet_id),
@@ -112,12 +144,19 @@ async function submit(): Promise<void> {
 
         emit('saved', vehicle);
     } catch (exception) {
-        error.value =
-            exception instanceof Error
-                ? exception.message
-                : editing.value
-                  ? 'Unable to update vehicle.'
-                  : 'Unable to create vehicle.';
+        if (exception instanceof ApiError) {
+            validationErrors.value = exception.errors;
+
+            if (Object.keys(exception.errors).length === 0) {
+                error.value = exception.message;
+            }
+
+            return;
+        }
+
+        error.value = editing.value
+            ? 'Unable to update vehicle.'
+            : 'Unable to create vehicle.';
     } finally {
         submitting.value = false;
     }
@@ -135,7 +174,12 @@ async function submit(): Promise<void> {
         </div>
 
         <div class="grid gap-5 md:grid-cols-2">
-            <FormField label="Fleet" input-id="vehicle-fleet" required>
+            <FormField
+                label="Fleet"
+                input-id="vehicle-fleet"
+                :error="fieldError('fleet_id')"
+                required
+            >
                 <AppSelect
                     id="vehicle-fleet"
                     v-model="form.fleet_id"
@@ -149,6 +193,7 @@ async function submit(): Promise<void> {
             <FormField
                 label="Registration number"
                 input-id="vehicle-registration-number"
+                :error="fieldError('registration_number')"
                 required
             >
                 <AppInput
@@ -163,6 +208,7 @@ async function submit(): Promise<void> {
             <FormField
                 label="VIN"
                 input-id="vehicle-vin"
+                :error="fieldError('vin')"
                 description="The vehicle identification number must contain exactly 17 characters."
                 required
             >
@@ -180,6 +226,7 @@ async function submit(): Promise<void> {
             <FormField
                 label="Manufacturer"
                 input-id="vehicle-manufacturer"
+                :error="fieldError('manufacturer')"
                 required
             >
                 <AppInput
@@ -191,7 +238,12 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Model" input-id="vehicle-model" required>
+            <FormField
+                label="Model"
+                input-id="vehicle-model"
+                :error="fieldError('model')"
+                required
+            >
                 <AppInput
                     id="vehicle-model"
                     v-model="form.model"
@@ -201,7 +253,12 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Year" input-id="vehicle-year" required>
+            <FormField
+                label="Year"
+                input-id="vehicle-year"
+                :error="fieldError('year')"
+                required
+            >
                 <AppInput
                     id="vehicle-year"
                     v-model="form.year"
@@ -214,7 +271,11 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Color" input-id="vehicle-color">
+            <FormField
+                label="Color"
+                input-id="vehicle-color"
+                :error="fieldError('color')"
+            >
                 <AppInput
                     id="vehicle-color"
                     v-model="form.color"
@@ -223,7 +284,12 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Fuel type" input-id="vehicle-fuel-type" required>
+            <FormField
+                label="Fuel type"
+                input-id="vehicle-fuel-type"
+                :error="fieldError('fuel_type')"
+                required
+            >
                 <AppSelect
                     id="vehicle-fuel-type"
                     v-model="form.fuel_type"
@@ -237,6 +303,7 @@ async function submit(): Promise<void> {
             <FormField
                 label="Transmission"
                 input-id="vehicle-transmission"
+                :error="fieldError('transmission')"
                 required
             >
                 <AppSelect
@@ -249,7 +316,11 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Odometer" input-id="vehicle-odometer">
+            <FormField
+                label="Odometer"
+                input-id="vehicle-odometer"
+                :error="fieldError('odometer')"
+            >
                 <AppInput
                     id="vehicle-odometer"
                     v-model="form.odometer"
@@ -265,6 +336,7 @@ async function submit(): Promise<void> {
                 class="md:col-span-2"
                 label="Notes"
                 input-id="vehicle-notes"
+                :error="fieldError('notes')"
             >
                 <AppTextarea
                     id="vehicle-notes"
@@ -275,25 +347,36 @@ async function submit(): Promise<void> {
             </FormField>
         </div>
 
-        <label
-            class="flex items-start gap-3 rounded-lg border border-border-default bg-surface-muted px-4 py-3"
-        >
-            <AppCheckbox
-                v-model="form.is_active"
-                :disabled="submitting"
-                class="mt-0.5"
-            />
+        <div>
+            <label
+                class="flex items-start gap-3 rounded-lg border border-border-default bg-surface-muted px-4 py-3"
+            >
+                <AppCheckbox
+                    v-model="form.is_active"
+                    :disabled="submitting"
+                    class="mt-0.5"
+                />
 
-            <span>
-                <span class="block text-sm font-medium text-content">
-                    Active vehicle
-                </span>
+                <span>
+                    <span class="block text-sm font-medium text-content">
+                        Active vehicle
+                    </span>
 
-                <span class="mt-0.5 block text-xs text-muted">
-                    Active vehicles are available for normal fleet operations.
+                    <span class="mt-0.5 block text-xs text-muted">
+                        Active vehicles are available for normal fleet
+                        operations.
+                    </span>
                 </span>
-            </span>
-        </label>
+            </label>
+
+            <p
+                v-if="fieldError('is_active')"
+                class="mt-1.5 text-xs font-medium text-danger-dark"
+                role="alert"
+            >
+                {{ fieldError('is_active') }}
+            </p>
+        </div>
 
         <div class="flex justify-end gap-3 border-t border-border-default pt-5">
             <AppButton

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCheckbox from '@/components/ui/AppCheckbox.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import AppTextarea from '@/components/ui/AppTextarea.vue';
 import FormField from '@/components/ui/FormField.vue';
+import { ApiError } from '@/services/apiClient';
 import { createFleet, updateFleet } from '@/services/fleetService';
 import type {
     CreateFleetPayload,
@@ -43,8 +44,11 @@ const form = reactive({
     is_active: props.fleet?.is_active ?? true,
 });
 
+type FormFieldName = keyof typeof form;
+
 const submitting = ref(false);
 const error = ref<string | null>(null);
+const validationErrors = ref<Record<string, string[]>>({});
 
 function optionalString(value: string): string | null {
     const trimmedValue = value.trim();
@@ -58,9 +62,35 @@ function optionalNumber(value: string): number | null {
     return trimmedValue === '' ? null : Number(trimmedValue);
 }
 
+function fieldError(field: FormFieldName): string | null {
+    return validationErrors.value[field]?.[0] ?? null;
+}
+
+function clearFieldError(field: FormFieldName): void {
+    if (!(field in validationErrors.value)) {
+        return;
+    }
+
+    const errors = { ...validationErrors.value };
+
+    delete errors[field];
+
+    validationErrors.value = errors;
+}
+
+for (const field of Object.keys(form) as FormFieldName[]) {
+    watch(
+        () => form[field],
+        () => {
+            clearFieldError(field);
+        },
+    );
+}
+
 async function submit(): Promise<void> {
     submitting.value = true;
     error.value = null;
+    validationErrors.value = {};
 
     const payload: CreateFleetPayload | UpdateFleetPayload = {
         name: form.name.trim(),
@@ -82,12 +112,19 @@ async function submit(): Promise<void> {
 
         emit('saved', fleet);
     } catch (exception) {
-        error.value =
-            exception instanceof Error
-                ? exception.message
-                : editing.value
-                  ? 'Unable to update fleet.'
-                  : 'Unable to create fleet.';
+        if (exception instanceof ApiError) {
+            validationErrors.value = exception.errors;
+
+            if (Object.keys(exception.errors).length === 0) {
+                error.value = exception.message;
+            }
+
+            return;
+        }
+
+        error.value = editing.value
+            ? 'Unable to update fleet.'
+            : 'Unable to create fleet.';
     } finally {
         submitting.value = false;
     }
@@ -105,7 +142,12 @@ async function submit(): Promise<void> {
         </div>
 
         <div class="grid gap-5 md:grid-cols-2">
-            <FormField label="Fleet name" input-id="fleet-name" required>
+            <FormField
+                label="Fleet name"
+                input-id="fleet-name"
+                :error="fieldError('name')"
+                required
+            >
                 <AppInput
                     id="fleet-name"
                     v-model="form.name"
@@ -119,6 +161,7 @@ async function submit(): Promise<void> {
             <FormField
                 label="Code"
                 input-id="fleet-code"
+                :error="fieldError('code')"
                 description="A short identifier for this fleet."
                 required
             >
@@ -132,7 +175,11 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Email" input-id="fleet-email">
+            <FormField
+                label="Email"
+                input-id="fleet-email"
+                :error="fieldError('email')"
+            >
                 <AppInput
                     id="fleet-email"
                     v-model="form.email"
@@ -143,7 +190,11 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Phone" input-id="fleet-phone">
+            <FormField
+                label="Phone"
+                input-id="fleet-phone"
+                :error="fieldError('phone')"
+            >
                 <AppInput
                     id="fleet-phone"
                     v-model="form.phone"
@@ -158,6 +209,7 @@ async function submit(): Promise<void> {
                 class="md:col-span-2"
                 label="Address"
                 input-id="fleet-address"
+                :error="fieldError('address')"
             >
                 <AppInput
                     id="fleet-address"
@@ -168,7 +220,11 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Latitude" input-id="fleet-latitude">
+            <FormField
+                label="Latitude"
+                input-id="fleet-latitude"
+                :error="fieldError('latitude')"
+            >
                 <AppInput
                     id="fleet-latitude"
                     v-model="form.latitude"
@@ -181,7 +237,11 @@ async function submit(): Promise<void> {
                 />
             </FormField>
 
-            <FormField label="Longitude" input-id="fleet-longitude">
+            <FormField
+                label="Longitude"
+                input-id="fleet-longitude"
+                :error="fieldError('longitude')"
+            >
                 <AppInput
                     id="fleet-longitude"
                     v-model="form.longitude"
@@ -198,6 +258,7 @@ async function submit(): Promise<void> {
                 class="md:col-span-2"
                 label="Timezone"
                 input-id="fleet-timezone"
+                :error="fieldError('timezone')"
                 description="Use an IANA timezone such as Europe/Zagreb."
             >
                 <AppInput
@@ -212,6 +273,7 @@ async function submit(): Promise<void> {
                 class="md:col-span-2"
                 label="Description"
                 input-id="fleet-description"
+                :error="fieldError('description')"
             >
                 <AppTextarea
                     id="fleet-description"
@@ -222,25 +284,35 @@ async function submit(): Promise<void> {
             </FormField>
         </div>
 
-        <label
-            class="flex items-start gap-3 rounded-lg border border-border-default bg-surface-muted px-4 py-3"
-        >
-            <AppCheckbox
-                v-model="form.is_active"
-                :disabled="submitting"
-                class="mt-0.5"
-            />
+        <div>
+            <label
+                class="flex items-start gap-3 rounded-lg border border-border-default bg-surface-muted px-4 py-3"
+            >
+                <AppCheckbox
+                    v-model="form.is_active"
+                    :disabled="submitting"
+                    class="mt-0.5"
+                />
 
-            <span>
-                <span class="block text-sm font-medium text-content">
-                    Active fleet
-                </span>
+                <span>
+                    <span class="block text-sm font-medium text-content">
+                        Active fleet
+                    </span>
 
-                <span class="mt-0.5 block text-xs text-muted">
-                    Active fleets are available for normal fleet operations.
+                    <span class="mt-0.5 block text-xs text-muted">
+                        Active fleets are available for normal fleet operations.
+                    </span>
                 </span>
-            </span>
-        </label>
+            </label>
+
+            <p
+                v-if="fieldError('is_active')"
+                class="mt-1.5 text-xs font-medium text-danger-dark"
+                role="alert"
+            >
+                {{ fieldError('is_active') }}
+            </p>
+        </div>
 
         <div class="flex justify-end gap-3 border-t border-border-default pt-5">
             <AppButton

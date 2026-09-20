@@ -42,8 +42,7 @@ class UpdateVehicleRequest extends FormRequest
                 'required',
                 'string',
                 'size:17',
-                Rule::unique('vehicles', 'vin')
-                    ->ignore($vehicle),
+                Rule::unique('vehicles', 'vin')->ignore($this->route('vehicle')),
             ],
 
             'manufacturer' => [
@@ -99,5 +98,17 @@ class UpdateVehicleRequest extends FormRequest
                 'boolean',
             ],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (
+            $this->has('odometer')
+            && ($this->input('odometer') === null || $this->input('odometer') === '')
+        ) {
+            $this->merge([
+                'odometer' => 0,
+            ]);
+        }
     }
 }

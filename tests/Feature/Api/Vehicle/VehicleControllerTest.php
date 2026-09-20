@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Fleet;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesUsers;
@@ -319,4 +320,72 @@ test('company admin cannot delete vehicle from another company', function (): vo
 
     $this->deleteJson("/api/v1/vehicles/{$vehicle->id}")
         ->assertForbidden();
+});
+
+it('uses zero odometer when creating a vehicle with a null odometer', function () {
+    $company = $this->createCompany();
+    $user = $this->actingAsCompanyAdmin($company);
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/api/v1/vehicles', [
+        'fleet_id' => $fleet->id,
+        'registration_number' => 'ZG-1234-AB',
+        'vin' => '1HGCM82633A654321',
+        'manufacturer' => 'Volkswagen',
+        'model' => 'Transporter',
+        'year' => 2024,
+        'fuel_type' => 'Diesel',
+        'transmission' => 'Manual',
+        'odometer' => null,
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.odometer', 0);
+
+    $this->assertDatabaseHas('vehicles', [
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+        'vin' => '1HGCM82633A654321',
+        'odometer' => 0,
+    ]);
+});
+
+it('uses zero odometer when updating a vehicle with a null odometer', function () {
+    $company = $this->createCompany();
+    $user = $this->actingAsCompanyAdmin($company);
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = Vehicle::factory()->create([
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+        'odometer' => 125000,
+    ]);
+
+    $response = $this->actingAs($user)->putJson(
+        "/api/v1/vehicles/{$vehicle->id}",
+        [
+            'fleet_id' => $fleet->id,
+            'registration_number' => $vehicle->registration_number,
+            'vin' => $vehicle->vin,
+            'manufacturer' => $vehicle->manufacturer,
+            'model' => $vehicle->model,
+            'year' => $vehicle->year,
+            'fuel_type' => $vehicle->fuel_type,
+            'transmission' => $vehicle->transmission,
+            'odometer' => null,
+        ],
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.odometer', 0);
+
+    expect($vehicle->fresh()->odometer)->toBe(0);
 });

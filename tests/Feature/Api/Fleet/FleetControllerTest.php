@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Fleet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesFleets;
@@ -255,4 +256,52 @@ test('company admin cannot delete fleet from another company', function (): void
 
     $this->deleteJson("/api/v1/fleets/{$fleet->id}")
         ->assertForbidden();
+});
+
+it('uses the application timezone when creating a fleet with a null timezone', function () {
+    $company = $this->createCompany();
+
+    $user = $this->actingAsCompanyAdmin($company);
+
+    $response = $this->actingAs($user)
+        ->postJson('/api/v1/fleets', [
+            'name' => 'Test Fleet',
+            'code' => 'test',
+            'timezone' => null,
+        ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.timezone', config('app.timezone'));
+
+    $this->assertDatabaseHas('fleets', [
+        'company_id' => $company->id,
+        'name' => 'Test Fleet',
+        'code' => 'TEST',
+        'timezone' => config('app.timezone'),
+    ]);
+});
+
+it('uses the application timezone when updating a fleet with a null timezone', function () {
+    $company = $this->createCompany();
+
+    $user = $this->actingAsCompanyAdmin($company);
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+        'timezone' => 'Europe/Zagreb',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->putJson("/api/v1/fleets/{$fleet->id}", [
+            'name' => $fleet->name,
+            'code' => $fleet->code,
+            'timezone' => null,
+        ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.timezone', config('app.timezone'));
+
+    expect($fleet->fresh()->timezone)->toBe(config('app.timezone'));
 });

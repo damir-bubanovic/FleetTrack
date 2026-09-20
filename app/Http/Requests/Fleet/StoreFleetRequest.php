@@ -66,7 +66,7 @@ class StoreFleetRequest extends FormRequest
             ],
 
             'timezone' => [
-                'nullable',
+                'required',
                 'string',
                 'timezone',
             ],
@@ -88,6 +88,12 @@ class StoreFleetRequest extends FormRequest
         if ($this->has('code') && is_string($this->input('code'))) {
             $this->merge([
                 'code' => strtoupper(trim($this->input('code'))),
+            ]);
+        }
+
+        if ($this->input('timezone') === null || $this->input('timezone') === '') {
+            $this->merge([
+                'timezone' => config('app.timezone'),
             ]);
         }
     }

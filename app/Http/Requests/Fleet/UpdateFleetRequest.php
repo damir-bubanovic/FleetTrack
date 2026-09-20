@@ -102,5 +102,11 @@ class UpdateFleetRequest extends FormRequest
                 'code' => strtoupper(trim($this->input('code'))),
             ]);
         }
+
+        if ($this->has('timezone') && ($this->input('timezone') === null || $this->input('timezone') === '')) {
+            $this->merge([
+                'timezone' => config('app.timezone'),
+            ]);
+        }
     }
 }
