@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Company;
 use App\Models\Fleet;
 use App\Models\Vehicle;
 use Illuminate\Database\Seeder;
@@ -10,23 +9,19 @@ use Illuminate\Database\Seeder;
 class VehicleSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed the application's vehicles.
      */
     public function run(): void
     {
-        Company::query()
-            ->each(function (Company $company): void {
-
-                $company->fleets()
-                    ->each(function (Fleet $fleet) use ($company): void {
-
-                        Vehicle::factory()
-                            ->count(5)
-                            ->create([
-                                'company_id' => $company->id,
-                                'fleet_id' => $fleet->id,
-                            ]);
-                    });
+        Fleet::query()
+            ->orderBy('id')
+            ->each(function (Fleet $fleet): void {
+                Vehicle::factory()
+                    ->count(5)
+                    ->create([
+                        'company_id' => $fleet->company_id,
+                        'fleet_id' => $fleet->id,
+                    ]);
             });
     }
 }
