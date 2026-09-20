@@ -3,7 +3,7 @@
 ## Status
 
 This document records the implemented FleetTrack capabilities and the
-remaining product/frontend work at the `FleetTrack_Laravel(7).zip`
+remaining product/frontend work at the `FleetTrack_Laravel(5).zip`
 checkpoint.
 
 Status is separated between backend/API implementation and frontend/UI
@@ -182,43 +182,34 @@ description
 is_active
 ```
 
-## Frontend --- Partially Implemented
+## Frontend --- Implemented
+
+The Fleets frontend is implemented through the established application shell.
 
 Implemented:
 
--   `/fleets` Inertia route
--   Fleets page
--   real authenticated Fleet API loading
--   typed Fleet response
--   Fleet service
--   loading state
--   API error state
--   empty state
--   Fleet table
--   code display
--   contact display
--   timezone display
--   active/inactive status badge
--   pagination metadata
--   refresh action
--   responsive application shell
+-   `/fleets` Inertia route/page
+-   API-backed paginated listing
+-   Create Fleet
+-   Edit Fleet
+-   Delete Fleet
+-   interactive pagination
+-   loading, error, and empty states
+-   status presentation
+-   reusable `CreateFleetForm.vue`
+-   field-level Laravel `422` validation errors
+-   automatic clearing of a field error when the value changes
+-   safe generic handling of `5xx` responses
+-   responsive Dashboard-consistent layout
 
-Verified with seeded Fleet records in the browser.
-
-Remaining:
-
--   Create Fleet UI
--   Edit Fleet UI
--   Delete Fleet UI
--   Fleet detail UI if required
--   create/update form validation UX
--   confirmation UX for destructive actions
--   fully interactive pagination controls
--   final Fleet CRUD browser verification
-
-This is the current next development slice.
+Fleet validation now mirrors database constraints: name and code uniqueness are
+company-scoped, update rules ignore the current Fleet, code normalization occurs
+before validation, and blank/null timezone input falls back to the application
+timezone instead of reaching MySQL as an invalid null value.
 
 ------------------------------------------------------------------------
+
+# Drivers
 
 # Drivers
 
@@ -281,9 +272,27 @@ PATCH  /api/v1/vehicles/{vehicle}
 DELETE /api/v1/vehicles/{vehicle}
 ```
 
-## Frontend --- Not Yet Implemented
+## Frontend --- Implemented
 
-The Vehicles navigation item is present but unavailable/disabled.
+Implemented:
+
+-   `/vehicles` Inertia route/page
+-   API-backed paginated listing
+-   Create Vehicle
+-   Edit Vehicle
+-   Delete Vehicle
+-   Fleet selector
+-   loading, error, and empty states
+-   status presentation
+-   reusable `VehicleForm.vue`
+-   field-level Laravel `422` validation errors
+-   automatic clearing of corrected field errors
+-   safe generic handling of `5xx` responses
+-   responsive Dashboard/Fleets-consistent layout
+
+Vehicle validation is aligned with persistence constraints. Blank/null odometer
+input is normalized to `0`, duplicate VIN is rejected by Laravel validation,
+and update VIN uniqueness ignores the current Vehicle.
 
 ------------------------------------------------------------------------
 
@@ -765,8 +774,7 @@ for a combined CI-oriented check.
 Substantially implemented:
 
 ``` text
-Authentication
-Authorization
+Authentication and authorization
 Multi-tenancy
 Companies
 Fleets
@@ -774,85 +782,78 @@ Drivers
 Vehicles
 Devices
 Traccar Device synchronization
-Live Tracking
-Trip/Position history
-Geofences
-Geofence/Vehicle permissions
+Live Tracking and position history
+Geofences and Vehicle associations
 Traccar event ingestion
-Alerts
-Custom Alert Rules
+Alerts and Custom Alert Rules
 Reports
 Dashboard Overview
 ```
 
 ## Frontend
 
-Implemented foundation:
+Implemented:
 
 ``` text
-Application shell
-Responsive layout
-Design tokens
+Application shell and responsive design system
 Reusable UI components
 Wayfinder navigation
-Login
-Authentication persistence/restoration
-Authenticated API client
-Authenticated user sidebar
-Logout
+Login / auth persistence / Logout
+Shared API client with field-level 422 errors and protected 5xx handling
 Dashboard visual UI
-Fleet list with real API data
+Fleets CRUD
+Vehicles CRUD
 ```
 
-Frontend domain CRUD remains much less complete than the backend.
+Not yet implemented as user-facing Vue modules:
 
-------------------------------------------------------------------------
+``` text
+Companies administration
+Drivers
+Devices
+Live Tracking
+Geofences
+Alerts / Alert Rules
+Reports
+Dashboard live-data wiring
+```
 
 # Next Development Work
 
 ## Immediate
 
-Complete Fleet frontend CRUD using the already implemented Fleet API:
+Implement Drivers frontend CRUD using the existing Driver API and the patterns
+established by Fleets and Vehicles:
 
 ``` text
-1. Create Fleet
-2. Edit Fleet
-3. Delete Fleet
-4. Complete interactive pagination
-5. Validate loading/error/empty/form states
-6. Validate responsive behavior
-7. Run full frontend quality gate
-8. Commit the completed Fleet frontend slice
+1. Add Driver TypeScript types
+2. Add thin driverService.ts API wrapper
+3. Add Driver create/edit form
+4. Add Drivers index/table and web route
+5. Add sidebar navigation
+6. Add create/edit/delete and pagination
+7. Wire Laravel 422 field errors through ApiError/FormField
+8. Browser-test responsive/loading/error/empty states
+9. Run the complete backend/frontend quality gate
+10. Commit the completed Drivers slice
 ```
 
 ## Then
 
-Apply the established frontend architecture to the remaining backend
-modules.
-
-Likely progression:
-
 ``` text
-Vehicles
-Drivers
 Devices
 Live Tracking
 Geofences
-Alerts
+Alerts / Alert Rules
 Reports
 Dashboard live-data wiring
 ```
-
-The exact order can follow product priority.
-
-------------------------------------------------------------------------
 
 # Known Remaining / Undefined Work
 
 The following should not be reported as completed:
 
--   Fleet create/edit/delete frontend
--   Vehicle frontend
+-   Company administration frontend
 -   Driver frontend
 -   Device frontend
 -   Live Tracking frontend
@@ -865,9 +866,8 @@ The following should not be reported as completed:
 -   additional time-period Dashboard KPI contract
 -   external Alert notification channels
 
-FleetTrack also intentionally does not maintain a competing persistent
-GPS Trip detection model at this stage; Traccar remains responsible for
-detected trips.
+FleetTrack intentionally does not maintain a competing persistent GPS Trip
+detection model at this stage; Traccar remains responsible for detected trips.
 
 ------------------------------------------------------------------------
 

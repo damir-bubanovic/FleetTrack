@@ -6,7 +6,7 @@ It is not a feature checklist. Current implementation status belongs in
 `FEATURES.md`, system structure belongs in `ARCHITECTURE.md`, and
 development continuation details belong in `AGENTS.md`.
 
-The decisions below reflect the current `FleetTrack_Laravel(7).zip`
+The decisions below reflect the current `FleetTrack_Laravel(5).zip`
 project checkpoint.
 
 ------------------------------------------------------------------------
@@ -876,6 +876,37 @@ routes, permissions, or test utilities from documentation alone.
 
 When a current project ZIP is available, it should be used rather than
 repeatedly requesting files already contained in that snapshot.
+
+------------------------------------------------------------------------
+
+# ADR-037 --- Preserve Field Validation Errors and Hide Unexpected Server Details
+
+## Decision
+
+Laravel Form Requests are the authoritative server-side validation boundary for
+user-correctable input. Persistence constraints that can be expressed as input
+rules should be validated before database writes.
+
+The shared frontend `ApiError` preserves Laravel `422` field errors so Vue forms
+can display the relevant message beside the corresponding field. Unexpected
+`5xx` response messages are not displayed verbatim to users; the frontend uses
+a generic server-error message instead.
+
+## Consequences
+
+-   Form Requests should mirror database uniqueness/nullability/default
+    constraints when those constraints are user-correctable.
+-   Vue forms should use `FormField` error presentation rather than collapsing
+    validation into one generic banner.
+-   Correcting a field should clear its stale server-side error.
+-   Database exception text, SQL, table names, and internal implementation
+    details must not be exposed through normal frontend error presentation.
+-   Regression tests should cover previously observed request/database contract
+    mismatches.
+
+Current concrete examples are company-scoped Fleet name/code uniqueness, Fleet
+timezone normalization, Vehicle VIN uniqueness, and Vehicle odometer
+normalization.
 
 ------------------------------------------------------------------------
 

@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 This document describes the current FleetTrack architecture at the
-`FleetTrack_Laravel(7).zip` checkpoint.
+`FleetTrack_Laravel(5).zip` checkpoint.
 
 FleetTrack is a multi-tenant fleet-management and GPS-tracking
 application. Laravel owns the business domain, tenancy, authorization,
@@ -870,6 +870,7 @@ Current active web pages:
 /        -> Dashboard.vue
 /login   -> Auth/Login.vue
 /fleets  -> Fleets/Index.vue
+/vehicles -> Vehicles/Index.vue
 ```
 
 `Welcome.vue` remains in the source tree but is not part of the current
@@ -1089,97 +1090,82 @@ second data path.
 
 ------------------------------------------------------------------------
 
-# 25. Current Fleets Frontend
+# 25. Current Fleets and Vehicles Frontend
 
-The Fleets page is the first domain page connected to real authenticated
-API data.
-
-Current files:
+Fleets and Vehicles now establish the reference pattern for domain CRUD pages.
 
 ``` text
-resources/js/pages/Fleets/Index.vue
-resources/js/services/fleetService.ts
-resources/js/types/fleet.ts
-```
-
-Current flow:
-
-``` text
-/fleets
+Web route
  ↓
-Fleets/Index.vue
+Vue Index page
  ↓
-getFleets(page)
+AppLayout + PageHeader + AppCard + AppTable
+ ↓
+feature form / pagination / state components
+ ↓
+feature service
  ↓
 apiRequest()
  ↓
-Wayfinder fleets.index URL
- ↓
-GET /api/v1/fleets?page=...
- ↓
-FleetResource collection
- ↓
-Vue table
+Laravel API
 ```
 
-Implemented frontend behavior:
-
--   authenticated Fleet list
--   loading state
--   error state
--   empty state
--   Fleet table
--   semantic status badge
--   pagination metadata display
--   refresh action
--   responsive layout
-
-Manual browser verification confirmed seeded Fleets load successfully
-after authentication.
-
-Not yet implemented in the Vue frontend:
+Current files include:
 
 ``` text
-Create Fleet
-Edit Fleet
-Delete Fleet
-Fleet detail page
-fully interactive API pagination
-Fleet create/update validation UX
+resources/js/pages/Fleets/Index.vue
+resources/js/components/fleets/CreateFleetForm.vue
+resources/js/services/fleetService.ts
+resources/js/types/fleet.ts
+
+resources/js/pages/Vehicles/Index.vue
+resources/js/components/vehicles/VehicleForm.vue
+resources/js/services/vehicleService.ts
+resources/js/types/vehicle.ts
 ```
 
-The backend Fleet CRUD API already exists, so the next slice should
-extend the existing frontend rather than redesigning the backend.
+Both modules support API-backed listing, create, edit, delete, pagination,
+loading/error/empty states, and responsive layout consistent with Dashboard.
+
+Frontend validation uses Laravel as the authoritative server-side layer. The
+shared `ApiError` retains Laravel `422` field errors as
+`Record<string, string[]>`. Forms render the first error through `FormField`
+and clear a field's error when that field changes. For `5xx` responses the
+client intentionally ignores backend exception messages and displays a generic
+server-error message so SQL/internal details are not leaked to users.
+
+Backend Form Requests must mirror persistence constraints so expected input
+problems become `422` responses before reaching MySQL. Current examples include:
+
+-   Fleet name/code uniqueness scoped by company
+-   Fleet code normalization before validation
+-   blank/null Fleet timezone normalized to the application timezone
+-   Vehicle VIN uniqueness with current-record ignore on update
+-   blank/null Vehicle odometer normalized to `0`
 
 ------------------------------------------------------------------------
 
 # 26. Remaining Frontend Modules
 
-Sidebar navigation already represents the broader application
-information architecture:
+The next planned domain module is Drivers. The established Fleets/Vehicles
+architecture should be reused for all remaining pages.
 
 ``` text
-Dashboard
-Fleets
-Vehicles
 Drivers
 Devices
 Live Tracking
 Geofences
-Alerts
+Alerts / Alert Rules
 Reports
+Dashboard live-data wiring
 ```
 
-Only Dashboard and Fleets currently have active application pages in
-that navigation.
+Companies also has backend API support but does not yet have a dedicated
+administration frontend.
 
-The remaining entries are intentionally unavailable/disabled until their
-frontend routes/pages are implemented.
-
-Backend APIs for these domains largely already exist.
-
-The established frontend architecture should be applied to each module
-rather than creating independent page architectures.
+Do not treat generated Wayfinder API route modules as completed user-facing
+pages; a domain frontend is complete only when its Inertia route/page and
+usable UI workflow exist.
 
 ------------------------------------------------------------------------
 
@@ -1241,7 +1227,18 @@ factory-generated development password was verified with Laravel
 
 FleetTrack separates local business state from external tracking state.
 
-## Local writes
+## Validation and local writes
+
+Expected client-input failures should be intercepted by Form Requests and
+returned as Laravel `422` validation responses. Frontend forms preserve field
+errors and render them beside the corresponding input. Persistence constraints
+that represent user-correctable input must therefore be mirrored in request
+validation.
+
+Unexpected `5xx` API messages are not surfaced verbatim by the shared frontend
+client; users receive a generic server-error message while server logs retain
+the diagnostic details.
+
 
 Local changes may succeed before Traccar synchronization completes.
 
@@ -1358,81 +1355,50 @@ relevant gate at a meaningful commit boundary.
 
 # 31. Current Architectural Checkpoint
 
-Backend architecture is substantially established through Reports and
-Dashboard.
+At the `FleetTrack_Laravel(5).zip` checkpoint, the backend is substantially
+implemented across the planned fleet/tracking domains and the frontend has
+moved beyond foundation work into completed domain CRUD slices.
+
+Completed frontend/application architecture:
 
 ``` text
-Authentication / Authorization / Multi-Tenancy
- ↓
-Companies / Fleets / Drivers / Vehicles / Devices
- ↓
-Traccar Device synchronization
- ↓
-Tracking / Position History / Trip behavior
- ↓
-Geofences / Traccar Geofence synchronization
- ↓
-Geofence ↔ Vehicle permission synchronization
- ↓
-Secure Traccar event ingestion
- ↓
-Alerts / acknowledgement / Custom Alert Rules
- ↓
-Reports read API
- ↓
-Dashboard Overview API
-```
-
-Frontend foundation is now established:
-
-``` text
-Vue/Inertia application
- ↓
-semantic design system
- ↓
+responsive AppLayout shell
+semantic design tokens
 reusable UI components
- ↓
-responsive AppLayout
- ↓
-Wayfinder web routing
- ↓
-Login
- ↓
-bearer-token authentication
- ↓
-auth restoration / guard
- ↓
+Wayfinder routing
+Sanctum bearer-token login/auth restoration/logout
 shared authenticated API client
- ↓
-real authenticated sidebar User
- ↓
-Logout
- ↓
-Fleets list connected to real API
+field-level Laravel 422 error transport
+safe generic 5xx presentation
+Dashboard visual UI
+Fleets CRUD
+Vehicles CRUD
 ```
 
-The next concrete implementation slice is:
+Current active web routes:
 
 ``` text
-Fleet frontend CRUD
+/login
+/
+/fleets
+/vehicles
 ```
 
-Recommended sequence:
+The next frontend module is Drivers, followed by Devices, Live Tracking,
+Geofences, Alerts/Alert Rules, Reports, and Dashboard live-data wiring.
 
-``` text
-Create Fleet
- ↓
-Edit Fleet
- ↓
-Delete Fleet
- ↓
-finish pagination/interactions
- ↓
-full Fleet page UX validation
- ↓
-quality gate
- ↓
-commit
+The full quality gate used before feature commits is:
+
+``` bash
+sail composer lint
+sail composer lint:check
+sail composer types:check
+sail artisan test
+npm run format
+npm run format:check
+npm run lint:check
+npm run types:check
+npm run build
 ```
 
 ------------------------------------------------------------------------

@@ -51,8 +51,8 @@ Dashboard visual UI
 real API-backed Fleet listing
 ```
 
-The current development focus is completing the Fleet frontend CRUD
-experience.
+The Fleet and Vehicle frontend CRUD slices are complete. The next planned
+frontend domain module is Drivers.
 
 ------------------------------------------------------------------------
 
@@ -199,6 +199,7 @@ Current active Inertia web routes:
 /        Dashboard
 /login   Login
 /fleets  Fleets
+/vehicles Vehicles
 ```
 
 The sidebar also represents the planned application areas:
@@ -215,7 +216,7 @@ Alerts
 Reports
 ```
 
-At the current checkpoint, the later domain entries are intentionally
+Drivers, Devices, Live Tracking, Geofences, Alerts, and Reports remain
 unavailable until their Vue pages are implemented.
 
 ------------------------------------------------------------------------
@@ -494,6 +495,32 @@ final responsive/browser verification
 ```
 
 This is the immediate next development slice.
+
+------------------------------------------------------------------------
+
+# Vehicles Frontend
+
+The Vehicles web module is implemented at `/vehicles`.
+
+Implemented frontend behavior:
+
+``` text
+API-backed paginated Vehicle listing
+Create Vehicle
+Edit Vehicle
+Delete Vehicle
+Fleet selection
+loading / error / empty states
+status presentation
+field-level Laravel 422 validation errors
+validation errors clear when corrected
+generic safe 5xx error presentation
+responsive AppLayout-based design consistent with Dashboard/Fleets
+```
+
+Vehicle validation is aligned with the database/API contract. Blank/null
+odometer input is normalized to `0`, and duplicate VIN values are rejected by
+Laravel validation before they can become database exceptions.
 
 ------------------------------------------------------------------------
 
@@ -796,58 +823,67 @@ Do not duplicate auth or generic API behavior inside feature pages.
 
 # Current Development Checkpoint
 
-Completed frontend foundation:
+Completed frontend foundation and domain work:
 
 ``` text
-responsive shell
-design system
-reusable UI layer
-Wayfinder web routes
-Login
-token authentication
-auth restoration
-shared API client
-protected application shell
-authenticated sidebar User
-Logout
-real Fleet listing
+responsive application shell
+design system and reusable UI layer
+Wayfinder web/API routing
+Login and bearer-token authentication
+auth restoration and Logout
+shared authenticated API client
+field-level Laravel 422 validation handling
+safe generic handling for 5xx responses
+Dashboard visual UI
+Fleet listing + create/edit/delete + pagination
+Vehicle listing + create/edit/delete + pagination
+Fleet and Vehicle browser/server validation alignment
 ```
 
-The immediate next task is:
+Current active domain web routes:
 
 ``` text
-Fleet frontend CRUD
+/          Dashboard
+/login     Login
+/fleets    Fleets
+/vehicles  Vehicles
 ```
 
-Recommended sequence:
+The immediate next frontend domain task is:
 
 ``` text
-Create Fleet
-Edit Fleet
-Delete Fleet
-Pagination/interactions
-Responsive/browser validation
-Frontend quality gate
-Commit
+Drivers frontend CRUD
 ```
 
-After Fleets, continue exposing the existing backend modules through the
-established frontend architecture.
-
-Likely progression:
+Recommended progression after Drivers:
 
 ``` text
-Vehicles
-Drivers
 Devices
 Live Tracking
 Geofences
-Alerts
+Alerts / Alert Rules
 Reports
 Dashboard live-data wiring
 ```
 
-------------------------------------------------------------------------
+The backend APIs for these areas are already substantially implemented, so
+frontend work should reuse the established Vue/Inertia/service/API-client
+architecture rather than introducing parallel patterns.
+
+Before every feature commit run the full project gate:
+
+``` bash
+sail composer lint
+sail composer lint:check
+sail composer types:check
+sail artisan test
+
+npm run format
+npm run format:check
+npm run lint:check
+npm run types:check
+npm run build
+```
 
 # Documentation
 
