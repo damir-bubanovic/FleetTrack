@@ -57,7 +57,11 @@ const navigation: readonly NavigationItem[] = [
         icon: 'vehicles',
         href: web.vehicles.index.url(),
     },
-    { name: 'Drivers', icon: 'drivers' },
+    {
+        name: 'Drivers',
+        icon: 'drivers',
+        href: web.drivers.index.url(),
+    },
     { name: 'Devices', icon: 'devices' },
     { name: 'Live Tracking', icon: 'tracking' },
     { name: 'Geofences', icon: 'geofences' },

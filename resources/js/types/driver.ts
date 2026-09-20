@@ -1,0 +1,20 @@
+export type Driver = {
+    id: number;
+    company_id: number;
+    fleet_id: number;
+    user_id: number | null;
+    employee_number: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    phone: string | null;
+    email: string | null;
+    license_number: string;
+    license_category: string;
+    license_expiry_date: string;
+    employment_date: string;
+    notes: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+};
