@@ -2,6 +2,8 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
+import CreateFleetForm from '@/components/fleets/CreateFleetForm.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import AppCard from '@/components/ui/AppCard.vue';
 import AppPagination from '@/components/ui/AppPagination.vue';
 import AppTable from '@/components/ui/AppTable.vue';
@@ -11,12 +13,15 @@ import LoadingState from '@/components/ui/LoadingState.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { getFleets } from '@/services/fleetService';
+import { deleteFleet, getFleets } from '@/services/fleetService';
 import type { Fleet, PaginatedResponse } from '@/types/fleet';
 
 const fleetsResponse = ref<PaginatedResponse<Fleet> | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
+const creatingFleet = ref(false);
+const editingFleet = ref<Fleet | null>(null);
+const deletingFleetId = ref<number | null>(null);
 
 const fleets = computed(() => fleetsResponse.value?.data ?? []);
 
@@ -40,6 +45,58 @@ async function loadFleets(page = 1): Promise<void> {
     }
 }
 
+async function handleFleetSaved(): Promise<void> {
+    creatingFleet.value = false;
+    editingFleet.value = null;
+
+    await loadFleets(1);
+}
+
+function startCreatingFleet(): void {
+    editingFleet.value = null;
+    creatingFleet.value = true;
+}
+
+function startEditingFleet(fleet: Fleet): void {
+    creatingFleet.value = false;
+    editingFleet.value = fleet;
+}
+
+function cancelFleetForm(): void {
+    creatingFleet.value = false;
+    editingFleet.value = null;
+}
+
+async function handleDeleteFleet(fleet: Fleet): Promise<void> {
+    const confirmed = window.confirm(
+        `Delete "${fleet.name}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    deletingFleetId.value = fleet.id;
+    error.value = null;
+
+    try {
+        await deleteFleet(fleet);
+
+        if (editingFleet.value?.id === fleet.id) {
+            cancelFleetForm();
+        }
+
+        await loadFleets(fleetsResponse.value?.meta.current_page ?? 1);
+    } catch (exception) {
+        error.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to delete fleet.';
+    } finally {
+        deletingFleetId.value = null;
+    }
+}
+
 onMounted(() => {
     void loadFleets();
 });
@@ -53,13 +110,47 @@ onMounted(() => {
         description="Manage vehicle fleets"
         active-navigation="Fleets"
     >
-        <PageHeader
-            eyebrow="Fleet management"
-            title="Fleets"
-            description="Manage and organize your vehicle fleets."
-            show-refresh
-            @refresh="loadFleets()"
-        />
+        <div class="mb-7 flex flex-col gap-4">
+            <PageHeader
+                eyebrow="Fleet management"
+                title="Fleets"
+                description="Manage and organize your vehicle fleets."
+                show-refresh
+                @refresh="loadFleets()"
+            />
+
+            <div class="flex justify-end">
+                <AppButton
+                    v-if="!creatingFleet && !editingFleet"
+                    @click="startCreatingFleet"
+                >
+                    Create fleet
+                </AppButton>
+            </div>
+        </div>
+
+        <AppCard v-if="creatingFleet || editingFleet" class="mb-6">
+            <div class="mb-5">
+                <h3 class="text-lg font-semibold text-content">
+                    {{ editingFleet ? 'Edit fleet' : 'Create fleet' }}
+                </h3>
+
+                <p class="mt-1 text-sm text-muted">
+                    {{
+                        editingFleet
+                            ? 'Update the fleet information and settings.'
+                            : 'Add a new fleet to organize and manage vehicles.'
+                    }}
+                </p>
+            </div>
+
+            <CreateFleetForm
+                :key="editingFleet?.id ?? 'create'"
+                :fleet="editingFleet ?? undefined"
+                @saved="handleFleetSaved"
+                @cancel="cancelFleetForm"
+            />
+        </AppCard>
 
         <AppCard :padding="false">
             <LoadingState v-if="loading" message="Loading fleets..." />
@@ -113,6 +204,12 @@ onMounted(() => {
                                 class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
                             >
                                 Status
+                            </th>
+
+                            <th
+                                class="px-5 py-3 text-right text-xs font-semibold tracking-wide text-muted uppercase"
+                            >
+                                Actions
                             </th>
                         </tr>
                     </thead>
@@ -186,6 +283,28 @@ onMounted(() => {
                                         fleet.is_active ? 'Active' : 'Inactive'
                                     }}
                                 </StatusBadge>
+                            </td>
+
+                            <td class="px-5 py-4 text-right whitespace-nowrap">
+                                <AppButton
+                                    variant="secondary"
+                                    size="sm"
+                                    :disabled="deletingFleetId !== null"
+                                    @click="startEditingFleet(fleet)"
+                                >
+                                    Edit
+                                </AppButton>
+
+                                <AppButton
+                                    variant="danger"
+                                    size="sm"
+                                    class="ml-2"
+                                    :loading="deletingFleetId === fleet.id"
+                                    :disabled="deletingFleetId !== null"
+                                    @click="handleDeleteFleet(fleet)"
+                                >
+                                    Delete
+                                </AppButton>
                             </td>
                         </tr>
                     </tbody>
