@@ -36,13 +36,18 @@ class UpdateFleetRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
+                Rule::unique(Fleet::class, 'name')
+                    ->where('company_id', $fleet->company_id)
+                    ->ignore($fleet),
             ],
 
             'code' => [
                 'required',
                 'string',
                 'max:50',
-                Rule::unique(Fleet::class, 'code')->ignore($fleet),
+                Rule::unique(Fleet::class, 'code')
+                    ->where('company_id', $fleet->company_id)
+                    ->ignore($fleet),
             ],
 
             'email' => [
@@ -103,7 +108,10 @@ class UpdateFleetRequest extends FormRequest
             ]);
         }
 
-        if ($this->has('timezone') && ($this->input('timezone') === null || $this->input('timezone') === '')) {
+        if (
+            $this->has('timezone')
+            && ($this->input('timezone') === null || $this->input('timezone') === '')
+        ) {
             $this->merge([
                 'timezone' => config('app.timezone'),
             ]);

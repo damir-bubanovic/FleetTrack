@@ -305,3 +305,153 @@ it('uses the application timezone when updating a fleet with a null timezone', f
 
     expect($fleet->fresh()->timezone)->toBe(config('app.timezone'));
 });
+
+test('company admin cannot create fleet with duplicate name in own company', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $this->createFleet($company, [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->postJson('/api/v1/fleets', [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS-2',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['name']);
+});
+
+test('company admin cannot create fleet with duplicate code in own company', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $this->createFleet($company, [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->postJson('/api/v1/fleets', [
+        'name' => 'Secondary Fleet',
+        'code' => 'ops',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['code']);
+});
+
+test('different companies can use the same fleet name and code', function (): void {
+    $companyA = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $companyB = $this->createCompany([
+        'name' => 'Company B',
+        'slug' => 'company-b',
+    ]);
+
+    $this->createFleet($companyA, [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $this->actingAsCompanyAdmin($companyB);
+
+    $this->postJson('/api/v1/fleets', [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.company_id', $companyB->id);
+
+    $this->assertDatabaseHas('fleets', [
+        'company_id' => $companyB->id,
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+});
+
+test('company admin cannot update fleet to duplicate name in own company', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $existingFleet = $this->createFleet($company, [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $fleet = $this->createFleet($company, [
+        'name' => 'Delivery Fleet',
+        'code' => 'DEL',
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->putJson("/api/v1/fleets/{$fleet->id}", [
+        'name' => $existingFleet->name,
+        'code' => $fleet->code,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['name']);
+});
+
+test('company admin cannot update fleet to duplicate code in own company', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $existingFleet = $this->createFleet($company, [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $fleet = $this->createFleet($company, [
+        'name' => 'Delivery Fleet',
+        'code' => 'DEL',
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->putJson("/api/v1/fleets/{$fleet->id}", [
+        'name' => $fleet->name,
+        'code' => strtolower($existingFleet->code),
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['code']);
+});
+
+test('company admin can update fleet without changing name or code', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $fleet = $this->createFleet($company, [
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->putJson("/api/v1/fleets/{$fleet->id}", [
+        'name' => $fleet->name,
+        'code' => $fleet->code,
+        'description' => 'Updated description',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.name', 'Operations Fleet')
+        ->assertJsonPath('data.code', 'OPS')
+        ->assertJsonPath('data.description', 'Updated description');
+});

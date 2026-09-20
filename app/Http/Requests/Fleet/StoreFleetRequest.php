@@ -5,6 +5,7 @@ namespace App\Http\Requests\Fleet;
 use App\Models\Fleet;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreFleetRequest extends FormRequest
 {
@@ -28,12 +29,16 @@ class StoreFleetRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
+                Rule::unique('fleets', 'name')
+                    ->where('company_id', $this->user()?->company_id),
             ],
 
             'code' => [
                 'required',
                 'string',
                 'max:50',
+                Rule::unique('fleets', 'code')
+                    ->where('company_id', $this->user()?->company_id),
             ],
 
             'email' => [
