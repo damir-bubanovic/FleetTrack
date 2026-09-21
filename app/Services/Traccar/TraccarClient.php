@@ -8,20 +8,30 @@ use Illuminate\Support\Facades\Http;
 
 class TraccarClient
 {
-    protected function client(): PendingRequest
+    public function request(): PendingRequest
     {
-        return Http::baseUrl(
-            rtrim((string) config('traccar.url'), '/').'/api'
+        $request = Http::baseUrl(
+            rtrim((string) config('traccar.url'), '/').'/api',
         )
-            ->withBasicAuth(
-                (string) config('traccar.username'),
-                (string) config('traccar.password'),
-            )
             ->acceptJson()
+            ->asJson()
             ->timeout((int) config('traccar.timeout', 30))
             ->withOptions([
                 'verify' => (bool) config('traccar.verify_ssl', true),
             ]);
+
+        $username = config('traccar.username');
+        $password = config('traccar.password');
+
+        if (
+            is_string($username)
+            && $username !== ''
+            && is_string($password)
+        ) {
+            return $request->withBasicAuth($username, $password);
+        }
+
+        return $request;
     }
 
     /**
@@ -29,7 +39,7 @@ class TraccarClient
      */
     public function get(string $uri, array $query = []): Response
     {
-        return $this->client()->get($uri, $query);
+        return $this->request()->get($uri, $query);
     }
 
     /**
@@ -37,7 +47,7 @@ class TraccarClient
      */
     public function post(string $uri, array $data = []): Response
     {
-        return $this->client()->post($uri, $data);
+        return $this->request()->post($uri, $data);
     }
 
     /**
@@ -45,7 +55,7 @@ class TraccarClient
      */
     public function put(string $uri, array $data = []): Response
     {
-        return $this->client()->put($uri, $data);
+        return $this->request()->put($uri, $data);
     }
 
     /**
@@ -53,6 +63,6 @@ class TraccarClient
      */
     public function delete(string $uri, array $data = []): Response
     {
-        return $this->client()->delete($uri, $data);
+        return $this->request()->delete($uri, $data);
     }
 }
