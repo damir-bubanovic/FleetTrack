@@ -910,53 +910,33 @@ normalization.
 
 ------------------------------------------------------------------------
 
+# ADR-038 --- Development Seeds Form a Connected, Repeatable Dataset
+
+## Decision
+
+`DatabaseSeeder` is the canonical local-development reset and must create a coherent multi-tenant dataset after `sail artisan migrate:fresh --seed`.
+
+The system company receives no operational dummy fleet data. Customer-company operational records are connected through real FleetTrack relationships. Seeded Devices and Geofences do not receive fabricated Traccar IDs or synchronization timestamps.
+
+## Consequences
+
+- Fresh development environments have enough data for pagination, filters, CRUD, tracking-adjacent UI, geofences, alerts, rules, reports, and dashboard work.
+- Each seeded Vehicle has a local Device in the same company.
+- Drivers are assigned to seeded Fleets.
+- Geofences have Vehicle associations.
+- Alert Rules and Alerts cover representative supported event types.
+- External synchronization state remains truthful: null until a real Traccar synchronization occurs.
+
 # Current Decision-Driven Development Direction
 
-The architecture now supports applying the same frontend pattern across
-the existing backend modules.
+The active frontend sequence is now:
 
-Current frontend progression begins with:
-
-``` text
-Fleet list
- ↓
-Create Fleet
- ↓
-Edit Fleet
- ↓
-Delete Fleet
- ↓
-complete Fleet interactions
+```text
+Completed: Fleets → Vehicles → Drivers → Devices
+Current:   Live Tracking
+Next:      Geofences → Alerts/Alert Rules → Reports → Dashboard live-data wiring
 ```
 
-Then the established frontend architecture can be extended to:
+Live Tracking should be implemented in meaningful slices: first types/service/page/filter/current-position presentation, then map/markers and position history/trail.
 
-``` text
-Vehicles
-Drivers
-Devices
-Live Tracking
-Geofences
-Alerts
-Reports
-Dashboard live-data wiring
-```
-
-These are implementation priorities rather than new architectural
-decisions.
-
-The important architectural constraint is that each new page reuses:
-
-``` text
-AppLayout
-shared UI components
-semantic design tokens
-authState
-apiRequest()
-feature services
-Wayfinder routes
-existing Laravel API contracts
-existing authorization and tenancy
-```
-
-rather than introducing parallel infrastructure.
+Every new frontend module continues to reuse `AppLayout`, shared UI components, semantic design tokens, `authState`, `apiRequest()`, feature services/types, Wayfinder routes, and the existing Laravel authorization/API contracts.

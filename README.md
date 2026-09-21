@@ -1,66 +1,56 @@
 # FleetTrack
 
-FleetTrack is a multi-tenant fleet-management and GPS-tracking
-application built with Laravel, Vue, Inertia, and Traccar.
+FleetTrack is a multi-tenant fleet-management and GPS-tracking application built with Laravel, Vue, Inertia, and Traccar.
 
-FleetTrack owns the business domain, tenancy, authorization, alerts,
-reporting contracts, and application UI. Traccar provides the external
-GPS/tracking engine for positions, detected trips, Devices, Geofences,
-permissions, and supported tracking events.
+Laravel owns the business domain, tenancy, authorization, alerts, reporting contracts, and application UI. Traccar is the external GPS engine for live positions, position history, trips, stops, geofences, devices, and supported tracking events.
 
-## Current Status
+## Current checkpoint — 2026-09-21
 
-The backend foundation is substantially implemented through:
+### Backend
 
-``` text
-Authentication and authorization
-Companies
-Fleets
-Drivers
-Vehicles
-Devices
-Traccar Device synchronization
-Live Tracking
-Position and trip history
-Geofences
-Geofence ↔ Vehicle synchronization
-Traccar event ingestion
-Alerts
-Custom Alert Rules
-Reports
-Dashboard Overview
+Implemented and covered by the current API/test suite:
+
+- Sanctum authentication and authenticated-user endpoints.
+- Company-scoped authorization with Spatie Permission teams.
+- Companies, fleets, drivers, vehicles, devices, geofences, and alert-rule CRUD APIs.
+- Device synchronization with Traccar.
+- Geofence synchronization and geofence ↔ vehicle association.
+- Live positions, single-vehicle position, position history, trip summary, and trips.
+- Traccar webhook ingestion for supported events.
+- Persistent alerts, acknowledgement, and custom alert-rule resolution.
+- Vehicle reports: trips, trip summary, stops, events, route, summary, hours, and combined report.
+- Dashboard overview API.
+
+### Frontend
+
+Implemented web modules:
+
+- Login and bearer-token authentication restoration/logout.
+- Responsive application shell and reusable UI layer.
+- Dashboard visual UI (still uses display/mock data; live API wiring remains pending).
+- Fleets: API-backed list/create/edit/delete, validation, pagination, refresh, and responsive states.
+- Vehicles: API-backed list/create/edit/delete, fleet selection, validation, pagination, and responsive states.
+- Drivers: API-backed list/create/edit/delete, fleet assignment, validation, pagination, and responsive states.
+- Devices: API-backed list/create/edit/delete, vehicle assignment, device status, synchronization metadata, validation, pagination, and responsive states.
+
+Current web routes:
+
+```text
+/login      Login
+/           Dashboard
+/fleets     Fleets
+/vehicles   Vehicles
+/drivers    Drivers
+/devices    Devices
 ```
 
-The frontend foundation is also established:
+The next planned frontend domain is **Live Tracking**, followed by Geofences, Alerts/Alert Rules, Reports, and live Dashboard wiring.
 
-``` text
-Vue 3 + TypeScript
-Inertia
-Tailwind CSS
-responsive application shell
-semantic design tokens
-reusable UI components
-Wayfinder routing
-Login
-bearer-token authentication
-auth restoration
-shared authenticated API client
-authenticated user sidebar
-Logout
-Dashboard visual UI
-real API-backed Fleet listing
-```
+## Technology stack
 
-The Fleet and Vehicle frontend CRUD slices are complete. The next planned
-frontend domain module is Drivers.
+### Backend
 
-------------------------------------------------------------------------
-
-# Technology Stack
-
-## Backend
-
-``` text
+```text
 PHP ^8.3
 Laravel ^13.17
 Laravel Sanctum
@@ -68,15 +58,15 @@ Spatie Laravel Permission with Teams
 MySQL
 Redis
 Laravel Sail
-Pest
+Pest 4
 PHPStan / Larastan
 Laravel Pint
 Traccar REST API
 ```
 
-## Frontend
+### Frontend
 
-``` text
+```text
 Vue 3
 TypeScript
 Inertia.js 3
@@ -88,487 +78,111 @@ ESLint
 Prettier
 ```
 
-------------------------------------------------------------------------
+## Local development
 
-# Requirements
-
-Local development expects:
-
--   Docker
--   Laravel Sail
--   Node.js / npm
--   Git
-
-The project is developed through Laravel Sail for PHP/Laravel commands.
-
-------------------------------------------------------------------------
-
-# Installation
-
-Clone the repository and enter the project directory.
-
-Install PHP dependencies if required:
-
-``` bash
+```bash
 composer install
-```
-
-Start Sail:
-
-``` bash
 ./vendor/bin/sail up -d
-```
-
-If `sail` is configured as a shell alias, the project commands can use:
-
-``` bash
-sail ...
-```
-
-Install frontend dependencies:
-
-``` bash
 npm install
-```
-
-Create the environment file if needed:
-
-``` bash
 cp .env.example .env
-```
-
-Generate the Laravel application key if needed:
-
-``` bash
 sail artisan key:generate
-```
-
-Configure the database and other environment settings in `.env`.
-
-Then rebuild the local database with development data:
-
-``` bash
 sail artisan migrate:fresh --seed
-```
-
-Generate the current Wayfinder route/action files if required:
-
-``` bash
 sail artisan wayfinder:generate
-```
-
-Start the frontend development server:
-
-``` bash
 npm run dev
 ```
 
-------------------------------------------------------------------------
+If `sail` is configured as a shell alias, use `sail ...` as shown throughout the project.
 
-# Development Login
+### Seeded development login
 
-The current seeded development database provides a System Administrator
-account:
-
-``` text
-Email:    admin@fleettrack.test
+```text
+Email: admin@fleettrack.test
 Password: password
 ```
 
 These credentials are for local seeded development only.
 
-The seed password was verified at the current project checkpoint using
-Laravel's `Hash::check`.
+## Development seed data
 
-Login page:
+`DatabaseSeeder` now creates a connected development dataset suitable for UI work after every `migrate:fresh --seed`.
 
-``` text
-/login
+Expected totals:
+
+```text
+Companies       4
+Fleets          6
+Vehicles       30
+Drivers        30
+Devices        30
+Geofences       9
+Alert Rules    21
+Alerts          18
 ```
 
-After authentication, the bearer token is persisted by the frontend and
-used for protected API requests.
+`FleetTrack Logistics` is the system company and intentionally has no operational dummy fleet data. Each of the three customer companies receives:
 
-------------------------------------------------------------------------
-
-# Web Application
-
-Current active Inertia web routes:
-
-``` text
-/        Dashboard
-/login   Login
-/fleets  Fleets
-/vehicles Vehicles
+```text
+2 fleets
+10 vehicles
+10 drivers
+10 devices (one per vehicle)
+3 geofences with vehicle associations
+7 alert rules
+6 representative alerts
 ```
 
-The sidebar also represents the planned application areas:
+Seeded devices and geofences intentionally have `traccar_*_id = null` and `last_sync_at = null`; local seed data must not pretend that fake entities exist in the real Traccar server.
 
-``` text
-Dashboard
-Fleets
-Vehicles
-Drivers
-Devices
-Live Tracking
-Geofences
-Alerts
-Reports
-```
+## Authentication
 
-Drivers, Devices, Live Tracking, Geofences, Alerts, and Reports remain
-unavailable until their Vue pages are implemented.
+Backend endpoints:
 
-------------------------------------------------------------------------
-
-# Authentication
-
-FleetTrack uses Laravel Sanctum.
-
-Backend authentication API:
-
-``` text
+```text
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 POST /api/v1/auth/logout
 ```
 
-The current web frontend uses Sanctum personal access tokens.
+The frontend persists the Sanctum personal-access token under `fleettrack_auth_token`. `authState` restores the user through `/auth/me`; the shared API client clears invalid authentication on `401`.
 
-Frontend flow:
+## Frontend structure
 
-``` text
-Login.vue
- ↓
-authService
- ↓
-Laravel Auth API
- ↓
-Sanctum bearer token
- ↓
-authToken
- ↓
-localStorage
- ↓
-apiRequest()
+```text
+resources/js/
+├── components/
+│   ├── app/
+│   ├── dashboard/
+│   ├── devices/
+│   ├── drivers/
+│   ├── fleets/
+│   ├── vehicles/
+│   └── ui/
+├── layouts/
+├── pages/
+│   ├── Auth/
+│   ├── Devices/
+│   ├── Drivers/
+│   ├── Fleets/
+│   └── Vehicles/
+├── services/
+├── types/
+├── routes/       # generated by Wayfinder
+└── actions/      # generated by Wayfinder
 ```
 
-The token is stored under:
+Current feature services/types exist for auth, fleets, vehicles, drivers, and devices. New frontend domains should follow the same service/type/component pattern and use the shared `apiRequest()` helper.
 
-``` text
-fleettrack_auth_token
-```
+## Design system
 
-`authState` restores the authenticated user through `/auth/me` when the
-application shell initializes.
+Semantic application styling is centralized in `resources/css/app.css`. Feature pages should reuse semantic tokens and shared UI components instead of introducing hard-coded parallel styling.
 
-A `401` response through the shared API client removes an invalid token.
+Shared UI currently includes buttons, cards, inputs, selects, textareas, tables, pagination, status badges, form fields, page headers, loading/error/empty states, and application icons.
 
-`AppLayout` redirects unauthenticated users to `/login`.
+## API summary
 
-Sign out calls the backend logout endpoint and clears the local
-authentication state.
+### Tracking
 
-------------------------------------------------------------------------
-
-# Frontend Structure
-
-Important frontend areas:
-
-``` text
-resources/
-├── css/
-│   └── app.css
-└── js/
-    ├── app.ts
-    ├── actions/
-    ├── components/
-    │   ├── app/
-    │   ├── dashboard/
-    │   └── ui/
-    ├── layouts/
-    ├── pages/
-    ├── routes/
-    ├── services/
-    ├── types/
-    └── wayfinder/
-```
-
-## Application Components
-
-``` text
-AppLogo.vue
-AppHeader.vue
-AppSidebar.vue
-AppFooter.vue
-AppLayout.vue
-```
-
-The application shell supports both desktop and mobile layouts.
-
-## Reusable UI
-
-Current reusable UI components include:
-
-``` text
-AppButton.vue
-AppCard.vue
-AppCheckbox.vue
-AppIcon.vue
-AppInput.vue
-AppPagination.vue
-AppSelect.vue
-AppTable.vue
-AppTextarea.vue
-EmptyState.vue
-ErrorState.vue
-FormField.vue
-LoadingState.vue
-PageHeader.vue
-StatusBadge.vue
-```
-
-New pages should reuse this layer rather than duplicate basic controls.
-
-------------------------------------------------------------------------
-
-# Design System
-
-Application styling and semantic colors are centralized in:
-
-``` text
-resources/css/app.css
-```
-
-Current semantic concepts include:
-
-``` text
-brand
-brand-hover
-brand-dark
-brand-soft
-
-app
-surface
-surface-muted
-sidebar
-
-content
-content-secondary
-muted
-subtle
-
-border-default
-border-strong
-
-success
-warning
-danger
-info
-```
-
-Feature pages should use semantic application tokens rather than
-hard-coded Tailwind palette colors.
-
-The shared layout and current pages are responsive.
-
-Responsive behavior should remain part of every new page implementation.
-
-------------------------------------------------------------------------
-
-# Frontend API Client
-
-Authenticated API access is centralized in:
-
-``` text
-resources/js/services/apiClient.ts
-```
-
-Feature services should use the shared `apiRequest()` helper.
-
-It currently handles:
-
--   JSON API acceptance
--   bearer-token authorization
--   common API errors
--   `401` token cleanup
--   `ApiError`
--   `204 No Content`
-
-Current frontend services include:
-
-``` text
-apiClient.ts
-authService.ts
-authState.ts
-authToken.ts
-fleetService.ts
-```
-
-Current frontend domain types include:
-
-``` text
-auth.ts
-fleet.ts
-```
-
-------------------------------------------------------------------------
-
-# Wayfinder
-
-Laravel Wayfinder generates typed frontend routes/actions.
-
-Generated files live under:
-
-``` text
-resources/js/routes/
-resources/js/actions/
-```
-
-When Laravel routes change, regenerate them:
-
-``` bash
-sail artisan wayfinder:generate
-```
-
-Do not manually edit generated Wayfinder files.
-
-Current web helpers cover:
-
-``` text
-Dashboard
-Login
-Fleets
-```
-
-------------------------------------------------------------------------
-
-# Fleets
-
-The Fleet backend is fully implemented.
-
-API:
-
-``` text
-GET    /api/v1/fleets
-POST   /api/v1/fleets
-GET    /api/v1/fleets/{fleet}
-PUT    /api/v1/fleets/{fleet}
-PATCH  /api/v1/fleets/{fleet}
-DELETE /api/v1/fleets/{fleet}
-```
-
-The Vue Fleet page currently implements the authenticated list/read
-flow.
-
-Current frontend files:
-
-``` text
-resources/js/pages/Fleets/Index.vue
-resources/js/services/fleetService.ts
-resources/js/types/fleet.ts
-```
-
-Implemented frontend behavior:
-
--   real API loading
--   loading state
--   error state
--   empty state
--   Fleet table
--   Fleet status
--   contact information
--   timezone
--   pagination metadata
--   refresh
--   responsive layout
-
-Remaining Fleet frontend work:
-
-``` text
-Create
-Edit
-Delete
-interactive pagination
-form validation UX
-final responsive/browser verification
-```
-
-This is the immediate next development slice.
-
-------------------------------------------------------------------------
-
-# Vehicles Frontend
-
-The Vehicles web module is implemented at `/vehicles`.
-
-Implemented frontend behavior:
-
-``` text
-API-backed paginated Vehicle listing
-Create Vehicle
-Edit Vehicle
-Delete Vehicle
-Fleet selection
-loading / error / empty states
-status presentation
-field-level Laravel 422 validation errors
-validation errors clear when corrected
-generic safe 5xx error presentation
-responsive AppLayout-based design consistent with Dashboard/Fleets
-```
-
-Vehicle validation is aligned with the database/API contract. Blank/null
-odometer input is normalized to `0`, and duplicate VIN values are rejected by
-Laravel validation before they can become database exceptions.
-
-------------------------------------------------------------------------
-
-# Dashboard
-
-Backend Dashboard API:
-
-``` text
-GET /api/v1/dashboard/overview
-```
-
-Current backend metrics:
-
-``` text
-companies
-fleets
-vehicles
-devices
-online_vehicles
-offline_vehicles
-offline_devices
-alerts
-unacknowledged_alerts
-```
-
-The Vue Dashboard UI exists and is responsive.
-
-Current Dashboard components:
-
-``` text
-DashboardMetricCard.vue
-DeviceConnectivity.vue
-FleetStatusTable.vue
-RecentAlerts.vue
-```
-
-Important: the current Vue Dashboard still uses static/mock display
-data.
-
-It is not yet connected to `/api/v1/dashboard/overview`.
-
-------------------------------------------------------------------------
-
-# Tracking
-
-Current tracking API:
-
-``` text
+```text
 GET /api/v1/tracking/positions
 GET /api/v1/tracking/vehicles/{vehicle}
 GET /api/v1/tracking/vehicles/{vehicle}/positions
@@ -576,18 +190,9 @@ GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
 GET /api/v1/tracking/vehicles/{vehicle}/trips
 ```
 
-FleetTrack delegates GPS position/trip data to Traccar while enforcing
-FleetTrack tenant visibility.
+### Reports
 
-The Live Tracking Vue page has not yet been implemented.
-
-------------------------------------------------------------------------
-
-# Reports
-
-Current report API:
-
-``` text
+```text
 GET /api/v1/reports/vehicles/{vehicle}/trips
 GET /api/v1/reports/vehicles/{vehicle}/trip-summary
 GET /api/v1/reports/vehicles/{vehicle}/stops
@@ -598,147 +203,28 @@ GET /api/v1/reports/vehicles/{vehicle}/hours
 GET /api/v1/reports/vehicles/{vehicle}/combined
 ```
 
-The Reports Vue page has not yet been implemented.
+### Dashboard
 
-The `reports.export` permission exists, but the export product contract
-remains intentionally undefined.
-
-------------------------------------------------------------------------
-
-# Database and Seed Data
-
-The current database covers:
-
-``` text
-Companies
-Users
-Roles / permissions
-Sanctum personal access tokens
-Fleets
-Drivers
-Vehicles
-Devices
-Geofences
-Geofence ↔ Vehicle associations
-Alerts
-Alert Rules
+```text
+GET /api/v1/dashboard/overview
 ```
 
-Current seeders include:
+REST resources also exist for companies, fleets, drivers, vehicles, devices, geofences, and alert rules; alerts provide list/show/acknowledge endpoints.
 
-``` text
-CompanyRoleSeeder
-CompanySeeder
-DatabaseSeeder
-DeviceSeeder
-DriverSeeder
-FleetSeeder
-PermissionSeeder
-RoleSeeder
-TestingRoleSeeder
-UserSeeder
-VehicleSeeder
-```
+## Quality gates
 
-At the current checkpoint, a fresh seeded database was manually verified
-with:
+For a meaningful backend/full-stack slice:
 
-``` text
-Companies: 4
-Fleets:    4
-Users:     22
-```
-
-------------------------------------------------------------------------
-
-# Backend Development Commands
-
-Run Laravel/PHP commands through Sail.
-
-Formatting:
-
-``` bash
-sail composer lint
-```
-
-Formatting check:
-
-``` bash
-sail composer lint:check
-```
-
-Static analysis:
-
-``` bash
-sail composer types:check
-```
-
-Tests:
-
-``` bash
-sail artisan test
-```
-
-At a meaningful backend/full-stack commit boundary, run all four:
-
-``` bash
+```bash
 sail composer lint
 sail composer lint:check
 sail composer types:check
 sail artisan test
 ```
 
-The project also exposes:
+For frontend work:
 
-``` bash
-sail composer ci:check
-```
-
-for the combined CI-oriented checks.
-
-------------------------------------------------------------------------
-
-# Frontend Development Commands
-
-Development server:
-
-``` bash
-npm run dev
-```
-
-Format:
-
-``` bash
-npm run format
-```
-
-Check formatting:
-
-``` bash
-npm run format:check
-```
-
-Lint:
-
-``` bash
-npm run lint:check
-```
-
-Vue/TypeScript type check:
-
-``` bash
-npm run types:check
-```
-
-Production build:
-
-``` bash
-npm run build
-```
-
-At a meaningful frontend commit boundary:
-
-``` bash
+```bash
 npm run format
 npm run format:check
 npm run lint:check
@@ -746,166 +232,21 @@ npm run types:check
 npm run build
 ```
 
-`npm run format` modifies source files; the remaining commands validate
-the result.
+Run the checks relevant to the changed slice before committing. Browser verification is also required for user-facing frontend work.
 
-------------------------------------------------------------------------
+## Development rules
 
-# Testing Workflow
+- Source code is authoritative when documentation is stale.
+- Keep controllers thin; use Form Requests, Actions, Services, Resources, policies, and DTOs according to the existing architecture.
+- Enforce tenant visibility before requesting external Traccar data.
+- Do not hand-edit generated Wayfinder files; regenerate them after route changes.
+- Reuse `AppLayout`, shared UI components, semantic tokens, `authState`, and `apiRequest()`.
+- Complete meaningful features with quality gates and then commit with a concise message.
 
-During implementation:
+## Documentation
 
-1.  make the smallest coherent change
-2.  run targeted tests/checks
-3.  fix failures immediately
-4.  continue the feature
-5.  run the complete relevant quality gate when the feature slice is
-    complete
-6.  inspect `git status`
-7.  commit only the intended files
-
-Do not wait until many unrelated modules have changed before running
-tests.
-
-------------------------------------------------------------------------
-
-# Project Architecture Rules
-
-Keep the existing backend flow:
-
-``` text
-Route
- ↓
-Middleware
- ↓
-Form Request
- ↓
-Controller
- ↓
-Policy / Permission Gate
- ↓
-Action
- ↓
-Model / Service
- ↓
-Resource
-```
-
-Keep Traccar communication behind Services.
-
-Keep controllers thin.
-
-Keep HTTP validation in Form Requests.
-
-Keep application behavior in Actions.
-
-Keep tenant visibility enforced before external data is returned.
-
-Keep the existing frontend flow:
-
-``` text
-Inertia route
- ↓
-Vue page
- ↓
-AppLayout / reusable components
- ↓
-feature service
- ↓
-apiRequest()
- ↓
-Laravel API
-```
-
-Do not duplicate auth or generic API behavior inside feature pages.
-
-------------------------------------------------------------------------
-
-# Current Development Checkpoint
-
-Completed frontend foundation and domain work:
-
-``` text
-responsive application shell
-design system and reusable UI layer
-Wayfinder web/API routing
-Login and bearer-token authentication
-auth restoration and Logout
-shared authenticated API client
-field-level Laravel 422 validation handling
-safe generic handling for 5xx responses
-Dashboard visual UI
-Fleet listing + create/edit/delete + pagination
-Vehicle listing + create/edit/delete + pagination
-Fleet and Vehicle browser/server validation alignment
-```
-
-Current active domain web routes:
-
-``` text
-/          Dashboard
-/login     Login
-/fleets    Fleets
-/vehicles  Vehicles
-```
-
-The immediate next frontend domain task is:
-
-``` text
-Drivers frontend CRUD
-```
-
-Recommended progression after Drivers:
-
-``` text
-Devices
-Live Tracking
-Geofences
-Alerts / Alert Rules
-Reports
-Dashboard live-data wiring
-```
-
-The backend APIs for these areas are already substantially implemented, so
-frontend work should reuse the established Vue/Inertia/service/API-client
-architecture rather than introducing parallel patterns.
-
-Before every feature commit run the full project gate:
-
-``` bash
-sail composer lint
-sail composer lint:check
-sail composer types:check
-sail artisan test
-
-npm run format
-npm run format:check
-npm run lint:check
-npm run types:check
-npm run build
-```
-
-# Documentation
-
-Project documentation:
-
-``` text
-README.md
-FEATURES.md
-ARCHITECTURE.md
-AGENTS.md
-docs/ARCHITECTURE_DECISIONS.md
-```
-
-Responsibilities:
-
--   `README.md` --- project entry point, setup, commands, and current
-    high-level status
--   `FEATURES.md` --- detailed implemented/remaining feature status
--   `ARCHITECTURE.md` --- system architecture and integration flows
--   `AGENTS.md` --- continuation rules and exact development checkpoint
--   `docs/ARCHITECTURE_DECISIONS.md` --- durable architectural decisions
-    and rationale
-
-The source code is authoritative if documentation and implementation
-diverge.
+- `README.md` — setup and current checkpoint.
+- `FEATURES.md` — feature-by-feature implementation status.
+- `ARCHITECTURE.md` — current system architecture.
+- `AGENTS.md` — coding/workflow guidance for future sessions.
+- `docs/ARCHITECTURE_DECISIONS.md` — durable architectural decisions.
