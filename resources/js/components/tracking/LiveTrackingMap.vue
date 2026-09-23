@@ -12,6 +12,7 @@ const mapElement = ref<HTMLDivElement | null>(null);
 
 let map: L.Map | null = null;
 let markerLayer: L.LayerGroup | null = null;
+let renderedVehicleKeys: string[] = [];
 
 const defaultCenter: L.LatLngExpression = [45.815, 15.9819];
 const defaultZoom = 11;
@@ -32,7 +33,39 @@ function createMarkerIcon(online: boolean): L.DivIcon {
     });
 }
 
-function renderPositions(): void {
+function createVehicleTooltip(item: LivePosition): string {
+    return item.vehicle?.name ?? item.device.name ?? 'Vehicle';
+}
+
+function getVehicleKeys(): string[] {
+    return props.positions.map((item) => {
+        if (item.vehicle?.id !== undefined) {
+            return `vehicle:${item.vehicle.id}`;
+        }
+
+        if (item.device.id !== null) {
+            return `device:${item.device.id}`;
+        }
+
+        if (item.device.traccar_device_id !== null) {
+            return `traccar:${item.device.traccar_device_id}`;
+        }
+
+        return `position:${item.position.id ?? 'unknown'}`;
+    });
+}
+
+function vehicleSetChanged(vehicleKeys: string[]): boolean {
+    if (vehicleKeys.length !== renderedVehicleKeys.length) {
+        return true;
+    }
+
+    return vehicleKeys.some(
+        (vehicleKey, index) => vehicleKey !== renderedVehicleKeys[index],
+    );
+}
+
+function renderPositions(fitMap = false): void {
     if (!map || !markerLayer) {
         return;
     }
@@ -58,6 +91,12 @@ function renderPositions(): void {
 
         const marker = L.marker([latitude, longitude], {
             icon: createMarkerIcon(item.status.online),
+        });
+
+        marker.bindTooltip(createVehicleTooltip(item), {
+            direction: 'top',
+            offset: [0, -12],
+            opacity: 0.95,
         });
 
         const vehicleName = item.vehicle?.name ?? item.device.name ?? 'Vehicle';
@@ -86,10 +125,14 @@ function renderPositions(): void {
         popup.append(title, device, status, speedElement);
 
         marker.bindPopup(popup);
-
         marker.addTo(currentMarkerLayer);
+
         bounds.extend([latitude, longitude]);
     });
+
+    if (!fitMap) {
+        return;
+    }
 
     if (bounds.isValid()) {
         currentMap.fitBounds(bounds, {
@@ -120,13 +163,20 @@ onMounted(() => {
 
     markerLayer = L.layerGroup().addTo(map);
 
-    renderPositions();
+    renderedVehicleKeys = getVehicleKeys();
+
+    renderPositions(true);
 });
 
 watch(
     () => props.positions,
     () => {
-        renderPositions();
+        const vehicleKeys = getVehicleKeys();
+        const shouldFitMap = vehicleSetChanged(vehicleKeys);
+
+        renderedVehicleKeys = vehicleKeys;
+
+        renderPositions(shouldFitMap);
     },
     {
         deep: true,
@@ -138,6 +188,7 @@ onBeforeUnmount(() => {
 
     markerLayer = null;
     map = null;
+    renderedVehicleKeys = [];
 });
 </script>
 
