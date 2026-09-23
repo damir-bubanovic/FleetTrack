@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import LiveTrackingMap from '@/components/tracking/LiveTrackingMap.vue';
 import AppCard from '@/components/ui/AppCard.vue';
@@ -28,6 +28,11 @@ const selectedVehicleId = ref('');
 const loading = ref(true);
 const filtersLoading = ref(true);
 const error = ref<string | null>(null);
+
+const refreshInterval = 30_000;
+
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let positionsRequestPending = false;
 
 const onlineCount = computed(
     () => positions.value.filter((item) => item.status.online).length,
@@ -83,8 +88,17 @@ async function loadFilters(): Promise<void> {
     }
 }
 
-async function loadPositions(): Promise<void> {
-    loading.value = true;
+async function loadPositions(showLoading = true): Promise<void> {
+    if (positionsRequestPending) {
+        return;
+    }
+
+    positionsRequestPending = true;
+
+    if (showLoading) {
+        loading.value = true;
+    }
+
     error.value = null;
 
     try {
@@ -104,8 +118,31 @@ async function loadPositions(): Promise<void> {
                 ? exception.message
                 : 'Unable to load live positions.';
     } finally {
-        loading.value = false;
+        positionsRequestPending = false;
+
+        if (showLoading) {
+            loading.value = false;
+        }
     }
+}
+
+function startPositionPolling(): void {
+    if (refreshTimer !== null) {
+        return;
+    }
+
+    refreshTimer = setInterval(() => {
+        void loadPositions(false);
+    }, refreshInterval);
+}
+
+function stopPositionPolling(): void {
+    if (refreshTimer === null) {
+        return;
+    }
+
+    clearInterval(refreshTimer);
+    refreshTimer = null;
 }
 
 async function handleFleetChange(): Promise<void> {
@@ -140,6 +177,12 @@ function formatDateTime(value: string | null): string {
 
 onMounted(async () => {
     await Promise.all([loadFilters(), loadPositions()]);
+
+    startPositionPolling();
+});
+
+onBeforeUnmount(() => {
+    stopPositionPolling();
 });
 </script>
 
