@@ -15,3 +15,5 @@ Route::inertia('/drivers', 'Drivers/Index')->name('web.drivers.index');
 Route::inertia('/devices', 'Devices/Index')->name('web.devices.index');
 
 Route::inertia('/tracking', 'Tracking/Index')->name('web.tracking.index');
+
+Route::inertia('/geofences', 'Geofences/Index')->name('web.geofences.index');

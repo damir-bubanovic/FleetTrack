@@ -72,7 +72,11 @@ const navigation: readonly NavigationItem[] = [
         icon: 'tracking',
         href: web.tracking.index.url(),
     },
-    { name: 'Geofences', icon: 'geofences' },
+    {
+        name: 'Geofences',
+        icon: 'geofences',
+        href: web.geofences.index.url(),
+    },
     { name: 'Alerts', icon: 'alerts' },
     { name: 'Reports', icon: 'reports' },
 ];

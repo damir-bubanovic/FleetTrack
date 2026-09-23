@@ -22,6 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        $middleware->redirectGuestsTo(
+            fn (Request $request): ?string => $request->is('api/*')
+                ? null
+                : route('web.login'),
+        );
+
         $middleware->prependToPriorityList(
             before: SubstituteBindings::class,
             prepend: SetPermissionTeam::class,
@@ -29,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*')
+                || $request->expectsJson(),
         );
     })->create();
