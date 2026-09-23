@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
+import LiveTrackingMap from '@/components/tracking/LiveTrackingMap.vue';
 import AppCard from '@/components/ui/AppCard.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -223,71 +224,79 @@ onMounted(async () => {
             icon="vehicles"
         />
 
-        <div v-else class="grid gap-4 lg:grid-cols-2">
-            <AppCard
-                v-for="item in positions"
-                :key="item.position.id ?? item.device.id ?? item.vehicle?.id"
-            >
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <h3 class="font-semibold text-content">
-                            {{
-                                item.vehicle?.name ??
-                                item.device.name ??
-                                'Vehicle'
-                            }}
-                        </h3>
-
-                        <p class="mt-1 text-sm text-muted">
-                            {{
-                                item.device.name ??
-                                item.device.unique_id ??
-                                'Unknown device'
-                            }}
-                        </p>
-                    </div>
-
-                    <StatusBadge
-                        :variant="item.status.online ? 'success' : 'danger'"
-                    >
-                        {{ item.status.online ? 'Online' : 'Offline' }}
-                    </StatusBadge>
-                </div>
-
-                <dl class="mt-5 grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <dt class="text-muted">Latitude</dt>
-                        <dd class="mt-1 font-medium text-content">
-                            {{ item.position.latitude ?? '—' }}
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-muted">Longitude</dt>
-                        <dd class="mt-1 font-medium text-content">
-                            {{ item.position.longitude ?? '—' }}
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-muted">Speed</dt>
-                        <dd class="mt-1 font-medium text-content">
-                            {{
-                                item.position.speed !== null
-                                    ? `${item.position.speed} kn`
-                                    : '—'
-                            }}
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt class="text-muted">Last seen</dt>
-                        <dd class="mt-1 font-medium text-content">
-                            {{ formatDateTime(item.status.last_seen_at) }}
-                        </dd>
-                    </div>
-                </dl>
+        <div v-else>
+            <AppCard class="mb-6 overflow-hidden">
+                <LiveTrackingMap :positions="positions" />
             </AppCard>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+                <AppCard
+                    v-for="item in positions"
+                    :key="
+                        item.position.id ?? item.device.id ?? item.vehicle?.id
+                    "
+                >
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="font-semibold text-content">
+                                {{
+                                    item.vehicle?.name ??
+                                    item.device.name ??
+                                    'Vehicle'
+                                }}
+                            </h3>
+
+                            <p class="mt-1 text-sm text-muted">
+                                {{
+                                    item.device.name ??
+                                    item.device.unique_id ??
+                                    'Unknown device'
+                                }}
+                            </p>
+                        </div>
+
+                        <StatusBadge
+                            :variant="item.status.online ? 'success' : 'danger'"
+                        >
+                            {{ item.status.online ? 'Online' : 'Offline' }}
+                        </StatusBadge>
+                    </div>
+
+                    <dl class="mt-5 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <dt class="text-muted">Latitude</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{ item.position.latitude ?? '—' }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Longitude</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{ item.position.longitude ?? '—' }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Speed</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    item.position.speed !== null
+                                        ? `${item.position.speed} kn`
+                                        : '—'
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Last seen</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{ formatDateTime(item.status.last_seen_at) }}
+                            </dd>
+                        </div>
+                    </dl>
+                </AppCard>
+            </div>
         </div>
     </AppLayout>
 </template>
