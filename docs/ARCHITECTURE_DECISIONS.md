@@ -927,16 +927,84 @@ The system company receives no operational dummy fleet data. Customer-company op
 - Alert Rules and Alerts cover representative supported event types.
 - External synchronization state remains truthful: null until a real Traccar synchronization occurs.
 
+# ADR-039 --- Use Leaflet for the Live Tracking Map
+
+## Decision
+
+The current web Live Tracking map uses Leaflet with OpenStreetMap tiles. Tracking data remains supplied by FleetTrack's Laravel API; the map library is a presentation concern and does not become a tracking data source.
+
+## Consequences
+
+- `LiveTrackingMap.vue` owns the Leaflet map and marker layer lifecycle.
+- Online/offline state is rendered from FleetTrack tracking status, not inferred by Leaflet.
+- The map fits bounds on initial render or when the rendered vehicle set changes, but ordinary polling updates do not continually reset user pan/zoom.
+- Vehicle tooltips/popups are built from the typed `LivePosition` payload.
+- Leaflet and `@types/leaflet` are explicit frontend dependencies.
+
+------------------------------------------------------------------------
+
+# ADR-040 --- Poll Current Live Positions at a Modest Interval
+
+## Decision
+
+The current Live Tracking page refreshes positions every 30 seconds and also supports manual refresh. It prevents a new polling request from starting while a previous positions request is still pending.
+
+## Consequences
+
+- Polling is started when the Tracking page mounts and cleared before unmount.
+- Background refresh does not replace the page with a full loading state.
+- Fleet/vehicle filter changes trigger an immediate filtered refresh.
+- A future real-time transport may replace polling if product requirements justify it; the current API/service boundary should remain reusable.
+
+------------------------------------------------------------------------
+
+# ADR-041 --- Super Admin Must Explicitly Select Geofence Ownership
+
+## Decision
+
+Geofence creation by a Super Admin requires an explicit `company_id`, matching `StoreGeofenceRequest`. The Vue form exposes a Company selector only for the actual `super_admin` role value. Company Admin requests continue to rely on backend tenancy behavior.
+
+## Consequences
+
+- Do not silently choose a company for a Super Admin when multiple companies are available.
+- Frontend authorization/visibility checks must use stored enum values, not display-normalized role labels.
+- `companyService.ts` and `company.ts` provide the minimal frontend Company API/type support currently needed by Geofences.
+- The system company remains excluded by the existing Company index query.
+
+------------------------------------------------------------------------
+
+# ADR-042 --- Local Traccar HTTP Fakes Are Development Infrastructure
+
+## Decision
+
+In the `local` environment, `AppServiceProvider` registers `LocalTraccarServiceProvider` to fake the Traccar HTTP interactions needed by current local UI development. This provider is not registered as production behavior.
+
+## Consequences
+
+- Current local fake coverage includes positions, geofence CRUD, and permission attach/detach.
+- Generated position data is based on local Devices with Traccar device IDs.
+- Fake Geofence records are held in memory and are not durable Traccar state.
+- Tests and production code must not depend on the local fake as an external persistence mechanism.
+- Additional fake endpoints should be added deliberately as local UI work reaches other Traccar-backed features.
+
+------------------------------------------------------------------------
+
 # Current Decision-Driven Development Direction
 
-The active frontend sequence is now:
+Completed active frontend work now includes:
 
 ```text
-Completed: Fleets → Vehicles → Drivers → Devices
-Current:   Live Tracking
-Next:      Geofences → Alerts/Alert Rules → Reports → Dashboard live-data wiring
+Fleets → Vehicles → Drivers → Devices → Live Tracking current-position map → Geofence CRUD
 ```
 
-Live Tracking should be implemented in meaningful slices: first types/service/page/filter/current-position presentation, then map/markers and position history/trail.
+The next product-facing work should be selected from the remaining frontend gaps:
 
-Every new frontend module continues to reuse `AppLayout`, shared UI components, semantic design tokens, `authState`, `apiRequest()`, feature services/types, Wayfinder routes, and the existing Laravel authorization/API contracts.
+```text
+Geofence vehicle associations / map boundary editing as required
+→ Alerts / Alert Rules
+→ Reports
+→ Dashboard live-data wiring
+→ Tracking history/trail enhancements
+```
+
+Every new frontend module continues to reuse `AppLayout`, shared UI components, semantic design tokens, `authState`, `apiRequest()`, feature services/types, Wayfinder routes, and existing Laravel authorization/API contracts.

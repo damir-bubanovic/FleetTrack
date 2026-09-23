@@ -1,76 +1,53 @@
 # FleetTrack Features
 
-Status reflects the source snapshot supplied on 2026-09-21.
+Status reflects the source snapshot supplied on 2026-09-23.
 
 ## Status legend
 
 - **Implemented** — present in current source and used/tested.
 - **Frontend pending** — backend exists but no active Vue module/web route yet.
-- **Partial** — UI exists but still needs live backend integration.
+- **Partial** — useful UI exists but additional planned integration remains.
 
 ## Authentication and access — Implemented
 
-Backend:
+Backend includes Sanctum login/current-user/logout endpoints, bearer-token API authentication, company-scoped authorization with Spatie Permission teams, and role/permission seeders/policy coverage.
 
-- Sanctum login, current-user, and logout endpoints.
-- Bearer-token API authentication.
-- Company-scoped authorization using Spatie Permission teams.
-- Role/permission seeders and policy coverage.
-
-Frontend:
-
-- Login page.
-- Token persistence and restoration.
-- Shared authenticated API client.
-- Authenticated application shell and logout.
+Frontend includes login, token persistence/restoration, shared authenticated API access, logout, and the authenticated application shell. API authentication failures render JSON; guest web requests redirect to `web.login`.
 
 ## Application shell and design system — Implemented
 
-- Responsive `AppLayout`.
-- Desktop/mobile sidebar and header/footer.
+- Responsive `AppLayout` with desktop/mobile navigation.
 - Semantic design tokens in `resources/css/app.css`.
-- Shared buttons, cards, form controls, table, pagination, badges, loading/error/empty states, and page headers.
+- Shared buttons, cards, form controls, table, pagination, badges, loading/error/empty states, page headers, and icons.
 - Wayfinder-generated typed routes/actions.
 
-## Companies
+## Companies — Backend implemented; supporting frontend service implemented
 
-Backend: **Implemented** CRUD API, tenancy model, policies, factory/seeding support.
+Backend CRUD API, tenancy model, policies, factory/seeding support are implemented.
 
-Frontend: **No standalone company-management page currently exposed.**
+There is no standalone company-management page. A frontend `Company` type and `companyService.ts` now exist to support Super Admin company selection in Geofence forms.
 
 ## Fleets — Implemented backend + frontend
 
-Backend CRUD API and authorization are implemented.
-
-Frontend `/fleets` includes API-backed listing, create/edit/delete, pagination, loading/error/empty states, refresh, validation errors, and responsive presentation.
+`/fleets` provides API-backed listing, create/edit/delete, pagination, loading/error/empty states, refresh, validation errors, and responsive presentation.
 
 ## Vehicles — Implemented backend + frontend
 
-Frontend `/vehicles` includes CRUD, fleet selection, validation, pagination, status presentation, and responsive states. Vehicle request/database constraints include VIN uniqueness and odometer normalization.
+`/vehicles` provides CRUD, fleet selection, validation, pagination, status presentation, and responsive states. Vehicle request/database constraints include VIN uniqueness and odometer normalization.
 
 ## Drivers — Implemented backend + frontend
 
-Frontend `/drivers` includes CRUD, fleet assignment, validation, pagination, loading/error/empty states, and responsive presentation.
+`/drivers` provides CRUD, fleet assignment, validation, pagination, loading/error/empty states, and responsive presentation.
 
 ## Devices — Implemented backend + frontend
 
-Backend includes CRUD plus Traccar device synchronization infrastructure.
+Backend includes CRUD plus Traccar device synchronization infrastructure. `/devices` provides CRUD, vehicle assignment, device status, Traccar synchronization metadata, validation, pagination, and responsive states.
 
-Frontend `/devices` includes CRUD, vehicle assignment, device status, Traccar synchronization metadata, validation, pagination, and responsive states.
+Persisted device statuses are `active`, `inactive`, and `maintenance`. Online/offline on the Tracking page is runtime GPS connectivity state, not a persisted Device status.
 
-Current device status values are:
+## Live Tracking — Current-position frontend implemented; history/trail UI pending
 
-```text
-active
-inactive
-maintenance
-```
-
-Seeded devices intentionally remain unsynchronized with Traccar (`traccar_device_id` and `last_sync_at` are null).
-
-## Live Tracking — Backend implemented, frontend pending
-
-Current endpoints:
+Backend endpoints:
 
 ```text
 GET /api/v1/tracking/positions
@@ -80,13 +57,25 @@ GET /api/v1/tracking/vehicles/{vehicle}/trip-summary
 GET /api/v1/tracking/vehicles/{vehicle}/trips
 ```
 
-The backend supports company visibility, fleet/vehicle filtering, current positions, online/offline interpretation from GPS fix time, position history, trip summaries, and trips.
+Backend supports company visibility, fleet/vehicle filtering, current positions, online/offline interpretation from GPS fix time, position history, trip summaries, and trips.
 
-Next planned frontend milestone: tracking types/service, `/tracking` page, fleet/vehicle filters, live position presentation, then map/markers and history/trail work.
+Frontend `/tracking` now includes:
 
-## Geofences — Backend implemented, frontend pending
+- fleet and vehicle filters;
+- current vehicle count plus online/offline totals;
+- current position/status cards;
+- Leaflet/OpenStreetMap map;
+- online/offline markers;
+- vehicle-name tooltips and detail popups;
+- fit-to-vehicle behavior without continually resetting the viewport when only positions change;
+- manual refresh;
+- automatic refresh every 30 seconds with overlapping requests prevented.
 
-Implemented:
+Remaining Tracking work: expose position history/trail and any trip/history interaction required by the product.
+
+## Geofences — CRUD frontend implemented; association/map UX pending
+
+Backend implemented:
 
 - Geofence CRUD.
 - Traccar geofence synchronization jobs/services.
@@ -94,78 +83,41 @@ Implemented:
 - Stale-job/current-desired-state protection.
 - Relationship and service/job tests.
 
-Development seeds create three geofences per customer company with overlapping vehicle associations.
+Frontend `/geofences` now includes:
+
+- paginated API-backed listing;
+- create/edit/delete;
+- Laravel validation error presentation;
+- active/inactive status;
+- Traccar geofence ID and last-sync metadata;
+- Super Admin company selector using the actual `super_admin` role value;
+- company API support for the selector.
+
+Current area editing is a Traccar area/WKT text field. Remaining Geofence UX includes vehicle assignment management and map-based boundary drawing/editing if required by product scope.
 
 ## Alerts — Backend implemented, frontend pending
 
-Implemented:
-
-- Persistent alerts.
-- Alert list/show.
-- Acknowledge action/API.
-- Overspeed, geofence, ignition, and device-offline event handling.
-- Traccar webhook translation/listeners.
-
-Development seeds create representative acknowledged and unacknowledged alerts.
+Implemented backend behavior includes persistent alerts, list/show, acknowledgement, overspeed/geofence/ignition/device-offline event handling, and Traccar webhook translation/listeners.
 
 ## Custom Alert Rules — Backend implemented, frontend pending
 
-Supported seeded/event rule types include:
-
-```text
-overspeed
-geofence_enter
-geofence_exit
-ignition_on
-ignition_off
-device_offline
-```
-
-Rules can be company-wide or vehicle-specific. Vehicle-specific rules are resolved ahead of company-wide rules when applicable.
+Supported rule types include `overspeed`, `geofence_enter`, `geofence_exit`, `ignition_on`, `ignition_off`, and `device_offline`. Rules can be company-wide or vehicle-specific; matching vehicle-specific rules take precedence where applicable.
 
 ## Reports — Backend implemented, frontend pending
 
-Vehicle report endpoints:
+Vehicle report endpoints cover trips, trip-summary, stops, events, route, summary, hours, and combined reports. FleetTrack authorization/vehicle visibility is enforced before Traccar report access.
 
-```text
-trips
-trip-summary
-stops
-events
-route
-summary
-hours
-combined
-```
-
-Reports reuse the Traccar/report boundary and enforce FleetTrack authorization/vehicle visibility first.
-
-Export formats remain intentionally undefined until product requirements exist.
+Export formats remain undefined until product requirements exist.
 
 ## Dashboard — Partial frontend
 
-Backend `GET /api/v1/dashboard/overview` is implemented and tested.
+`GET /api/v1/dashboard/overview` is implemented and tested. Dashboard visual components exist, but the page is not yet wired to the overview API.
 
-The current Vue Dashboard visual components exist, but the page is not yet wired to the overview API. Live dashboard data remains a frontend task.
+## Local Traccar development support — Implemented for current UI flows
+
+`LocalTraccarServiceProvider` is registered only in the local environment and fakes the Traccar HTTP calls currently needed by local Tracking/Geofence development: positions, geofence CRUD, and permission attach/detach. Geofences are held in memory by the fake and are not durable Traccar data.
 
 ## Database, factories, and development seed data — Implemented
-
-`DatabaseSeeder` runs:
-
-```text
-PermissionSeeder
-CompanySeeder
-RoleSeeder
-CompanyRoleSeeder
-UserSeeder
-FleetSeeder
-VehicleSeeder
-DriverSeeder
-DeviceSeeder
-GeofenceSeeder
-AlertRuleSeeder
-AlertSeeder
-```
 
 Expected fresh-seed totals:
 
@@ -180,18 +132,52 @@ Expected fresh-seed totals:
 18 alerts
 ```
 
-The system company receives no operational dummy data. Each of three customer companies receives 2 fleets, 10 vehicles, 10 drivers, 10 devices, 3 geofences, 7 rules, and 6 alerts.
+The system company receives no operational dummy data. Seeded device/geofence Traccar IDs and sync timestamps remain null until actual synchronization occurs.
 
-Verified seed invariants include:
+## Current product status summary
 
-- every seeded vehicle has a device;
-- every seeded device belongs to a vehicle in the same company;
-- every seeded driver belongs to a fleet;
-- every seeded geofence has vehicle associations;
-- seeded alerts have vehicles;
-- fake Traccar IDs/timestamps are not invented for seeded devices/geofences.
+### Completed active frontend modules
 
-## Quality standards — Implemented workflow
+```text
+Login
+Fleets CRUD
+Vehicles CRUD
+Drivers CRUD
+Devices CRUD
+Live Tracking current-position map
+Geofences CRUD
+```
+
+### Partial
+
+```text
+Dashboard visual shell (live API wiring pending)
+Live Tracking (history/trail UI pending)
+Geofences (vehicle-association UI and optional map editor pending)
+```
+
+### Frontend pending
+
+```text
+Alerts / Alert Rules
+Reports
+```
+
+## Next development work
+
+Recommended progression from the current checkpoint:
+
+```text
+finish Geofence UX as required (vehicle associations / map boundary editor)
+→ Alerts / Alert Rules frontend
+→ Reports frontend
+→ Dashboard overview API wiring
+→ Tracking history/trail enhancements
+```
+
+The exact order can change with product priority; backend contracts for these domains already exist.
+
+## Quality standards
 
 Backend/full-stack gate:
 
@@ -210,50 +196,4 @@ npm run format:check
 npm run lint:check
 npm run types:check
 npm run build
-```
-
-## Current product status summary
-
-### Backend/API
-
-The planned core backend foundation is substantially implemented: auth, tenancy/authorization, operational CRUD, Traccar synchronization boundaries, tracking, geofences, event ingestion, alerts/rules, reports, and dashboard overview.
-
-### Frontend
-
-Completed active modules:
-
-```text
-Login
-Dashboard visual shell
-Fleets CRUD
-Vehicles CRUD
-Drivers CRUD
-Devices CRUD
-```
-
-Pending active modules:
-
-```text
-Live Tracking
-Geofences
-Alerts / Alert Rules
-Reports
-Dashboard live-data wiring
-```
-
-## Next development work
-
-Immediate: **Live Tracking frontend**.
-
-Recommended progression:
-
-```text
-tracking types + service
-→ page + filters + current positions
-→ map + markers/details
-→ position history/trail
-→ Geofences frontend
-→ Alerts / Alert Rules frontend
-→ Reports frontend
-→ Dashboard API wiring
 ```

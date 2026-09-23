@@ -1,6 +1,6 @@
 # FleetTrack Architecture
 
-This document describes the architecture present in the source snapshot supplied on 2026-09-21. Source code remains authoritative.
+This document describes the architecture present in the source snapshot supplied on 2026-09-23. Source code remains authoritative.
 
 ## 1. System boundary
 
@@ -18,11 +18,9 @@ FleetTrack owns users, companies, tenancy, fleets, vehicles, drivers, local devi
 
 Backend: PHP 8.3+, Laravel 13, Sanctum, Spatie Permission Teams, MySQL, Redis, Sail, Pest, PHPStan/Larastan, Pint.
 
-Frontend: Vue 3, TypeScript, Inertia 3, Tailwind CSS 4, Vite 8, Wayfinder, vue-tsc, ESLint, Prettier.
+Frontend: Vue 3, TypeScript, Inertia 3, Tailwind CSS 4, Vite 8, Wayfinder, Leaflet 1.9, OpenStreetMap tiles, vue-tsc, ESLint, Prettier.
 
 ## 3. Backend layering
-
-The established request path is:
 
 ```text
 Route
@@ -33,13 +31,17 @@ Route
 → API Resource
 ```
 
-Controllers stay thin. HTTP validation belongs in Form Requests. Business operations live in Actions. External Traccar calls are isolated behind services/DTOs. Resources define API output shapes.
+Controllers stay thin. HTTP validation belongs in Form Requests. Business operations live in Actions. External Traccar calls are isolated behind services/DTOs/jobs. Resources define API output shapes.
 
 ## 4. Authentication and authorization
 
-Laravel Sanctum personal access tokens back the current web/API authentication flow. The Vue client persists the bearer token and restores the authenticated user through `/api/v1/auth/me`.
+Laravel Sanctum personal access tokens back the web/API authentication flow. The Vue client persists the bearer token and restores the authenticated user through `/api/v1/auth/me`.
 
-Spatie Laravel Permission uses teams for company-scoped roles/permissions. Tenant visibility is checked before external Traccar reads so an external ID cannot bypass FleetTrack authorization.
+Spatie Laravel Permission uses teams for company-scoped roles/permissions. Tenant visibility is checked before external Traccar reads.
+
+`bootstrap/app.php` distinguishes API and web guest behavior: API failures render JSON and do not attempt a login redirect; guest web requests redirect to `web.login`.
+
+Role values are backend enum values such as `super_admin`; presentation code may humanize them, but authorization checks must use the actual stored value.
 
 ## 5. Core domain model
 
@@ -65,57 +67,62 @@ The system company is used for system administration and is intentionally exclud
 
 FleetTrack stores local business entities and nullable Traccar identifiers. Synchronization is explicit rather than treating Traccar as the application database.
 
-### Devices
+Device and Geofence synchronization use the existing service/job infrastructure. `traccar_*_id` and `last_sync_at` represent synchronization state. Geofence ↔ Vehicle relationships are translated to Traccar device/geofence permissions when external IDs are available. Async jobs verify current desired state to avoid stale writes.
 
-Local Device lifecycle changes can synchronize to Traccar through the existing event/job/service infrastructure. `traccar_device_id` and `last_sync_at` represent real synchronization state.
+Tracking/report reads are synchronous because callers need current external results; FleetTrack authorization runs before external access.
 
-### Geofences
+## 7. Local Traccar development boundary
 
-FleetTrack models Geofence ↔ Vehicle. Traccar may require device IDs, so synchronization translates FleetTrack vehicle relationships into Traccar device/geofence relationships when external IDs are available.
+`AppServiceProvider` registers `LocalTraccarServiceProvider` only in the `local` environment. It uses `Http::fake()` to support current local UI development without requiring a live Traccar server for every interaction.
 
-Queue jobs verify current desired state to avoid stale asynchronous writes reintroducing relationships that have since changed.
+Currently faked:
 
-### Tracking and reports
+```text
+GET    /api/positions
+POST   /api/geofences
+GET    /api/geofences/{id}
+PUT    /api/geofences/{id}
+DELETE /api/geofences/{id}
+POST/DELETE /api/permissions
+```
 
-Live tracking/report reads remain synchronous because callers need current external results. FleetTrack authorizes the company/vehicle first and then calls the Traccar boundary.
+Position data is generated from local Devices that have a `traccar_device_id`. Geofence fake records are stored in memory and reset with the process. This provider is development-only and is not a persistence model.
 
-## 7. Traccar events and alerts
+## 8. Traccar events and alerts
 
 Authenticated Traccar webhook events are translated into FleetTrack behavior. Supported paths include overspeed, geofence transitions, ignition changes, and device-offline events.
 
-Alerts are persistent FleetTrack entities and can be acknowledged. Alert rules augment default behavior and can be company-wide or vehicle-specific. Rule resolution prioritizes the matching vehicle-specific rule over a company-wide rule.
+Alerts are persistent FleetTrack entities and can be acknowledged. Alert rules can be company-wide or vehicle-specific; matching vehicle-specific rules take precedence where applicable.
 
-## 8. Tracking API architecture
+## 9. Tracking architecture
 
-`LiveTrackingController` exposes:
+`LiveTrackingController` exposes current positions, single-vehicle position, position history, trip summary, and trips.
 
-```text
-GET tracking/positions
-GET tracking/vehicles/{vehicle}
-GET tracking/vehicles/{vehicle}/positions
-GET tracking/vehicles/{vehicle}/trip-summary
-GET tracking/vehicles/{vehicle}/trips
-```
+Frontend `/tracking` uses `trackingService.ts` and `LiveTrackingMap.vue`. It combines Fleet and Vehicle APIs for filters with the tracking positions endpoint for current data. The page polls every 30 seconds, prevents overlapping position requests, and supports manual refresh.
 
-The current backend supports filtering, visibility enforcement, online/offline status derived from GPS fix recency, last-seen timestamps, history, and trip data.
+Leaflet owns the map instance and marker layer. Marker rendering updates with incoming positions. The map fits bounds on initial render or when the vehicle set changes, avoiding unwanted viewport resets when the same vehicles merely move. Markers expose online/offline styling, tooltips, and popups.
 
-The frontend tracking module has not yet been implemented.
+Position-history/trail presentation is not yet wired into the frontend despite backend support.
 
-## 9. Reports architecture
+## 10. Geofence architecture
 
-`ReportController` exposes vehicle trips, trip summary, stops, events, route, summary, hours, and a combined report. Report actions reuse the existing authorization and Traccar report infrastructure rather than creating a parallel reporting data source.
+Backend Geofence CRUD and synchronization remain authoritative. The Vue `/geofences` page uses `geofenceService.ts` for paginated CRUD and `GeofenceForm.vue` for validation-aware editing.
+
+Super Admin creation requires explicit `company_id`; the frontend loads companies through `companyService.ts` and renders a Company selector only when the authenticated role contains `super_admin`. Company Admin behavior continues to rely on backend tenancy rules.
+
+The current frontend edits the Traccar area representation as text. Vehicle-association UI and map-based boundary editing are not yet implemented.
+
+## 11. Reports architecture
+
+`ReportController` exposes vehicle trips, trip summary, stops, events, route, summary, hours, and a combined report. Report actions reuse authorization and Traccar report infrastructure rather than creating a parallel data source.
 
 Report export remains undefined pending product requirements.
 
-## 10. Dashboard architecture
+## 12. Dashboard architecture
 
-`GetDashboardOverview` supplies aggregate counts/status information through `GET /api/v1/dashboard/overview`.
+`GetDashboardOverview` supplies aggregate counts/status information through `GET /api/v1/dashboard/overview`. The Vue Dashboard is still a visual implementation and is not yet connected to this endpoint.
 
-The current Vue Dashboard is a visual implementation only; connecting it to this endpoint remains pending.
-
-## 11. Frontend architecture
-
-The web app uses Vue 3 pages rendered by Inertia and a shared `AppLayout`.
+## 13. Frontend architecture
 
 Active pages:
 
@@ -126,9 +133,11 @@ Fleets/Index.vue
 Vehicles/Index.vue
 Drivers/Index.vue
 Devices/Index.vue
+Tracking/Index.vue
+Geofences/Index.vue
 ```
 
-Feature modules follow this pattern:
+Feature modules follow:
 
 ```text
 page
@@ -138,25 +147,15 @@ page
 → Laravel API
 ```
 
-Current feature services/types exist for fleets, vehicles, drivers, and devices in addition to authentication.
+Current feature services/types exist for authentication, companies, fleets, vehicles, drivers, devices, tracking, and geofences.
 
-## 12. Shared frontend infrastructure
+## 14. Shared frontend infrastructure
 
-Application components:
+Application components: `AppLogo`, `AppHeader`, `AppSidebar`, `AppFooter`, and `AppLayout`.
 
-```text
-AppLogo
-AppHeader
-AppSidebar
-AppFooter
-AppLayout
-```
+Shared UI includes buttons, cards, inputs, selects, textareas, tables, pagination, status badges, form fields, page headers, loading/error/empty states, and icons. Semantic design tokens are centralized in `resources/css/app.css`.
 
-Shared UI includes buttons, cards, inputs, selects, textareas, tables, pagination, status badges, form fields, page headers, loading/error/empty states, and icons.
-
-Semantic design tokens are centralized in `resources/css/app.css`. New pages should reuse these tokens/components.
-
-## 13. Wayfinder
+## 15. Wayfinder
 
 Laravel route/action helpers under `resources/js/routes` and `resources/js/actions` are generated artifacts. Laravel route definitions are authoritative. After route changes:
 
@@ -166,20 +165,19 @@ sail artisan wayfinder:generate
 
 Generated files are not hand-edited.
 
-## 14. Error boundaries
+## 16. Error boundaries
 
-- User-correctable request validation is handled by Laravel Form Requests.
-- Frontend `ApiError` preserves `422` field errors for form display.
+- Laravel Form Requests own user-correctable request validation.
+- Frontend `ApiError` preserves `422` field errors.
 - Unexpected server details are not surfaced verbatim in normal frontend error messages.
 - `401` clears invalid frontend auth state.
-- External Traccar failures remain behind the service/action boundary.
+- API authentication failures render JSON instead of resolving a web login route.
+- External Traccar failures remain behind service/action boundaries.
 - Tenant checks happen before external reads.
 
-## 15. Database and seed architecture
+## 17. Database and seed architecture
 
-`DatabaseSeeder` establishes permissions/roles/users before operational records, then creates fleets → vehicles/drivers → devices → geofences → alert rules → alerts.
-
-Fresh-seed expected totals:
+Expected fresh-seed totals:
 
 ```text
 4 companies
@@ -192,15 +190,13 @@ Fresh-seed expected totals:
 18 alerts
 ```
 
-Each customer company has two fleets with five vehicles and five drivers per fleet. Each vehicle gets one local device. Geofences receive overlapping vehicle assignments. Rules and alerts cover representative event types and acknowledgement states.
+Each customer company has two fleets with five vehicles and five drivers per fleet. Each vehicle gets one local device. Geofences receive overlapping vehicle assignments. Rules and alerts cover representative event types and acknowledgement states. Fake external Traccar IDs are intentionally not seeded.
 
-Fake external Traccar IDs are intentionally not seeded.
-
-## 16. Testing architecture
+## 18. Testing and quality gates
 
 The project has feature/unit coverage across authentication, CRUD APIs, policies, requests, tracking, Traccar services/jobs, geofence associations, alert rules, event listeners/actions, reports, and dashboard overview.
 
-Meaningful backend/full-stack work completes with:
+Backend/full-stack gate:
 
 ```bash
 sail composer lint
@@ -209,7 +205,7 @@ sail composer types:check
 sail artisan test
 ```
 
-Frontend work completes with:
+Frontend gate:
 
 ```bash
 npm run format
@@ -219,22 +215,22 @@ npm run types:check
 npm run build
 ```
 
-## 17. Current architectural checkpoint
+Browser verification is required for user-facing work.
 
-Completed active frontend domains: Fleets, Vehicles, Drivers, Devices.
+## 19. Current architectural checkpoint
 
-Next domain: Live Tracking. The intended sequence is types/service → page/filter/current-position UI → map/markers → history/trail, while preserving the existing shared frontend architecture.
+Completed active frontend domains: Fleets, Vehicles, Drivers, Devices, Live Tracking current-position UI/map, and Geofence CRUD.
 
-Remaining frontend domains are Geofences, Alerts/Alert Rules, Reports, and live Dashboard integration.
+Remaining frontend work includes Geofence vehicle-association/map UX as required, Alerts/Alert Rules, Reports, Dashboard live-data integration, and Tracking history/trail enhancements.
 
-## 18. Architectural principles
+## 20. Architectural principles
 
 - FleetTrack owns business semantics; Traccar is an external tracking engine.
 - Authorization/tenancy precedes external access.
-- Controllers stay thin.
-- Form Requests own HTTP validation.
-- Actions own application operations.
+- Controllers stay thin; Form Requests own validation; Actions own application operations.
 - External integrations remain behind services/DTOs/jobs.
 - Async jobs protect against stale desired state.
-- Frontend modules reuse the shared layout, UI, API client, auth state, design tokens, and Wayfinder.
+- Local HTTP fakes are development infrastructure, not production persistence.
+- Frontend modules reuse shared layout/UI/API/auth/design/Wayfinder infrastructure.
+- Stored enum/role values are authoritative; display formatting must not be reused as authorization semantics.
 - Source code is the final authority when docs drift.
