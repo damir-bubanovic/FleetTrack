@@ -78,11 +78,19 @@ const navigation: readonly NavigationItem[] = [
         href: web.geofences.index.url(),
     },
     {
+        name: 'Alerts',
+        icon: 'alerts',
+        href: web.alerts.index.url(),
+    },
+    {
         name: 'Alert Rules',
         icon: 'alerts',
         href: web.alertRules.index.url(),
     },
-    { name: 'Reports', icon: 'reports' },
+    {
+        name: 'Reports',
+        icon: 'reports',
+    },
 ];
 
 const userName = computed(() => authState.user.value?.name ?? '');

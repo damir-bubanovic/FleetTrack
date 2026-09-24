@@ -37,7 +37,6 @@ final class AlertPolicy
 
     private function isSuperAdmin(User $user): bool
     {
-        return $user->hasRole(UserRole::SuperAdmin->value)
-            && $user->company_id === null;
+        return $user->hasRole(UserRole::SuperAdmin->value);
     }
 }

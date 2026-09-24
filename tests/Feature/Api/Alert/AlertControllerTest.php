@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\UserRole;
 use App\Models\Alert;
 use App\Models\Company;
 use App\Models\User;
@@ -270,4 +271,57 @@ it('forbids a user without acknowledge permission from acknowledging an alert', 
         ->toBeNull()
         ->and($alert->acknowledged_by)
         ->toBeNull();
+});
+
+it('allows a super admin to acknowledge an alert from another company', function (): void {
+    Carbon::setTestNow('2026-09-13 10:30:00');
+
+    $systemCompany = Company::factory()->create();
+    $otherCompany = Company::factory()->create();
+
+    setPermissionsTeamId($systemCompany->id);
+
+    $role = Role::findOrCreate(
+        UserRole::SuperAdmin->value,
+        'web',
+    );
+
+    $role->givePermissionTo([
+        'alerts.view',
+        'alerts.acknowledge',
+    ]);
+
+    $user = User::factory()->create([
+        'company_id' => $systemCompany->id,
+    ]);
+
+    $user->assignRole($role);
+
+    $alert = Alert::factory()->create([
+        'company_id' => $otherCompany->id,
+        'acknowledged_at' => null,
+        'acknowledged_by' => null,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->patchJson(
+        "/api/v1/alerts/{$alert->id}/acknowledge"
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.id', $alert->id)
+        ->assertJsonPath('data.acknowledged_by', $user->id);
+
+    $alert->refresh();
+
+    expect($alert->acknowledged_at)
+        ->not->toBeNull()
+        ->and($alert->acknowledged_at->toDateTimeString())
+        ->toBe('2026-09-13 10:30:00')
+        ->and($alert->acknowledged_by)
+        ->toBe($user->id);
+
+    Carbon::setTestNow();
 });

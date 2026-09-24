@@ -19,3 +19,5 @@ Route::inertia('/tracking', 'Tracking/Index')->name('web.tracking.index');
 Route::inertia('/geofences', 'Geofences/Index')->name('web.geofences.index');
 
 Route::inertia('/alert-rules', 'AlertRules/Index')->name('web.alert-rules.index');
+
+Route::inertia('/alerts', 'Alerts/Index')->name('web.alerts.index');
