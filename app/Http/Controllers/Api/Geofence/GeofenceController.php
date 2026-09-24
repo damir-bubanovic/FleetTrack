@@ -30,6 +30,7 @@ class GeofenceController extends Controller
 
         $geofences = Geofence::query()
             ->visibleTo($request->user())
+            ->with('vehicles:id')
             ->latest()
             ->paginate();
 
@@ -51,6 +52,8 @@ class GeofenceController extends Controller
     public function show(Geofence $geofence): GeofenceResource
     {
         $this->authorize('view', $geofence);
+
+        $geofence->load('vehicles:id');
 
         return GeofenceResource::make($geofence);
     }

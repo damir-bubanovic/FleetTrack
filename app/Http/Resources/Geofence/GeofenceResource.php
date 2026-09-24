@@ -28,6 +28,10 @@ class GeofenceResource extends JsonResource
             'description' => $this->description,
             'area' => $this->area,
             'is_active' => $this->is_active,
+            'vehicle_ids' => $this->whenLoaded(
+                'vehicles',
+                fn () => $this->vehicles->pluck('id')->values()->all(),
+            ),
             'last_sync_at' => $this->last_sync_at,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Jobs\DeleteGeofenceFromTraccar;
 use App\Jobs\SyncGeofenceToTraccar;
 use App\Jobs\UpdateGeofenceInTraccar;
+use App\Models\Fleet;
 use App\Models\Geofence;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\Traits\CreatesCompanies;
@@ -63,6 +65,72 @@ it('allows a company admin to view their own geofence', function (): void {
         ->assertOk()
         ->assertJsonPath('data.id', $geofence->id)
         ->assertJsonPath('data.company_id', $company->id);
+});
+
+it('includes assigned vehicle ids when listing geofences', function (): void {
+    $company = $this->createCompany();
+    $user = $this->createCompanyAdmin($company);
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicles = Vehicle::factory()
+        ->count(2)
+        ->create([
+            'company_id' => $company->id,
+            'fleet_id' => $fleet->id,
+        ]);
+
+    $geofence = Geofence::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $geofence->vehicles()->attach($vehicles->modelKeys());
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/v1/geofences');
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $geofence->id)
+        ->assertJsonPath(
+            'data.0.vehicle_ids',
+            $vehicles->modelKeys(),
+        );
+});
+
+it('includes assigned vehicle ids when viewing a geofence', function (): void {
+    $company = $this->createCompany();
+    $user = $this->createCompanyAdmin($company);
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicles = Vehicle::factory()
+        ->count(2)
+        ->create([
+            'company_id' => $company->id,
+            'fleet_id' => $fleet->id,
+        ]);
+
+    $geofence = Geofence::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $geofence->vehicles()->attach($vehicles->modelKeys());
+
+    $this
+        ->actingAs($user)
+        ->getJson("/api/v1/geofences/{$geofence->id}")
+        ->assertOk()
+        ->assertJsonPath('data.id', $geofence->id)
+        ->assertJsonPath(
+            'data.vehicle_ids',
+            $vehicles->modelKeys(),
+        );
 });
 
 it('prevents a company admin from viewing another company geofence', function (): void {

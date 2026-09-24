@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
 import GeofenceForm from '@/components/geofences/GeofenceForm.vue';
+import GeofenceVehicleAssignments from '@/components/geofences/GeofenceVehicleAssignments.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCard from '@/components/ui/AppCard.vue';
 import AppPagination from '@/components/ui/AppPagination.vue';
@@ -14,14 +15,19 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { deleteGeofence, getGeofences } from '@/services/geofenceService';
+import { getVehicles } from '@/services/vehicleService';
 import type { Geofence } from '@/types/geofence';
-import type { PaginatedResponse } from '@/types/vehicle';
+import type { PaginatedResponse, Vehicle } from '@/types/vehicle';
 
 const geofencesResponse = ref<PaginatedResponse<Geofence> | null>(null);
+const vehicles = ref<Vehicle[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const creatingGeofence = ref(false);
 const editingGeofence = ref<Geofence | null>(null);
+const assigningGeofence = ref<Geofence | null>(null);
+const loadingVehicles = ref(false);
+const vehicleError = ref<string | null>(null);
 const deletingGeofenceId = ref<number | null>(null);
 
 const geofences = computed(() => geofencesResponse.value?.data ?? []);
@@ -46,14 +52,42 @@ async function loadGeofences(page = 1): Promise<void> {
     }
 }
 
+async function loadVehicles(): Promise<void> {
+    loadingVehicles.value = true;
+    vehicleError.value = null;
+
+    try {
+        const response = await getVehicles(1, 100);
+
+        vehicles.value = response.data;
+    } catch (exception) {
+        vehicleError.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load vehicles.';
+    } finally {
+        loadingVehicles.value = false;
+    }
+}
+
 function startCreatingGeofence(): void {
     editingGeofence.value = null;
+    assigningGeofence.value = null;
     creatingGeofence.value = true;
 }
 
 function startEditingGeofence(geofence: Geofence): void {
     creatingGeofence.value = false;
+    assigningGeofence.value = null;
     editingGeofence.value = geofence;
+}
+
+async function startAssigningVehicles(geofence: Geofence): Promise<void> {
+    creatingGeofence.value = false;
+    editingGeofence.value = null;
+    assigningGeofence.value = geofence;
+
+    await loadVehicles();
 }
 
 function cancelGeofenceForm(): void {
@@ -61,10 +95,43 @@ function cancelGeofenceForm(): void {
     editingGeofence.value = null;
 }
 
+function cancelVehicleAssignments(): void {
+    assigningGeofence.value = null;
+    vehicles.value = [];
+    vehicleError.value = null;
+}
+
 async function handleGeofenceSaved(): Promise<void> {
     cancelGeofenceForm();
 
     await loadGeofences(1);
+}
+
+function handleVehicleAssignmentsUpdated(vehicleIds: number[]): void {
+    if (!assigningGeofence.value) {
+        return;
+    }
+
+    assigningGeofence.value = {
+        ...assigningGeofence.value,
+        vehicle_ids: vehicleIds,
+    };
+
+    if (!geofencesResponse.value) {
+        return;
+    }
+
+    geofencesResponse.value = {
+        ...geofencesResponse.value,
+        data: geofencesResponse.value.data.map((geofence) =>
+            geofence.id === assigningGeofence.value?.id
+                ? {
+                      ...geofence,
+                      vehicle_ids: vehicleIds,
+                  }
+                : geofence,
+        ),
+    };
 }
 
 async function handleDeleteGeofence(geofence: Geofence): Promise<void> {
@@ -84,6 +151,10 @@ async function handleDeleteGeofence(geofence: Geofence): Promise<void> {
 
         if (editingGeofence.value?.id === geofence.id) {
             cancelGeofenceForm();
+        }
+
+        if (assigningGeofence.value?.id === geofence.id) {
+            cancelVehicleAssignments();
         }
 
         await loadGeofences(geofencesResponse.value?.meta.current_page ?? 1);
@@ -141,7 +212,11 @@ onMounted(async () => {
 
             <div class="flex justify-end">
                 <AppButton
-                    v-if="!creatingGeofence && !editingGeofence"
+                    v-if="
+                        !creatingGeofence &&
+                        !editingGeofence &&
+                        !assigningGeofence
+                    "
                     @click="startCreatingGeofence"
                 >
                     Create geofence
@@ -169,6 +244,49 @@ onMounted(async () => {
                 :geofence="editingGeofence ?? undefined"
                 @saved="handleGeofenceSaved"
                 @cancel="cancelGeofenceForm"
+            />
+        </AppCard>
+
+        <AppCard v-if="assigningGeofence" class="mb-6">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-content">
+                        Vehicle assignments
+                    </h3>
+
+                    <p class="mt-1 text-sm text-muted">
+                        Manage vehicles assigned to
+                        {{ assigningGeofence.name }}.
+                    </p>
+                </div>
+
+                <AppButton
+                    variant="secondary"
+                    size="sm"
+                    @click="cancelVehicleAssignments"
+                >
+                    Close
+                </AppButton>
+            </div>
+
+            <LoadingState
+                v-if="loadingVehicles"
+                message="Loading vehicles..."
+            />
+
+            <ErrorState
+                v-else-if="vehicleError"
+                title="Unable to load vehicles"
+                :description="vehicleError"
+                retryable
+                @retry="loadVehicles"
+            />
+
+            <GeofenceVehicleAssignments
+                v-else
+                :geofence="assigningGeofence"
+                :vehicles="vehicles"
+                @updated="handleVehicleAssignmentsUpdated"
             />
         </AppCard>
 
@@ -200,6 +318,12 @@ onMounted(async () => {
                                 class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
                             >
                                 Geofence
+                            </th>
+
+                            <th
+                                class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
+                            >
+                                Vehicles
                             </th>
 
                             <th
@@ -255,6 +379,12 @@ onMounted(async () => {
                                 </div>
                             </td>
 
+                            <td
+                                class="px-5 py-4 whitespace-nowrap text-content-secondary"
+                            >
+                                {{ geofence.vehicle_ids.length }}
+                            </td>
+
                             <td class="px-5 py-4">
                                 <p
                                     class="max-w-xs truncate font-mono text-xs text-content-secondary"
@@ -304,6 +434,16 @@ onMounted(async () => {
                                 <AppButton
                                     variant="secondary"
                                     size="sm"
+                                    :disabled="deletingGeofenceId !== null"
+                                    @click="startAssigningVehicles(geofence)"
+                                >
+                                    Vehicles
+                                </AppButton>
+
+                                <AppButton
+                                    variant="secondary"
+                                    size="sm"
+                                    class="ml-2"
                                     :disabled="deletingGeofenceId !== null"
                                     @click="startEditingGeofence(geofence)"
                                 >

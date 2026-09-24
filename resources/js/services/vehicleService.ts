@@ -19,11 +19,15 @@ export type CreateVehiclePayload = {
 
 export type UpdateVehiclePayload = CreateVehiclePayload;
 
-export function getVehicles(page = 1): Promise<PaginatedResponse<Vehicle>> {
+export function getVehicles(
+    page = 1,
+    perPage?: number,
+): Promise<PaginatedResponse<Vehicle>> {
     return apiRequest<PaginatedResponse<Vehicle>>(
         index.url({
             query: {
                 page,
+                ...(perPage !== undefined ? { per_page: perPage } : {}),
             },
         }),
     );

@@ -6,6 +6,7 @@ export type Geofence = {
     description: string | null;
     area: string;
     is_active: boolean;
+    vehicle_ids: number[];
     last_sync_at: string | null;
     created_at: string | null;
     updated_at: string | null;

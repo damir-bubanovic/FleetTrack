@@ -29,10 +29,15 @@ class VehicleController extends Controller
     {
         $this->authorize('viewAny', Vehicle::class);
 
+        $perPage = min(
+            max($request->integer('per_page', 15), 1),
+            100,
+        );
+
         $vehicles = Vehicle::query()
             ->visibleTo($request->user())
             ->latest()
-            ->paginate();
+            ->paginate($perPage);
 
         return VehicleResource::collection($vehicles);
     }
