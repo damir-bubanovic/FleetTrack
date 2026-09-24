@@ -23,7 +23,7 @@ class GeofenceFactory extends Factory
             'traccar_geofence_id' => null,
             'name' => fake()->words(2, true),
             'description' => fake()->optional()->sentence(),
-            'area' => 'CIRCLE ('.fake()->latitude().' '.fake()->longitude().', 100)',
+            'area' => 'CIRCLE (45.8150 15.9819, 100)',
             'is_active' => true,
             'last_sync_at' => null,
         ];

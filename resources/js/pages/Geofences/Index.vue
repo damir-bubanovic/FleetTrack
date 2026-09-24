@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
 import GeofenceForm from '@/components/geofences/GeofenceForm.vue';
+import GeofenceMap from '@/components/geofences/GeofenceMap.vue';
 import GeofenceVehicleAssignments from '@/components/geofences/GeofenceVehicleAssignments.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCard from '@/components/ui/AppCard.vue';
@@ -26,6 +27,7 @@ const error = ref<string | null>(null);
 const creatingGeofence = ref(false);
 const editingGeofence = ref<Geofence | null>(null);
 const assigningGeofence = ref<Geofence | null>(null);
+const selectedGeofenceId = ref<number | null>(null);
 const loadingVehicles = ref(false);
 const vehicleError = ref<string | null>(null);
 const deletingGeofenceId = ref<number | null>(null);
@@ -42,6 +44,15 @@ async function loadGeofences(page = 1): Promise<void> {
 
     try {
         geofencesResponse.value = await getGeofences(page);
+
+        if (
+            selectedGeofenceId.value !== null &&
+            !geofencesResponse.value.data.some(
+                (geofence) => geofence.id === selectedGeofenceId.value,
+            )
+        ) {
+            selectedGeofenceId.value = null;
+        }
     } catch (exception) {
         error.value =
             exception instanceof Error
@@ -70,21 +81,32 @@ async function loadVehicles(): Promise<void> {
     }
 }
 
+function selectGeofence(geofence: Geofence): void {
+    selectedGeofenceId.value = geofence.id;
+}
+
+function selectGeofenceFromMap(geofence: Geofence): void {
+    selectedGeofenceId.value = geofence.id;
+}
+
 function startCreatingGeofence(): void {
     editingGeofence.value = null;
     assigningGeofence.value = null;
+    selectedGeofenceId.value = null;
     creatingGeofence.value = true;
 }
 
 function startEditingGeofence(geofence: Geofence): void {
     creatingGeofence.value = false;
     assigningGeofence.value = null;
+    selectedGeofenceId.value = geofence.id;
     editingGeofence.value = geofence;
 }
 
 async function startAssigningVehicles(geofence: Geofence): Promise<void> {
     creatingGeofence.value = false;
     editingGeofence.value = null;
+    selectedGeofenceId.value = geofence.id;
     assigningGeofence.value = geofence;
 
     await loadVehicles();
@@ -155,6 +177,10 @@ async function handleDeleteGeofence(geofence: Geofence): Promise<void> {
 
         if (assigningGeofence.value?.id === geofence.id) {
             cancelVehicleAssignments();
+        }
+
+        if (selectedGeofenceId.value === geofence.id) {
+            selectedGeofenceId.value = null;
         }
 
         await loadGeofences(geofencesResponse.value?.meta.current_page ?? 1);
@@ -290,6 +316,22 @@ onMounted(async () => {
             />
         </AppCard>
 
+        <AppCard v-if="geofences.length > 0" class="mb-6">
+            <div class="mb-5">
+                <h3 class="text-lg font-semibold text-content">Geofence map</h3>
+
+                <p class="mt-1 text-sm text-muted">
+                    View geographic boundaries and select a geofence on the map.
+                </p>
+            </div>
+
+            <GeofenceMap
+                :geofences="geofences"
+                :selected-geofence-id="selectedGeofenceId"
+                @select="selectGeofenceFromMap"
+            />
+        </AppCard>
+
         <AppCard :padding="false">
             <LoadingState v-if="loading" message="Loading geofences..." />
 
@@ -362,7 +404,12 @@ onMounted(async () => {
                         <tr
                             v-for="geofence in geofences"
                             :key="geofence.id"
-                            class="transition hover:bg-surface-muted"
+                            class="cursor-pointer transition hover:bg-surface-muted"
+                            :class="{
+                                'bg-surface-muted':
+                                    selectedGeofenceId === geofence.id,
+                            }"
+                            @click="selectGeofence(geofence)"
                         >
                             <td class="px-5 py-4">
                                 <div class="min-w-40">
@@ -435,7 +482,9 @@ onMounted(async () => {
                                     variant="secondary"
                                     size="sm"
                                     :disabled="deletingGeofenceId !== null"
-                                    @click="startAssigningVehicles(geofence)"
+                                    @click.stop="
+                                        startAssigningVehicles(geofence)
+                                    "
                                 >
                                     Vehicles
                                 </AppButton>
@@ -445,7 +494,7 @@ onMounted(async () => {
                                     size="sm"
                                     class="ml-2"
                                     :disabled="deletingGeofenceId !== null"
-                                    @click="startEditingGeofence(geofence)"
+                                    @click.stop="startEditingGeofence(geofence)"
                                 >
                                     Edit
                                 </AppButton>
@@ -458,7 +507,7 @@ onMounted(async () => {
                                         deletingGeofenceId === geofence.id
                                     "
                                     :disabled="deletingGeofenceId !== null"
-                                    @click="handleDeleteGeofence(geofence)"
+                                    @click.stop="handleDeleteGeofence(geofence)"
                                 >
                                     Delete
                                 </AppButton>
