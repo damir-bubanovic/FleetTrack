@@ -77,7 +77,11 @@ const navigation: readonly NavigationItem[] = [
         icon: 'geofences',
         href: web.geofences.index.url(),
     },
-    { name: 'Alerts', icon: 'alerts' },
+    {
+        name: 'Alert Rules',
+        icon: 'alerts',
+        href: web.alertRules.index.url(),
+    },
     { name: 'Reports', icon: 'reports' },
 ];
 
