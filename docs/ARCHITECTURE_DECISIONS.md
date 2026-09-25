@@ -767,21 +767,14 @@ Fully integrated user-facing feature
 
 ## Context
 
-FleetTrack's backend is substantially ahead of the Vue frontend.
+FleetTrack has historically completed backend/API contracts before their corresponding Vue modules. At the 2026-09-25 checkpoint, the previously identified backend-backed frontend gaps have been integrated.
 
 ## Consequences
 
 An implemented API does not automatically mean the corresponding product
 feature is complete.
 
-For example:
-
--   Fleet backend CRUD is implemented.
--   Fleet frontend listing is implemented.
--   Fleet frontend Create/Edit/Delete are still pending.
-
-Similarly, the Dashboard backend API is implemented while the current
-Vue Dashboard still uses static/mock display data.
+This distinction remains important for future features: an API contract, a Vue screen, and a browser-verified integrated workflow are separate completion states and should be documented accurately.
 
 ------------------------------------------------------------------------
 
@@ -994,17 +987,12 @@ In the `local` environment, `AppServiceProvider` registers `LocalTraccarServiceP
 Completed active frontend work now includes:
 
 ```text
-Fleets → Vehicles → Drivers → Devices → Live Tracking current-position map → Geofence CRUD
+Fleets → Vehicles → Drivers → Devices
+→ Live Tracking + position history
+→ Geofences + vehicle assignments + map rendering
+→ Alert Rules → Alerts → Reports → Dashboard overview integration
 ```
 
-The next product-facing work should be selected from the remaining frontend gaps:
-
-```text
-Geofence vehicle associations / map boundary editing as required
-→ Alerts / Alert Rules
-→ Reports
-→ Dashboard live-data wiring
-→ Tracking history/trail enhancements
-```
+The previously identified backend-backed frontend gaps are complete. The next product-facing work should be selected from explicit requirements rather than the old backlog. Scope-dependent candidates include interactive Geofence boundary drawing/editing, report exports, standalone Company administration, additional tracking/trip UX, and a deliberate real-Traccar development/demo workflow.
 
 Every new frontend module continues to reuse `AppLayout`, shared UI components, semantic design tokens, `authState`, `apiRequest()`, feature services/types, Wayfinder routes, and existing Laravel authorization/API contracts.

@@ -1,6 +1,6 @@
 # FleetTrack Architecture
 
-This document describes the architecture present in the source snapshot supplied on 2026-09-23. Source code remains authoritative.
+This document describes the architecture present in the source snapshot supplied on 2026-09-25. Source code remains authoritative.
 
 ## 1. System boundary
 
@@ -98,11 +98,11 @@ Alerts are persistent FleetTrack entities and can be acknowledged. Alert rules c
 
 `LiveTrackingController` exposes current positions, single-vehicle position, position history, trip summary, and trips.
 
-Frontend `/tracking` uses `trackingService.ts` and `LiveTrackingMap.vue`. It combines Fleet and Vehicle APIs for filters with the tracking positions endpoint for current data. The page polls every 30 seconds, prevents overlapping position requests, and supports manual refresh.
+Frontend `/tracking` uses `trackingService.ts`, `LiveTrackingMap.vue`, and `HistoricalTrackingMap.vue`. It combines Fleet and Vehicle APIs for filters with the tracking positions endpoint for current data. The page polls every 30 seconds, prevents overlapping live-position requests, and supports manual refresh.
 
-Leaflet owns the map instance and marker layer. Marker rendering updates with incoming positions. The map fits bounds on initial render or when the vehicle set changes, avoiding unwanted viewport resets when the same vehicles merely move. Markers expose online/offline styling, tooltips, and popups.
+`LiveTrackingMap.vue` owns the live Leaflet map/marker lifecycle. It fits bounds on initial render or when the vehicle set changes, avoiding unwanted viewport resets when the same vehicles merely move. Markers expose online/offline styling, tooltips, and popups.
 
-Position-history/trail presentation is not yet wired into the frontend despite backend support.
+Position history is loaded synchronously for a selected vehicle/date range through the existing authorization-safe backend endpoint. `HistoricalTrackingMap.vue` renders valid coordinates as a route polyline with start/end markers and emits selected positions for detail presentation. Seeded devices intentionally lack fabricated Traccar IDs, so an empty history state is normal until real Traccar synchronization/data exists.
 
 ## 10. Geofence architecture
 
@@ -110,17 +110,17 @@ Backend Geofence CRUD and synchronization remain authoritative. The Vue `/geofen
 
 Super Admin creation requires explicit `company_id`; the frontend loads companies through `companyService.ts` and renders a Company selector only when the authenticated role contains `super_admin`. Company Admin behavior continues to rely on backend tenancy rules.
 
-The current frontend edits the Traccar area representation as text. Vehicle-association UI and map-based boundary editing are not yet implemented.
+The frontend includes Geofence ↔ Vehicle assignment management and `GeofenceMap.vue` for interactive Leaflet rendering/selection of circle, polygon, and linestring areas. Area creation/editing still uses the Traccar area representation as text; interactive boundary drawing/editing is not implemented and remains product-scope dependent.
 
 ## 11. Reports architecture
 
 `ReportController` exposes vehicle trips, trip summary, stops, events, route, summary, hours, and a combined report. Report actions reuse authorization and Traccar report infrastructure rather than creating a parallel data source.
 
-Report export remains undefined pending product requirements.
+The Vue `/reports` page uses `reportService.ts` to load all eight datasets for a selected vehicle/date range and presents structured loading/error/empty/result states. Traccar remains the report data source. Report export remains undefined pending product requirements.
 
 ## 12. Dashboard architecture
 
-`GetDashboardOverview` supplies aggregate counts/status information through `GET /api/v1/dashboard/overview`. The Vue Dashboard is still a visual implementation and is not yet connected to this endpoint.
+`GetDashboardOverview` supplies aggregate counts/status information through `GET /api/v1/dashboard/overview`. The Vue Dashboard uses `dashboardService.ts` and renders API-backed vehicle, online/offline, alert, company, fleet, device, and offline-device metrics.
 
 ## 13. Frontend architecture
 
@@ -135,6 +135,9 @@ Drivers/Index.vue
 Devices/Index.vue
 Tracking/Index.vue
 Geofences/Index.vue
+AlertRules/Index.vue
+Alerts/Index.vue
+Reports/Index.vue
 ```
 
 Feature modules follow:
@@ -147,7 +150,7 @@ page
 → Laravel API
 ```
 
-Current feature services/types exist for authentication, companies, fleets, vehicles, drivers, devices, tracking, and geofences.
+Current feature services/types exist for authentication, companies, fleets, vehicles, drivers, devices, tracking, geofences, alert rules, alerts, reports, and dashboard overview.
 
 ## 14. Shared frontend infrastructure
 
@@ -219,9 +222,9 @@ Browser verification is required for user-facing work.
 
 ## 19. Current architectural checkpoint
 
-Completed active frontend domains: Fleets, Vehicles, Drivers, Devices, Live Tracking current-position UI/map, and Geofence CRUD.
+Completed active frontend domains: Dashboard overview, Fleets, Vehicles, Drivers, Devices, Live Tracking with position history, Geofences with vehicle assignments/map rendering, Alert Rules, Alerts, and Reports.
 
-Remaining frontend work includes Geofence vehicle-association/map UX as required, Alerts/Alert Rules, Reports, Dashboard live-data integration, and Tracking history/trail enhancements.
+The previously identified backend-backed frontend gaps are implemented. Remaining work is product-scope dependent rather than an established frontend backlog; examples include interactive Geofence drawing/editing, report exports, standalone Company administration, additional tracking/trip UX, or a deliberate real-Traccar development/demo workflow.
 
 ## 20. Architectural principles
 
