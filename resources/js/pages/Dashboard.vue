@@ -1,97 +1,95 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { computed, onMounted, ref } from 'vue';
 
 import DashboardMetricCard from '@/components/dashboard/DashboardMetricCard.vue';
-import DeviceConnectivity from '@/components/dashboard/DeviceConnectivity.vue';
-import FleetStatusTable from '@/components/dashboard/FleetStatusTable.vue';
-import RecentAlerts from '@/components/dashboard/RecentAlerts.vue';
+import AppCard from '@/components/ui/AppCard.vue';
+import ErrorState from '@/components/ui/ErrorState.vue';
+import LoadingState from '@/components/ui/LoadingState.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { getDashboardOverview } from '@/services/dashboardService';
+import type { DashboardOverview } from '@/types/dashboard';
 
-const fleetMetrics = [
-    {
-        label: 'Vehicles',
-        value: 48,
-        detail: 'Across 6 fleets',
-        icon: 'vehicles',
-    },
-    {
-        label: 'Online',
-        value: 41,
-        detail: '85% of vehicles',
-        icon: 'online',
-    },
-    {
-        label: 'Offline',
-        value: 7,
-        detail: 'Requires attention',
-        icon: 'offline',
-    },
-    {
-        label: 'Unacknowledged alerts',
-        value: 5,
-        detail: '12 alerts total',
-        icon: 'alerts',
-    },
-] as const;
+const overview = ref<DashboardOverview | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
 
-const fleetStatus = [
-    {
-        name: 'Zagreb Distribution',
-        vehicles: 14,
-        online: 13,
-        offline: 1,
-    },
-    {
-        name: 'Regional Delivery',
-        vehicles: 12,
-        online: 11,
-        offline: 1,
-    },
-    {
-        name: 'Long Haul',
-        vehicles: 10,
-        online: 8,
-        offline: 2,
-    },
-    {
-        name: 'City Logistics',
-        vehicles: 8,
-        online: 7,
-        offline: 1,
-    },
-    {
-        name: 'Service Fleet',
-        vehicles: 4,
-        online: 2,
-        offline: 2,
-    },
-];
+const fleetMetrics = computed(() => {
+    if (!overview.value) {
+        return [];
+    }
 
-const recentAlerts = [
-    {
-        title: 'Vehicle entered restricted geofence',
-        vehicle: 'ZG-4821-FT',
-        time: '8 min ago',
-        severity: 'Critical',
-    },
-    {
-        title: 'Vehicle offline',
-        vehicle: 'ZG-9134-KL',
-        time: '24 min ago',
-        severity: 'Warning',
-    },
-    {
-        title: 'Vehicle exited warehouse geofence',
-        vehicle: 'ZG-2287-FT',
-        time: '42 min ago',
-        severity: 'Info',
-    },
-] as const;
+    return [
+        {
+            label: 'Vehicles',
+            value: overview.value.vehicles,
+            detail: 'Fleet vehicles',
+            icon: 'vehicles',
+        },
+        {
+            label: 'Online vehicles',
+            value: overview.value.online_vehicles,
+            detail: 'Currently reporting',
+            icon: 'online',
+        },
+        {
+            label: 'Offline vehicles',
+            value: overview.value.offline_vehicles,
+            detail: 'Not currently reporting',
+            icon: 'offline',
+        },
+        {
+            label: 'Open alerts',
+            value: overview.value.unacknowledged_alerts,
+            detail: `${overview.value.alerts} total alerts`,
+            icon: 'alerts',
+        },
+    ] as const;
+});
 
-function refreshDashboard(): void {
-    //
+const infrastructureMetrics = computed(() => {
+    if (!overview.value) {
+        return [];
+    }
+
+    return [
+        {
+            label: 'Companies',
+            value: overview.value.companies,
+        },
+        {
+            label: 'Fleets',
+            value: overview.value.fleets,
+        },
+        {
+            label: 'Devices',
+            value: overview.value.devices,
+        },
+        {
+            label: 'Offline devices',
+            value: overview.value.offline_devices,
+        },
+    ];
+});
+
+async function loadDashboard(): Promise<void> {
+    loading.value = true;
+    error.value = null;
+
+    try {
+        overview.value = await getDashboardOverview();
+    } catch (exception) {
+        error.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load dashboard overview.';
+    } finally {
+        loading.value = false;
+    }
 }
+
+onMounted(loadDashboard);
 </script>
 
 <template>
@@ -101,39 +99,66 @@ function refreshDashboard(): void {
         title="Dashboard"
         description="Fleet operations overview"
         active-navigation="Dashboard"
-        company-name="FleetTrack Logistics"
-        company-location="Zagreb, Croatia"
-        user-name="Damir Bubanovic"
-        user-role="Administrator"
-        user-initials="DB"
-        has-notifications
     >
         <PageHeader
             eyebrow="Operations"
             title="Fleet overview"
-            description="Current status across your fleet and tracking devices."
-            show-live-status
+            description="Current status of your vehicles, devices, fleets, and alerts."
             show-refresh
-            @refresh="refreshDashboard"
+            @refresh="loadDashboard"
         />
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <DashboardMetricCard
-                v-for="metric in fleetMetrics"
-                :key="metric.label"
-                :label="metric.label"
-                :value="metric.value"
-                :detail="metric.detail"
-                :icon="metric.icon"
+        <div class="mt-6">
+            <LoadingState v-if="loading" message="Loading dashboard..." />
+
+            <ErrorState
+                v-else-if="error"
+                title="Unable to load dashboard"
+                :description="error"
+                retryable
+                @retry="loadDashboard"
             />
-        </section>
 
-        <div class="mt-6 grid gap-6 xl:grid-cols-[1.65fr_1fr]">
-            <FleetStatusTable :fleets="fleetStatus" />
+            <template v-else>
+                <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <DashboardMetricCard
+                        v-for="metric in fleetMetrics"
+                        :key="metric.label"
+                        :label="metric.label"
+                        :value="metric.value"
+                        :detail="metric.detail"
+                        :icon="metric.icon"
+                    />
+                </section>
 
-            <RecentAlerts :alerts="recentAlerts" />
+                <AppCard class="mt-6">
+                    <div class="mb-5">
+                        <h2 class="font-semibold text-content">
+                            Fleet infrastructure
+                        </h2>
+
+                        <p class="mt-1 text-sm text-muted">
+                            Companies, fleets, and tracking device totals.
+                        </p>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div
+                            v-for="metric in infrastructureMetrics"
+                            :key="metric.label"
+                            class="rounded-lg border border-border-default bg-surface-muted p-4"
+                        >
+                            <p class="text-sm text-muted">
+                                {{ metric.label }}
+                            </p>
+
+                            <p class="mt-2 text-2xl font-semibold text-content">
+                                {{ metric.value }}
+                            </p>
+                        </div>
+                    </div>
+                </AppCard>
+            </template>
         </div>
-
-        <DeviceConnectivity :devices="52" :online="47" :offline="5" />
     </AppLayout>
 </template>
