@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\DeviceUpdated;
+use App\Jobs\ReconcileDeviceGeofencesInTraccar;
 use App\Jobs\UpdateDeviceInTraccar;
 
 class SyncDeviceUpdatedToTraccar
@@ -21,5 +22,9 @@ class SyncDeviceUpdatedToTraccar
     public function handle(DeviceUpdated $event): void
     {
         UpdateDeviceInTraccar::dispatch($event->device);
+        ReconcileDeviceGeofencesInTraccar::dispatch(
+            deviceId: $event->device->id,
+            previousVehicleId: $event->previousVehicleId,
+        );
     }
 }

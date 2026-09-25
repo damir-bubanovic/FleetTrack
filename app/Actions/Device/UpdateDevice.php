@@ -47,6 +47,8 @@ class UpdateDevice
             $companyId = $user->company_id;
         }
 
+        $previousVehicleId = $device->vehicle_id;
+
         $device->update([
             ...$attributes,
             'company_id' => $companyId,
@@ -54,7 +56,10 @@ class UpdateDevice
 
         $device = $device->refresh();
 
-        event(new DeviceUpdated($device));
+        event(new DeviceUpdated(
+            $device,
+            $previousVehicleId,
+        ));
 
         return $device;
     }
