@@ -2,7 +2,9 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import HistoricalTrackingMap from '@/components/tracking/HistoricalTrackingMap.vue';
 import LiveTrackingMap from '@/components/tracking/LiveTrackingMap.vue';
+import AppButton from '@/components/ui/AppButton.vue';
 import AppCard from '@/components/ui/AppCard.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -12,10 +14,13 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { getFleets } from '@/services/fleetService';
-import { getLivePositions } from '@/services/trackingService';
+import {
+    getLivePositions,
+    getVehiclePositionHistory,
+} from '@/services/trackingService';
 import { getVehicles } from '@/services/vehicleService';
 import type { Fleet } from '@/types/fleet';
-import type { LivePosition } from '@/types/tracking';
+import type { HistoricalPosition, LivePosition } from '@/types/tracking';
 import type { Vehicle } from '@/types/vehicle';
 
 const positions = ref<LivePosition[]>([]);
@@ -28,6 +33,15 @@ const selectedVehicleId = ref('');
 const loading = ref(true);
 const filtersLoading = ref(true);
 const error = ref<string | null>(null);
+
+const historyVehicleId = ref('');
+const historyFrom = ref(defaultHistoryFrom());
+const historyTo = ref(defaultHistoryTo());
+const historyPositions = ref<HistoricalPosition[]>([]);
+const selectedHistoryPosition = ref<HistoricalPosition | null>(null);
+const historyLoading = ref(false);
+const historyError = ref<string | null>(null);
+const historyLoaded = ref(false);
 
 const refreshInterval = 30_000;
 
@@ -72,13 +86,35 @@ const vehicleOptions = computed(() => [
         })),
 ]);
 
+const historyVehicleOptions = computed(() => [
+    {
+        value: '',
+        label: 'Select vehicle',
+    },
+    ...vehicles.value.map((vehicle) => ({
+        value: vehicle.id.toString(),
+        label: vehicleLabel(vehicle),
+    })),
+]);
+
+const canLoadHistory = computed(() => {
+    if (!historyVehicleId.value || !historyFrom.value || !historyTo.value) {
+        return false;
+    }
+
+    return (
+        new Date(historyFrom.value).getTime() <
+        new Date(historyTo.value).getTime()
+    );
+});
+
 async function loadFilters(): Promise<void> {
     filtersLoading.value = true;
 
     try {
         const [fleetResponse, vehicleResponse] = await Promise.all([
             getFleets(),
-            getVehicles(),
+            getVehicles(1, 100),
         ]);
 
         fleets.value = fleetResponse.data;
@@ -126,6 +162,38 @@ async function loadPositions(showLoading = true): Promise<void> {
     }
 }
 
+async function loadHistory(): Promise<void> {
+    if (!canLoadHistory.value) {
+        return;
+    }
+
+    historyLoading.value = true;
+    historyError.value = null;
+    selectedHistoryPosition.value = null;
+
+    try {
+        const response = await getVehiclePositionHistory(
+            Number(historyVehicleId.value),
+            {
+                from: toApiDateTime(historyFrom.value),
+                to: toApiDateTime(historyTo.value),
+            },
+        );
+
+        historyPositions.value = response.data;
+        historyLoaded.value = true;
+    } catch (exception) {
+        historyPositions.value = [];
+        historyLoaded.value = true;
+        historyError.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load position history.';
+    } finally {
+        historyLoading.value = false;
+    }
+}
+
 function startPositionPolling(): void {
     if (refreshTimer !== null) {
         return;
@@ -155,6 +223,37 @@ async function handleVehicleChange(): Promise<void> {
     await loadPositions();
 }
 
+function handleHistoryPositionSelect(position: HistoricalPosition): void {
+    selectedHistoryPosition.value = position;
+}
+
+function defaultHistoryFrom(): string {
+    const date = new Date();
+
+    date.setHours(0, 0, 0, 0);
+
+    return toLocalDateTimeInput(date);
+}
+
+function defaultHistoryTo(): string {
+    return toLocalDateTimeInput(new Date());
+}
+
+function toLocalDateTimeInput(date: Date): string {
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60_000);
+
+    return localDate.toISOString().slice(0, 16);
+}
+
+function toApiDateTime(value: string): string {
+    return new Date(value).toISOString();
+}
+
+function vehicleLabel(vehicle: Vehicle): string {
+    return `${vehicle.manufacturer} ${vehicle.model} (${vehicle.registration_number})`;
+}
+
 function formatDateTime(value: string | null): string {
     if (!value) {
         return 'Never';
@@ -173,6 +272,22 @@ function formatDateTime(value: string | null): string {
         hour: '2-digit',
         minute: '2-digit',
     }).format(date);
+}
+
+function formatCoordinate(value: number | null): string {
+    if (value === null || !Number.isFinite(value)) {
+        return '—';
+    }
+
+    return value.toFixed(6);
+}
+
+function formatNumber(value: number | null, suffix = ''): string {
+    if (value === null || !Number.isFinite(value)) {
+        return '—';
+    }
+
+    return `${value.toFixed(1)}${suffix}`;
 }
 
 onMounted(async () => {
@@ -340,6 +455,217 @@ onBeforeUnmount(() => {
                     </dl>
                 </AppCard>
             </div>
+        </div>
+
+        <div class="mt-10">
+            <div class="mb-5">
+                <h2 class="text-xl font-semibold text-content">
+                    Position history
+                </h2>
+
+                <p class="mt-1 text-sm text-muted">
+                    Review the recorded route for a vehicle over a selected
+                    period.
+                </p>
+            </div>
+
+            <AppCard class="mb-6">
+                <div class="grid gap-4 md:grid-cols-3">
+                    <AppSelect
+                        v-model="historyVehicleId"
+                        label="Vehicle"
+                        :options="historyVehicleOptions"
+                        :disabled="filtersLoading"
+                    />
+
+                    <label class="block">
+                        <span
+                            class="mb-1.5 block text-sm font-medium text-content"
+                        >
+                            From
+                        </span>
+
+                        <input
+                            v-model="historyFrom"
+                            type="datetime-local"
+                            class="focus:border-primary w-full rounded-lg border border-border-default bg-surface px-3 py-2 text-sm text-content transition outline-none"
+                        />
+                    </label>
+
+                    <label class="block">
+                        <span
+                            class="mb-1.5 block text-sm font-medium text-content"
+                        >
+                            To
+                        </span>
+
+                        <input
+                            v-model="historyTo"
+                            type="datetime-local"
+                            class="focus:border-primary w-full rounded-lg border border-border-default bg-surface px-3 py-2 text-sm text-content transition outline-none"
+                        />
+                    </label>
+                </div>
+
+                <div class="mt-5 flex items-center justify-between gap-4">
+                    <p class="text-sm text-muted">
+                        {{
+                            historyLoaded
+                                ? `${historyPositions.length} recorded positions`
+                                : 'Select a vehicle and date range.'
+                        }}
+                    </p>
+
+                    <AppButton
+                        :loading="historyLoading"
+                        :disabled="!canLoadHistory || historyLoading"
+                        @click="loadHistory"
+                    >
+                        Load history
+                    </AppButton>
+                </div>
+            </AppCard>
+
+            <LoadingState
+                v-if="historyLoading"
+                message="Loading position history..."
+            />
+
+            <ErrorState
+                v-else-if="historyError"
+                title="Unable to load position history"
+                :description="historyError"
+                retryable
+                @retry="loadHistory"
+            />
+
+            <EmptyState
+                v-else-if="historyLoaded && historyPositions.length === 0"
+                title="No position history"
+                description="No recorded positions were returned for this vehicle in the selected date range."
+                icon="vehicles"
+            />
+
+            <template v-else-if="historyPositions.length > 0">
+                <AppCard class="overflow-hidden">
+                    <div class="mb-4 flex items-center justify-between gap-4">
+                        <div>
+                            <h3 class="font-semibold text-content">
+                                Historical route
+                            </h3>
+
+                            <p class="mt-1 text-sm text-muted">
+                                {{ historyPositions.length }}
+                                recorded positions
+                            </p>
+                        </div>
+                    </div>
+
+                    <HistoricalTrackingMap
+                        :positions="historyPositions"
+                        @select="handleHistoryPositionSelect"
+                    />
+                </AppCard>
+
+                <AppCard v-if="selectedHistoryPosition" class="mt-6">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="font-semibold text-content">
+                                Selected position
+                            </h3>
+
+                            <p class="mt-1 text-sm text-muted">
+                                {{
+                                    formatDateTime(
+                                        selectedHistoryPosition.fix_time,
+                                    )
+                                }}
+                            </p>
+                        </div>
+
+                        <AppButton
+                            variant="secondary"
+                            size="sm"
+                            @click="selectedHistoryPosition = null"
+                        >
+                            Close
+                        </AppButton>
+                    </div>
+
+                    <dl
+                        class="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3"
+                    >
+                        <div>
+                            <dt class="text-muted">Latitude</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    formatCoordinate(
+                                        selectedHistoryPosition.latitude,
+                                    )
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Longitude</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    formatCoordinate(
+                                        selectedHistoryPosition.longitude,
+                                    )
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Speed</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    formatNumber(
+                                        selectedHistoryPosition.speed,
+                                        ' kn',
+                                    )
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Course</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    formatNumber(
+                                        selectedHistoryPosition.course,
+                                        '°',
+                                    )
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Accuracy</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    formatNumber(
+                                        selectedHistoryPosition.accuracy,
+                                        ' m',
+                                    )
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-muted">Device time</dt>
+                            <dd class="mt-1 font-medium text-content">
+                                {{
+                                    formatDateTime(
+                                        selectedHistoryPosition.device_time,
+                                    )
+                                }}
+                            </dd>
+                        </div>
+                    </dl>
+                </AppCard>
+            </template>
         </div>
     </AppLayout>
 </template>

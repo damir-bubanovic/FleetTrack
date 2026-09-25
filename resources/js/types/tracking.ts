@@ -29,6 +29,25 @@ export type TrackingPosition = {
     attributes: Record<string, unknown>;
 };
 
+export type HistoricalPosition = {
+    id: number | null;
+    device_id: number | null;
+    latitude: number | null;
+    longitude: number | null;
+    altitude: number | null;
+    speed: number | null;
+    course: number | null;
+    accuracy: number | null;
+    fix_time: string | null;
+    device_time: string | null;
+    server_time: string | null;
+    attributes: Record<string, unknown>;
+};
+
+export type HistoricalPositionsResponse = {
+    data: HistoricalPosition[];
+};
+
 export type LivePosition = {
     device: TrackingDevice;
     vehicle: TrackingVehicle | null;

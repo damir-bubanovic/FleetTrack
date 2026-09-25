@@ -1,9 +1,18 @@
+import { positions as vehiclePositions } from '@/routes/tracking/vehicles';
 import { apiRequest } from '@/services/apiClient';
-import type { LivePositionsResponse } from '@/types/tracking';
+import type {
+    HistoricalPositionsResponse,
+    LivePositionsResponse,
+} from '@/types/tracking';
 
 export type LivePositionFilters = {
     fleetId?: number;
     vehicleId?: number;
+};
+
+export type PositionHistoryRange = {
+    from: string;
+    to: string;
 };
 
 export function getLivePositions(
@@ -23,5 +32,19 @@ export function getLivePositions(
 
     return apiRequest<LivePositionsResponse>(
         `/api/v1/tracking/positions${query ? `?${query}` : ''}`,
+    );
+}
+
+export function getVehiclePositionHistory(
+    vehicle: number,
+    range: PositionHistoryRange,
+): Promise<HistoricalPositionsResponse> {
+    return apiRequest<HistoricalPositionsResponse>(
+        vehiclePositions.url(vehicle, {
+            query: {
+                from: range.from,
+                to: range.to,
+            },
+        }),
     );
 }
