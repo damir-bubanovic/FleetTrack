@@ -1,4 +1,4 @@
-export type DeviceStatus = 'active' | 'inactive' | 'offline';
+export type DeviceStatus = 'active' | 'inactive' | 'maintenance';
 
 export type Device = {
     id: number;

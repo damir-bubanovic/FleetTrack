@@ -59,8 +59,8 @@ const statusOptions: { value: DeviceStatus; label: string }[] = [
         label: 'Inactive',
     },
     {
-        value: 'offline',
-        label: 'Offline',
+        value: 'maintenance',
+        label: 'Maintenance',
     },
 ];
 

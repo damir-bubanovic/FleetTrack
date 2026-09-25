@@ -148,7 +148,7 @@ function statusVariant(
         return 'success';
     }
 
-    if (status === 'offline') {
+    if (status === 'maintenance') {
         return 'danger';
     }
 
