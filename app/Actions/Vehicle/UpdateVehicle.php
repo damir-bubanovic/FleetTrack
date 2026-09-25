@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Vehicle;
 
+use App\Enums\UserRole;
 use App\Models\Fleet;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 
 class UpdateVehicle
 {
@@ -24,8 +28,10 @@ class UpdateVehicle
         /** @var Fleet $fleet */
         $fleet = Fleet::query()->findOrFail($attributes['fleet_id']);
 
+        $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value);
+
         if (
-            $user->company_id !== null
+            ! $isSuperAdmin
             && $fleet->company_id !== $user->company_id
         ) {
             throw new AuthorizationException(
@@ -33,11 +39,22 @@ class UpdateVehicle
             );
         }
 
-        $vehicle->update([
-            ...$attributes,
-            'company_id' => $fleet->company_id,
-        ]);
+        return DB::transaction(function () use (
+            $vehicle,
+            $attributes,
+            $fleet,
+        ): Vehicle {
+            $vehicle->update([
+                ...$attributes,
+                'company_id' => $fleet->company_id,
+            ]);
 
-        return $vehicle->refresh();
+            $vehicle->device()
+                ->update([
+                    'company_id' => $fleet->company_id,
+                ]);
+
+            return $vehicle->refresh();
+        });
     }
 }

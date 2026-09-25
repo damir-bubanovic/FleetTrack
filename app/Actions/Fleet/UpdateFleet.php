@@ -19,8 +19,7 @@ class UpdateFleet
         Fleet $fleet,
         array $data
     ): Fleet {
-        $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value)
-            && $user->company_id === null;
+        $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value);
 
         if (! $isSuperAdmin) {
             unset($data['company_id']);
