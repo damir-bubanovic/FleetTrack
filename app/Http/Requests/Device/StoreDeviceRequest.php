@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Device;
 
 use App\Enums\DeviceStatus;
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +21,12 @@ class StoreDeviceRequest extends FormRequest
     {
         return [
             'company_id' => [
+                Rule::requiredIf(
+                    fn (): bool => $this->user()->hasRole(UserRole::SuperAdmin->value)
+                        && empty($this->input('vehicle_id'))
+                ),
                 'nullable',
+                'integer',
                 'exists:companies,id',
             ],
 

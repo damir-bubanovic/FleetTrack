@@ -153,6 +153,58 @@ test('company admin can create device', function (): void {
     Queue::assertPushed(SyncDeviceToTraccar::class);
 });
 
+test('company admin can create device without vehicle', function (): void {
+    Queue::fake();
+
+    $company = $this->createCompany();
+
+    $this->actingAsCompanyAdmin($company);
+
+    $response = $this->postJson('/api/v1/devices', [
+        'vehicle_id' => null,
+        'name' => 'Unassigned GPS Device',
+        'unique_id' => 'UNASSIGNED123',
+        'status' => DeviceStatus::ACTIVE->value,
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.company_id', $company->id)
+        ->assertJsonPath('data.vehicle_id', null)
+        ->assertJsonPath('data.unique_id', 'UNASSIGNED123');
+
+    $this->assertDatabaseHas('devices', [
+        'company_id' => $company->id,
+        'vehicle_id' => null,
+        'unique_id' => 'UNASSIGNED123',
+    ]);
+
+    Queue::assertPushed(SyncDeviceToTraccar::class);
+});
+
+test('super admin must provide company when creating device without vehicle', function (): void {
+    Queue::fake();
+
+    $this->actingAsSuperAdmin();
+
+    $this->postJson('/api/v1/devices', [
+        'vehicle_id' => null,
+        'name' => 'Unassigned GPS Device',
+        'unique_id' => 'SUPERUNASSIGNED123',
+        'status' => DeviceStatus::ACTIVE->value,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'company_id',
+        ]);
+
+    $this->assertDatabaseMissing('devices', [
+        'unique_id' => 'SUPERUNASSIGNED123',
+    ]);
+
+    Queue::assertNothingPushed();
+});
+
 test('company admin cannot create device for another company vehicle', function (): void {
 
     $companyA = $this->createCompany();
@@ -243,6 +295,78 @@ test('company admin can update own device', function (): void {
         'id' => $device->id,
         'name' => 'Updated GPS Device',
         'traccar_device_id' => $device->traccar_device_id,
+    ]);
+
+    Queue::assertPushed(UpdateDeviceInTraccar::class);
+});
+
+test('company admin can unassign device from vehicle', function (): void {
+    Queue::fake();
+
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $device = $this->createDevice($company, $vehicle);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $response = $this->putJson("/api/v1/devices/{$device->id}", [
+        'vehicle_id' => null,
+        'name' => $device->name,
+        'unique_id' => $device->unique_id,
+        'status' => $device->status->value,
+    ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.company_id', $company->id)
+        ->assertJsonPath('data.vehicle_id', null);
+
+    $this->assertDatabaseHas('devices', [
+        'id' => $device->id,
+        'company_id' => $company->id,
+        'vehicle_id' => null,
+    ]);
+
+    Queue::assertPushed(UpdateDeviceInTraccar::class);
+});
+
+test('super admin keeps device company when unassigning vehicle without company', function (): void {
+    Queue::fake();
+
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $device = $this->createDevice($company, $vehicle);
+
+    $this->actingAsSuperAdmin();
+
+    $response = $this->putJson("/api/v1/devices/{$device->id}", [
+        'vehicle_id' => null,
+        'name' => $device->name,
+        'unique_id' => $device->unique_id,
+        'status' => $device->status->value,
+    ]);
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.company_id', $company->id)
+        ->assertJsonPath('data.vehicle_id', null);
+
+    $this->assertDatabaseHas('devices', [
+        'id' => $device->id,
+        'company_id' => $company->id,
+        'vehicle_id' => null,
     ]);
 
     Queue::assertPushed(UpdateDeviceInTraccar::class);

@@ -4,14 +4,16 @@ import type { Device, DeviceStatus } from '@/types/device';
 import type { PaginatedResponse } from '@/types/vehicle';
 
 export type CreateDevicePayload = {
-    vehicle_id: number;
+    company_id?: number;
+    vehicle_id: number | null;
     name: string;
     unique_id: string;
     status?: DeviceStatus;
 };
 
 export type UpdateDevicePayload = {
-    vehicle_id: number;
+    company_id?: number;
+    vehicle_id: number | null;
     name: string;
     unique_id: string;
     status: DeviceStatus;

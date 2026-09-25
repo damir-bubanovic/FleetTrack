@@ -71,10 +71,6 @@ async function loadVehicles(): Promise<void> {
 }
 
 function startCreatingDevice(): void {
-    if (vehicles.value.length === 0) {
-        return;
-    }
-
     editingDevice.value = null;
     creatingDevice.value = true;
 }
@@ -173,14 +169,14 @@ onMounted(async () => {
 
     <AppLayout
         title="Devices"
-        description="Manage GPS tracking devices"
+        description="Manage GPS tracking devices."
         active-navigation="Devices"
     >
         <div class="mb-7 flex flex-col gap-4">
             <PageHeader
                 eyebrow="Device management"
                 title="Devices"
-                description="Manage GPS devices assigned to your vehicles."
+                description="Manage GPS tracking devices."
                 show-refresh
                 @refresh="loadDevices()"
             />
@@ -188,7 +184,6 @@ onMounted(async () => {
             <div class="flex justify-end">
                 <AppButton
                     v-if="!creatingDevice && !editingDevice"
-                    :disabled="vehicles.length === 0"
                     @click="startCreatingDevice"
                 >
                     Create device
@@ -206,7 +201,7 @@ onMounted(async () => {
                     {{
                         editingDevice
                             ? 'Update the device assignment and settings.'
-                            : 'Assign a GPS tracking device to a vehicle.'
+                            : 'Configure a GPS tracking device and optionally assign it to a vehicle.'
                     }}
                 </p>
             </div>
@@ -234,7 +229,7 @@ onMounted(async () => {
             <EmptyState
                 v-else-if="devices.length === 0"
                 title="No devices yet"
-                description="Create your first device to start tracking vehicles."
+                description="Create your first GPS tracking device."
                 icon="devices"
             />
 
@@ -303,7 +298,13 @@ onMounted(async () => {
                             <td
                                 class="px-5 py-4 whitespace-nowrap text-content-secondary"
                             >
-                                {{ vehicleNames.get(device.vehicle_id) ?? '—' }}
+                                {{
+                                    device.vehicle_id === null
+                                        ? 'Unassigned'
+                                        : (vehicleNames.get(
+                                              device.vehicle_id,
+                                          ) ?? '—')
+                                }}
                             </td>
 
                             <td class="px-5 py-4 whitespace-nowrap">

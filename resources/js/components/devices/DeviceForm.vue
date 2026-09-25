@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import AppButton from '@/components/ui/AppButton.vue';
 import AppInput from '@/components/ui/AppInput.vue';
 import AppSelect from '@/components/ui/AppSelect.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { ApiError } from '@/services/apiClient';
+import { authState } from '@/services/authState';
+import { getCompanies } from '@/services/companyService';
 import { createDevice, updateDevice } from '@/services/deviceService';
 import type { UpdateDevicePayload } from '@/services/deviceService';
+import type { Company } from '@/types/company';
 import type { Device, DeviceStatus } from '@/types/device';
 import type { Vehicle } from '@/types/vehicle';
 
@@ -22,13 +25,29 @@ const emit = defineEmits<{
 }>();
 
 const editing = computed(() => props.device !== undefined);
+const isSuperAdmin = computed(
+    () => authState.user.value?.roles.includes('super_admin') ?? false,
+);
 
-const vehicleOptions = computed(() =>
-    props.vehicles.map((vehicle) => ({
+const companies = ref<Company[]>([]);
+
+const companyOptions = computed(() =>
+    companies.value.map((company) => ({
+        value: company.id,
+        label: company.name,
+    })),
+);
+
+const vehicleOptions = computed(() => [
+    {
+        value: '',
+        label: 'Unassigned',
+    },
+    ...props.vehicles.map((vehicle) => ({
         value: vehicle.id,
         label: `${vehicle.manufacturer} ${vehicle.model} (${vehicle.registration_number})`,
     })),
-);
+]);
 
 const statusOptions: { value: DeviceStatus; label: string }[] = [
     {
@@ -45,11 +64,18 @@ const statusOptions: { value: DeviceStatus; label: string }[] = [
     },
 ];
 
-const form = reactive({
-    vehicle_id: props.device?.vehicle_id ?? props.vehicles[0]?.id ?? null,
+const form = reactive<{
+    company_id: number | string | null;
+    vehicle_id: number | string | null;
+    name: string;
+    unique_id: string;
+    status: DeviceStatus;
+}>({
+    company_id: props.device?.company_id ?? null,
+    vehicle_id: props.device?.vehicle_id ?? null,
     name: props.device?.name ?? '',
     unique_id: props.device?.unique_id ?? '',
-    status: props.device?.status ?? ('active' as DeviceStatus),
+    status: props.device?.status ?? 'active',
 });
 
 type FormFieldName = keyof typeof form;
@@ -83,10 +109,39 @@ for (const field of Object.keys(form) as FormFieldName[]) {
     );
 }
 
+async function loadCompanies(): Promise<void> {
+    if (!isSuperAdmin.value) {
+        return;
+    }
+
+    try {
+        const response = await getCompanies();
+
+        companies.value = response.data;
+    } catch (exception) {
+        error.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load companies.';
+    }
+}
+
 async function submit(): Promise<void> {
-    if (form.vehicle_id === null) {
+    const vehicleId =
+        form.vehicle_id === null || form.vehicle_id === ''
+            ? null
+            : Number(form.vehicle_id);
+
+    const companyId =
+        form.company_id === null || form.company_id === ''
+            ? null
+            : Number(form.company_id);
+
+    if (isSuperAdmin.value && vehicleId === null && companyId === null) {
         validationErrors.value = {
-            vehicle_id: ['The vehicle field is required.'],
+            company_id: [
+                'The company field is required when no vehicle is assigned.',
+            ],
         };
 
         return;
@@ -97,11 +152,15 @@ async function submit(): Promise<void> {
     validationErrors.value = {};
 
     const payload: UpdateDevicePayload = {
-        vehicle_id: Number(form.vehicle_id),
+        vehicle_id: vehicleId,
         name: form.name.trim(),
         unique_id: form.unique_id.trim(),
         status: form.status,
     };
+
+    if (isSuperAdmin.value && companyId !== null) {
+        payload.company_id = companyId;
+    }
 
     try {
         const device = props.device
@@ -127,6 +186,8 @@ async function submit(): Promise<void> {
         submitting.value = false;
     }
 }
+
+onMounted(loadCompanies);
 </script>
 
 <template>
@@ -141,17 +202,29 @@ async function submit(): Promise<void> {
 
         <div class="grid gap-5 md:grid-cols-2">
             <FormField
+                v-if="isSuperAdmin"
+                label="Company"
+                input-id="device-company"
+                :error="fieldError('company_id')"
+            >
+                <AppSelect
+                    id="device-company"
+                    v-model="form.company_id"
+                    :options="companyOptions"
+                    placeholder="Select company"
+                    :disabled="submitting"
+                />
+            </FormField>
+
+            <FormField
                 label="Vehicle"
                 input-id="device-vehicle"
                 :error="fieldError('vehicle_id')"
-                required
             >
                 <AppSelect
                     id="device-vehicle"
                     v-model="form.vehicle_id"
                     :options="vehicleOptions"
-                    placeholder="Select vehicle"
-                    required
                     :disabled="submitting"
                 />
             </FormField>

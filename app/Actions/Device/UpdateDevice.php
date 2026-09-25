@@ -42,7 +42,7 @@ class UpdateDevice
         if ($user->hasRole(UserRole::SuperAdmin->value)) {
             $companyId = $vehicle !== null
                 ? $vehicle->company_id
-                : $attributes['company_id'];
+                : ($attributes['company_id'] ?? $device->company_id);
         } else {
             $companyId = $user->company_id;
         }
