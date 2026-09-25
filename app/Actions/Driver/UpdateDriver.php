@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Driver;
 
 use App\Enums\UserRole;
@@ -21,9 +23,7 @@ class UpdateDriver
         array $data
     ): Driver {
         return DB::transaction(function () use ($user, $driver, $data): Driver {
-
-            $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value)
-                && $user->company_id === null;
+            $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value);
 
             /*
              * Company users cannot move drivers
@@ -33,13 +33,24 @@ class UpdateDriver
                 unset($data['company_id']);
             }
 
-            /** @var Fleet $fleet */
-            $fleet = Fleet::query()
-                ->whereKey($data['fleet_id'])
-                ->where('company_id', $driver->company_id)
-                ->firstOrFail();
+            $companyId = $isSuperAdmin
+                ? ($data['company_id'] ?? $driver->company_id)
+                : $driver->company_id;
 
-            $data['company_id'] = $fleet->company_id;
+            /*
+             * The selected fleet must belong to the company
+             * that will own the driver.
+             */
+            if (isset($data['fleet_id'])) {
+                /** @var Fleet $fleet */
+                $fleet = Fleet::query()
+                    ->where('company_id', $companyId)
+                    ->findOrFail($data['fleet_id']);
+
+                $data['fleet_id'] = $fleet->id;
+            }
+
+            $data['company_id'] = $companyId;
 
             $driver->update($data);
 
