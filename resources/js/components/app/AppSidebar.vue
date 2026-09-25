@@ -90,6 +90,7 @@ const navigation: readonly NavigationItem[] = [
     {
         name: 'Reports',
         icon: 'reports',
+        href: web.reports.index.url(),
     },
 ];
 
