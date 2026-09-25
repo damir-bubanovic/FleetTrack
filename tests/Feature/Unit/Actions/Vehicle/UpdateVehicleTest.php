@@ -175,3 +175,81 @@ test('same company vehicle update preserves device ownership', function (): void
     expect($device->vehicle_id)
         ->toBe($vehicle->id);
 });
+
+use App\Actions\Vehicle\CreateVehicle;
+
+test('super admin can create vehicle in another company fleet', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $user = $this->actingAsSuperAdmin();
+
+    $vehicle = app(CreateVehicle::class)->handle(
+        $user,
+        [
+            'fleet_id' => $fleet->id,
+            'registration_number' => 'ZG-1234-AB',
+            'vin' => '1HGBH41JXMN109186',
+            'manufacturer' => 'Toyota',
+            'model' => 'Corolla',
+            'year' => 2025,
+            'color' => 'Black',
+            'fuel_type' => 'petrol',
+            'transmission' => 'automatic',
+            'odometer' => 0,
+            'is_active' => true,
+        ],
+    );
+
+    expect($vehicle->company_id)
+        ->toBe($company->id);
+
+    expect($vehicle->fleet_id)
+        ->toBe($fleet->id);
+
+    $this->assertDatabaseHas('vehicles', [
+        'id' => $vehicle->id,
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+    ]);
+});
+
+test('company admin cannot create vehicle in another company fleet', function (): void {
+    $companyA = $this->createCompany();
+    $companyB = $this->createCompany();
+
+    $fleetB = Fleet::factory()->create([
+        'company_id' => $companyB->id,
+    ]);
+
+    $user = $this->actingAsCompanyAdmin($companyA);
+
+    expect(
+        fn () => app(CreateVehicle::class)->handle(
+            $user,
+            [
+                'fleet_id' => $fleetB->id,
+                'registration_number' => 'ZG-9999-AB',
+                'vin' => '1HGBH41JXMN109187',
+                'manufacturer' => 'Toyota',
+                'model' => 'Corolla',
+                'year' => 2025,
+                'color' => 'Black',
+                'fuel_type' => 'petrol',
+                'transmission' => 'automatic',
+                'odometer' => 0,
+                'is_active' => true,
+            ],
+        ),
+    )->toThrow(
+        AuthorizationException::class,
+    );
+
+    $this->assertDatabaseMissing('vehicles', [
+        'fleet_id' => $fleetB->id,
+        'registration_number' => 'ZG-9999-AB',
+    ]);
+});

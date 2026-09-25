@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Vehicle;
 
+use App\Enums\UserRole;
 use App\Models\Fleet;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -23,8 +26,10 @@ class CreateVehicle
         /** @var Fleet $fleet */
         $fleet = Fleet::query()->findOrFail($attributes['fleet_id']);
 
+        $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value);
+
         if (
-            $user->company_id !== null
+            ! $isSuperAdmin
             && $fleet->company_id !== $user->company_id
         ) {
             throw new AuthorizationException(
