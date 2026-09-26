@@ -2,7 +2,7 @@ import { destroy, index, store, update } from '@/routes/fleets';
 import { apiRequest } from '@/services/apiClient';
 import type { Fleet, PaginatedResponse } from '@/types/fleet';
 
-export type CreateFleetPayload = {
+export type UpdateFleetPayload = {
     name: string;
     code: string;
     email?: string | null;
@@ -15,7 +15,9 @@ export type CreateFleetPayload = {
     is_active?: boolean;
 };
 
-export type UpdateFleetPayload = CreateFleetPayload;
+export type CreateFleetPayload = UpdateFleetPayload & {
+    company_id?: number;
+};
 
 export function getFleets(page = 1): Promise<PaginatedResponse<Fleet>> {
     return apiRequest<PaginatedResponse<Fleet>>(

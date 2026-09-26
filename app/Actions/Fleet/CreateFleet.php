@@ -3,7 +3,6 @@
 namespace App\Actions\Fleet;
 
 use App\Enums\UserRole;
-use App\Models\Company;
 use App\Models\Fleet;
 use App\Models\User;
 
@@ -12,23 +11,25 @@ class CreateFleet
     /**
      * Create a new fleet.
      *
-     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $attributes
      */
-    public function handle(User $user, array $data): Fleet
-    {
-        $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value)
-            && $user->company_id === null;
+    public function handle(
+        User $user,
+        array $attributes,
+    ): Fleet {
+        $isSuperAdmin = $user->hasRole(
+            UserRole::SuperAdmin->value,
+        );
 
-        if (! $isSuperAdmin) {
-            $data['company_id'] = $user->company_id;
-        }
+        $companyId = $isSuperAdmin
+            ? $attributes['company_id']
+            : $user->company_id;
 
-        /** @var Company $company */
-        $company = Company::query()
-            ->findOrFail($data['company_id']);
+        unset($attributes['company_id']);
 
-        $data['company_id'] = $company->id;
-
-        return Fleet::create($data);
+        return Fleet::create([
+            ...$attributes,
+            'company_id' => $companyId,
+        ]);
     }
 }

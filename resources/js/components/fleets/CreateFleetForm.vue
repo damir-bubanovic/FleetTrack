@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCheckbox from '@/components/ui/AppCheckbox.vue';
 import AppInput from '@/components/ui/AppInput.vue';
+import AppSelect from '@/components/ui/AppSelect.vue';
 import AppTextarea from '@/components/ui/AppTextarea.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { ApiError } from '@/services/apiClient';
+import { authState } from '@/services/authState';
+import { getCompanies } from '@/services/companyService';
 import { createFleet, updateFleet } from '@/services/fleetService';
 import type {
     CreateFleetPayload,
     UpdateFleetPayload,
 } from '@/services/fleetService';
+import type { Company } from '@/types/company';
 import type { Fleet } from '@/types/fleet';
 
 const props = defineProps<{
@@ -24,8 +28,33 @@ const emit = defineEmits<{
 }>();
 
 const editing = computed(() => props.fleet !== undefined);
+const isSuperAdmin = computed(
+    () => authState.user.value?.roles.includes('super_admin') ?? false,
+);
 
-const form = reactive({
+const companies = ref<Company[]>([]);
+
+const companyOptions = computed(() =>
+    companies.value.map((company) => ({
+        value: company.id,
+        label: company.name,
+    })),
+);
+
+const form = reactive<{
+    company_id: number | string | null;
+    name: string;
+    code: string;
+    email: string;
+    phone: string;
+    address: string;
+    latitude: string;
+    longitude: string;
+    timezone: string;
+    description: string;
+    is_active: boolean;
+}>({
+    company_id: props.fleet?.company_id ?? null,
     name: props.fleet?.name ?? '',
     code: props.fleet?.code ?? '',
     email: props.fleet?.email ?? '',
@@ -87,7 +116,37 @@ for (const field of Object.keys(form) as FormFieldName[]) {
     );
 }
 
+async function loadCompanies(): Promise<void> {
+    if (!isSuperAdmin.value || editing.value) {
+        return;
+    }
+
+    try {
+        const response = await getCompanies();
+
+        companies.value = response.data;
+    } catch (exception) {
+        error.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load companies.';
+    }
+}
+
 async function submit(): Promise<void> {
+    const companyId =
+        form.company_id === null || form.company_id === ''
+            ? null
+            : Number(form.company_id);
+
+    if (!editing.value && isSuperAdmin.value && companyId === null) {
+        validationErrors.value = {
+            company_id: ['The company field is required.'],
+        };
+
+        return;
+    }
+
     submitting.value = true;
     error.value = null;
     validationErrors.value = {};
@@ -104,6 +163,10 @@ async function submit(): Promise<void> {
         description: optionalString(form.description),
         is_active: form.is_active,
     };
+
+    if (!editing.value && isSuperAdmin.value && companyId !== null) {
+        (payload as CreateFleetPayload).company_id = companyId;
+    }
 
     try {
         const fleet = props.fleet
@@ -129,6 +192,8 @@ async function submit(): Promise<void> {
         submitting.value = false;
     }
 }
+
+onMounted(loadCompanies);
 </script>
 
 <template>
@@ -142,6 +207,23 @@ async function submit(): Promise<void> {
         </div>
 
         <div class="grid gap-5 md:grid-cols-2">
+            <FormField
+                v-if="isSuperAdmin && !editing"
+                label="Company"
+                input-id="fleet-company"
+                :error="fieldError('company_id')"
+                required
+            >
+                <AppSelect
+                    id="fleet-company"
+                    v-model="form.company_id"
+                    :options="companyOptions"
+                    placeholder="Select company"
+                    required
+                    :disabled="submitting"
+                />
+            </FormField>
+
             <FormField
                 label="Fleet name"
                 input-id="fleet-name"

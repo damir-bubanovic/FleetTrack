@@ -455,3 +455,72 @@ test('company admin can update fleet without changing name or code', function ()
         ->assertJsonPath('data.code', 'OPS')
         ->assertJsonPath('data.description', 'Updated description');
 });
+
+test('super admin can create fleet for a company', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $response = $this->postJson('/api/v1/fleets', [
+        'company_id' => $company->id,
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+        'timezone' => 'UTC',
+        'is_active' => true,
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.company_id', $company->id)
+        ->assertJsonPath('data.name', 'Operations Fleet');
+
+    $this->assertDatabaseHas('fleets', [
+        'company_id' => $company->id,
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+});
+
+test('super admin must provide company when creating fleet', function (): void {
+    $this->actingAsSuperAdmin();
+
+    $this
+        ->postJson('/api/v1/fleets', [
+            'name' => 'Operations Fleet',
+            'code' => 'OPS',
+            'timezone' => 'UTC',
+            'is_active' => true,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'company_id',
+        ]);
+});
+
+test('super admin validates fleet uniqueness within selected company', function (): void {
+    $company = $this->createCompany();
+
+    Fleet::factory()->create([
+        'company_id' => $company->id,
+        'name' => 'Operations Fleet',
+        'code' => 'OPS',
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this
+        ->postJson('/api/v1/fleets', [
+            'company_id' => $company->id,
+            'name' => 'Operations Fleet',
+            'code' => 'OPS-2',
+            'timezone' => 'UTC',
+            'is_active' => true,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'name',
+        ]);
+});

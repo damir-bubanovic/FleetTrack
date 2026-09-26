@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Fleet;
 
+use App\Enums\UserRole;
 use App\Models\Fleet;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,13 +25,29 @@ class StoreFleetRequest extends FormRequest
      */
     public function rules(): array
     {
+        $user = $this->user();
+
+        $isSuperAdmin = $user?->hasRole(
+            UserRole::SuperAdmin->value,
+        ) ?? false;
+
+        $companyId = $isSuperAdmin
+            ? $this->integer('company_id')
+            : $user?->company_id;
+
         return [
+            'company_id' => [
+                Rule::requiredIf($isSuperAdmin),
+                'integer',
+                'exists:companies,id',
+            ],
+
             'name' => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('fleets', 'name')
-                    ->where('company_id', $this->user()?->company_id),
+                    ->where('company_id', $companyId),
             ],
 
             'code' => [
@@ -38,7 +55,7 @@ class StoreFleetRequest extends FormRequest
                 'string',
                 'max:50',
                 Rule::unique('fleets', 'code')
-                    ->where('company_id', $this->user()?->company_id),
+                    ->where('company_id', $companyId),
             ],
 
             'email' => [
@@ -96,7 +113,10 @@ class StoreFleetRequest extends FormRequest
             ]);
         }
 
-        if ($this->input('timezone') === null || $this->input('timezone') === '') {
+        if (
+            $this->input('timezone') === null
+            || $this->input('timezone') === ''
+        ) {
             $this->merge([
                 'timezone' => config('app.timezone'),
             ]);

@@ -15,6 +15,20 @@ export type Fleet = {
     updated_at: string | null;
 };
 
+export type CreateFleetPayload = {
+    company_id?: number;
+    name: string;
+    code: string;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    timezone: string;
+    description?: string | null;
+    is_active?: boolean;
+};
+
 export type PaginationLink = {
     url: string | null;
     label: string;
