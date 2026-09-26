@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Driver;
 use App\Models\Fleet;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Traits\CreatesCompanies;
 use Tests\Traits\CreatesFleets;
@@ -523,4 +525,41 @@ test('super admin validates fleet uniqueness within selected company', function 
         ->assertJsonValidationErrors([
             'name',
         ]);
+});
+
+test('company admin cannot delete fleet with assigned vehicles or drivers', function (): void {
+    $company = $this->createCompany([
+        'name' => 'Company A',
+        'slug' => 'company-a',
+    ]);
+
+    $fleet = $this->createFleet($company);
+
+    Vehicle::factory()->create([
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+    ]);
+
+    Driver::factory()->create([
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->deleteJson("/api/v1/fleets/{$fleet->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('fleets', [
+        'id' => $fleet->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('vehicles', [
+        'fleet_id' => $fleet->id,
+    ]);
+
+    $this->assertDatabaseHas('drivers', [
+        'fleet_id' => $fleet->id,
+    ]);
 });

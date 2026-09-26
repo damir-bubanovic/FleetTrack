@@ -2,8 +2,9 @@
 
 namespace App\Actions\Fleet;
 
+use App\Models\Driver;
 use App\Models\Fleet;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DeleteFleet
 {
@@ -12,8 +13,18 @@ class DeleteFleet
      */
     public function handle(Fleet $fleet): void
     {
-        DB::transaction(function () use ($fleet): void {
-            $fleet->delete();
-        });
+        $hasDrivers = Driver::query()
+            ->where('fleet_id', $fleet->id)
+            ->exists();
+
+        if ($fleet->vehicles()->exists() || $hasDrivers) {
+            throw ValidationException::withMessages([
+                'fleet' => [
+                    'The fleet cannot be deleted while it has assigned vehicles or drivers.',
+                ],
+            ]);
+        }
+
+        $fleet->delete();
     }
 }
