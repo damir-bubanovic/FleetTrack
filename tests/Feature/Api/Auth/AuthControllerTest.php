@@ -118,3 +118,17 @@ test('authenticated user can logout', function (): void {
 
     expect($user->fresh()->tokens()->count())->toBe(0);
 });
+
+test('default laravel user endpoint is not exposed', function (): void {
+    $company = $this->createCompany();
+
+    $user = User::factory()->create([
+        'company_id' => $company->id,
+        'is_active' => true,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/user')
+        ->assertNotFound();
+});
