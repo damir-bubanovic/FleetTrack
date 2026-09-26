@@ -2,7 +2,6 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
-import DeviceForm from '@/components/devices/DeviceForm.vue';
 import AppButton from '@/components/ui/AppButton.vue';
 import AppCard from '@/components/ui/AppCard.vue';
 import AppPagination from '@/components/ui/AppPagination.vue';
@@ -12,32 +11,28 @@ import ErrorState from '@/components/ui/ErrorState.vue';
 import LoadingState from '@/components/ui/LoadingState.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
+import VehicleForm from '@/components/vehicles/VehicleForm.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { deleteDevice, getDevices } from '@/services/deviceService';
-import { getVehicles } from '@/services/vehicleService';
-import type { Device } from '@/types/device';
+import { getFleets } from '@/services/fleetService';
+import { deleteVehicle, getVehicles } from '@/services/vehicleService';
+import type { Fleet } from '@/types/fleet';
 import type { PaginatedResponse, Vehicle } from '@/types/vehicle';
 
-const devicesResponse = ref<PaginatedResponse<Device> | null>(null);
-const vehicles = ref<Vehicle[]>([]);
+const vehiclesResponse = ref<PaginatedResponse<Vehicle> | null>(null);
+const fleets = ref<Fleet[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const creatingDevice = ref(false);
-const editingDevice = ref<Device | null>(null);
-const deletingDeviceId = ref<number | null>(null);
+const creatingVehicle = ref(false);
+const editingVehicle = ref<Vehicle | null>(null);
+const deletingVehicleId = ref<number | null>(null);
 
-const devices = computed(() => devicesResponse.value?.data ?? []);
+const vehicles = computed(() => vehiclesResponse.value?.data ?? []);
 
-const vehicleNames = computed(() => {
-    return new Map(
-        vehicles.value.map((vehicle) => [
-            vehicle.id,
-            `${vehicle.manufacturer} ${vehicle.model} (${vehicle.registration_number})`,
-        ]),
-    );
+const fleetNames = computed(() => {
+    return new Map(fleets.value.map((fleet) => [fleet.id, fleet.name]));
 });
 
-async function loadDevices(page = 1): Promise<void> {
+async function loadVehicles(page = 1): Promise<void> {
     if (page < 1) {
         return;
     }
@@ -46,191 +41,160 @@ async function loadDevices(page = 1): Promise<void> {
     error.value = null;
 
     try {
-        devicesResponse.value = await getDevices(page);
-    } catch (exception) {
-        error.value =
-            exception instanceof Error
-                ? exception.message
-                : 'Unable to load devices.';
-    } finally {
-        loading.value = false;
-    }
-}
-
-async function loadVehicles(): Promise<void> {
-    try {
-        const response = await getVehicles();
-
-        vehicles.value = response.data;
+        vehiclesResponse.value = await getVehicles(page);
     } catch (exception) {
         error.value =
             exception instanceof Error
                 ? exception.message
                 : 'Unable to load vehicles.';
+    } finally {
+        loading.value = false;
     }
 }
 
-function startCreatingDevice(): void {
-    editingDevice.value = null;
-    creatingDevice.value = true;
+async function loadFleets(): Promise<void> {
+    try {
+        const response = await getFleets();
+
+        fleets.value = response.data;
+    } catch (exception) {
+        error.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load fleets.';
+    }
 }
 
-function startEditingDevice(device: Device): void {
-    creatingDevice.value = false;
-    editingDevice.value = device;
+function startCreatingVehicle(): void {
+    if (fleets.value.length === 0) {
+        return;
+    }
+
+    editingVehicle.value = null;
+    creatingVehicle.value = true;
 }
 
-function cancelDeviceForm(): void {
-    creatingDevice.value = false;
-    editingDevice.value = null;
+function startEditingVehicle(vehicle: Vehicle): void {
+    creatingVehicle.value = false;
+    editingVehicle.value = vehicle;
 }
 
-async function handleDeviceSaved(): Promise<void> {
-    cancelDeviceForm();
-
-    await loadDevices(1);
+function cancelVehicleForm(): void {
+    creatingVehicle.value = false;
+    editingVehicle.value = null;
 }
 
-async function handleDeleteDevice(device: Device): Promise<void> {
+async function handleVehicleSaved(): Promise<void> {
+    cancelVehicleForm();
+
+    await loadVehicles(1);
+}
+
+async function handleDeleteVehicle(vehicle: Vehicle): Promise<void> {
     const confirmed = window.confirm(
-        `Delete "${device.name}" (${device.unique_id})? This action cannot be undone.`,
+        `Delete "${vehicle.manufacturer} ${vehicle.model}" (${vehicle.registration_number})? This action cannot be undone.`,
     );
 
     if (!confirmed) {
         return;
     }
 
-    deletingDeviceId.value = device.id;
+    deletingVehicleId.value = vehicle.id;
     error.value = null;
 
     try {
-        await deleteDevice(device);
+        await deleteVehicle(vehicle);
 
-        if (editingDevice.value?.id === device.id) {
-            cancelDeviceForm();
+        if (editingVehicle.value?.id === vehicle.id) {
+            cancelVehicleForm();
         }
 
-        await loadDevices(devicesResponse.value?.meta.current_page ?? 1);
+        await loadVehicles(vehiclesResponse.value?.meta.current_page ?? 1);
     } catch (exception) {
         error.value =
             exception instanceof Error
                 ? exception.message
-                : 'Unable to delete device.';
+                : 'Unable to delete vehicle.';
     } finally {
-        deletingDeviceId.value = null;
+        deletingVehicleId.value = null;
     }
 }
 
-function formatDateTime(value: string | null): string {
-    if (!value) {
-        return 'Never';
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
-
-    return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
+async function loadPage(): Promise<void> {
+    await Promise.all([loadVehicles(), loadFleets()]);
 }
 
-function statusVariant(
-    status: Device['status'],
-): 'success' | 'neutral' | 'danger' {
-    if (status === 'active') {
-        return 'success';
-    }
-
-    if (status === 'maintenance') {
-        return 'danger';
-    }
-
-    return 'neutral';
-}
-
-function statusLabel(status: Device['status']): string {
-    return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-onMounted(async () => {
-    await Promise.all([loadDevices(), loadVehicles()]);
-});
+onMounted(loadPage);
 </script>
 
 <template>
-    <Head title="Devices" />
+    <Head title="Vehicles" />
 
     <AppLayout
-        title="Devices"
-        description="Manage GPS tracking devices."
-        active-navigation="Devices"
+        title="Vehicles"
+        description="Manage fleet vehicles"
+        active-navigation="Vehicles"
     >
         <div class="mb-7 flex flex-col gap-4">
             <PageHeader
-                eyebrow="Device management"
-                title="Devices"
-                description="Manage GPS tracking devices."
+                eyebrow="Vehicle management"
+                title="Vehicles"
+                description="Manage vehicles across your fleets."
                 show-refresh
-                @refresh="loadDevices()"
+                @refresh="loadVehicles()"
             />
 
             <div class="flex justify-end">
                 <AppButton
-                    v-if="!creatingDevice && !editingDevice"
-                    @click="startCreatingDevice"
+                    v-if="!creatingVehicle && !editingVehicle"
+                    :disabled="fleets.length === 0"
+                    @click="startCreatingVehicle"
                 >
-                    Create device
+                    Create vehicle
                 </AppButton>
             </div>
         </div>
 
-        <AppCard v-if="creatingDevice || editingDevice" class="mb-6">
+        <AppCard v-if="creatingVehicle || editingVehicle" class="mb-6">
             <div class="mb-5">
                 <h3 class="text-lg font-semibold text-content">
-                    {{ editingDevice ? 'Edit device' : 'Create device' }}
+                    {{ editingVehicle ? 'Edit vehicle' : 'Create vehicle' }}
                 </h3>
 
                 <p class="mt-1 text-sm text-muted">
                     {{
-                        editingDevice
-                            ? 'Update the device assignment and settings.'
-                            : 'Configure a GPS tracking device and optionally assign it to a vehicle.'
+                        editingVehicle
+                            ? 'Update the vehicle information and settings.'
+                            : 'Add a new vehicle to one of your fleets.'
                     }}
                 </p>
             </div>
 
-            <DeviceForm
-                :key="editingDevice?.id ?? 'create'"
-                :device="editingDevice ?? undefined"
-                :vehicles="vehicles"
-                @saved="handleDeviceSaved"
-                @cancel="cancelDeviceForm"
+            <VehicleForm
+                :key="editingVehicle?.id ?? 'create'"
+                :vehicle="editingVehicle ?? undefined"
+                :fleets="fleets"
+                @saved="handleVehicleSaved"
+                @cancel="cancelVehicleForm"
             />
         </AppCard>
 
         <AppCard :padding="false">
-            <LoadingState v-if="loading" message="Loading devices..." />
+            <LoadingState v-if="loading" message="Loading vehicles..." />
 
             <ErrorState
                 v-else-if="error"
-                title="Unable to load devices"
+                title="Unable to load vehicles"
                 :description="error"
                 retryable
-                @retry="loadDevices()"
+                @retry="loadPage"
             />
 
             <EmptyState
-                v-else-if="devices.length === 0"
-                title="No devices yet"
-                description="Create your first GPS tracking device."
-                icon="devices"
+                v-else-if="vehicles.length === 0"
+                title="No vehicles yet"
+                description="Create your first vehicle to start tracking your fleet."
+                icon="vehicles"
             />
 
             <template v-else>
@@ -242,25 +206,25 @@ onMounted(async () => {
                             <th
                                 class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
                             >
-                                Device
-                            </th>
-
-                            <th
-                                class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
-                            >
                                 Vehicle
                             </th>
 
                             <th
                                 class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
                             >
-                                Traccar
+                                Registration
                             </th>
 
                             <th
                                 class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
                             >
-                                Last sync
+                                Fleet
+                            </th>
+
+                            <th
+                                class="px-5 py-3 text-xs font-semibold tracking-wide text-muted uppercase"
+                            >
+                                Vehicle details
                             </th>
 
                             <th
@@ -279,59 +243,67 @@ onMounted(async () => {
 
                     <tbody class="divide-y divide-border-default">
                         <tr
-                            v-for="device in devices"
-                            :key="device.id"
+                            v-for="vehicle in vehicles"
+                            :key="vehicle.id"
                             class="transition hover:bg-surface-muted"
                         >
                             <td class="px-5 py-4">
-                                <div class="min-w-40">
+                                <div class="min-w-44">
                                     <p class="font-medium text-content">
-                                        {{ device.name }}
+                                        {{ vehicle.manufacturer }}
+                                        {{ vehicle.model }}
                                     </p>
 
                                     <p class="mt-1 text-xs text-muted">
-                                        {{ device.unique_id }}
+                                        VIN: {{ vehicle.vin }}
                                     </p>
                                 </div>
                             </td>
 
                             <td
-                                class="px-5 py-4 whitespace-nowrap text-content-secondary"
+                                class="px-5 py-4 font-medium whitespace-nowrap text-content-secondary"
                             >
-                                {{
-                                    device.vehicle_id === null
-                                        ? 'Unassigned'
-                                        : (vehicleNames.get(
-                                              device.vehicle_id,
-                                          ) ?? '—')
-                                }}
-                            </td>
-
-                            <td class="px-5 py-4 whitespace-nowrap">
-                                <span
-                                    v-if="device.traccar_device_id !== null"
-                                    class="text-content-secondary"
-                                >
-                                    #{{ device.traccar_device_id }}
-                                </span>
-
-                                <StatusBadge v-else variant="neutral">
-                                    Not synchronized
-                                </StatusBadge>
+                                {{ vehicle.registration_number }}
                             </td>
 
                             <td
                                 class="px-5 py-4 whitespace-nowrap text-content-secondary"
                             >
-                                {{ formatDateTime(device.last_sync_at) }}
+                                {{ fleetNames.get(vehicle.fleet_id) ?? '—' }}
+                            </td>
+
+                            <td class="px-5 py-4">
+                                <div class="min-w-36">
+                                    <p class="text-content-secondary">
+                                        {{ vehicle.year }}
+
+                                        <span v-if="vehicle.color">
+                                            · {{ vehicle.color }}
+                                        </span>
+                                    </p>
+
+                                    <p class="mt-1 text-xs text-muted">
+                                        {{ vehicle.fuel_type }}
+                                        ·
+                                        {{ vehicle.transmission }}
+                                    </p>
+                                </div>
                             </td>
 
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <StatusBadge
-                                    :variant="statusVariant(device.status)"
+                                    :variant="
+                                        vehicle.is_active
+                                            ? 'success'
+                                            : 'neutral'
+                                    "
                                     dot
                                 >
-                                    {{ statusLabel(device.status) }}
+                                    {{
+                                        vehicle.is_active
+                                            ? 'Active'
+                                            : 'Inactive'
+                                    }}
                                 </StatusBadge>
                             </td>
 
@@ -339,8 +311,8 @@ onMounted(async () => {
                                 <AppButton
                                     variant="secondary"
                                     size="sm"
-                                    :disabled="deletingDeviceId !== null"
-                                    @click="startEditingDevice(device)"
+                                    :disabled="deletingVehicleId !== null"
+                                    @click="startEditingVehicle(vehicle)"
                                 >
                                     Edit
                                 </AppButton>
@@ -349,9 +321,9 @@ onMounted(async () => {
                                     variant="danger"
                                     size="sm"
                                     class="ml-2"
-                                    :loading="deletingDeviceId === device.id"
-                                    :disabled="deletingDeviceId !== null"
-                                    @click="handleDeleteDevice(device)"
+                                    :loading="deletingVehicleId === vehicle.id"
+                                    :disabled="deletingVehicleId !== null"
+                                    @click="handleDeleteVehicle(vehicle)"
                                 >
                                     Delete
                                 </AppButton>
@@ -361,14 +333,14 @@ onMounted(async () => {
                 </AppTable>
 
                 <AppPagination
-                    v-if="devicesResponse"
-                    :current-page="devicesResponse.meta.current_page"
-                    :last-page="devicesResponse.meta.last_page"
-                    :from="devicesResponse.meta.from"
-                    :to="devicesResponse.meta.to"
-                    :total="devicesResponse.meta.total"
-                    item-label="devices"
-                    @change="loadDevices"
+                    v-if="vehiclesResponse"
+                    :current-page="vehiclesResponse.meta.current_page"
+                    :last-page="vehiclesResponse.meta.last_page"
+                    :from="vehiclesResponse.meta.from"
+                    :to="vehiclesResponse.meta.to"
+                    :total="vehiclesResponse.meta.total"
+                    item-label="vehicles"
+                    @change="loadVehicles"
                 />
             </template>
         </AppCard>

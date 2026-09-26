@@ -152,9 +152,11 @@ function formatDateTime(value: string | null): string {
     }).format(date);
 }
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
     await Promise.all([loadAlerts(), loadVehicles()]);
-});
+}
+
+onMounted(loadPage);
 </script>
 
 <template>
@@ -183,7 +185,7 @@ onMounted(async () => {
                 title="Unable to load alerts"
                 :description="error"
                 retryable
-                @retry="loadAlerts()"
+                @retry="loadPage"
             />
 
             <EmptyState

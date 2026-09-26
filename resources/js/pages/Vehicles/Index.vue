@@ -120,9 +120,11 @@ async function handleDeleteVehicle(vehicle: Vehicle): Promise<void> {
     }
 }
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
     await Promise.all([loadVehicles(), loadFleets()]);
-});
+}
+
+onMounted(loadPage);
 </script>
 
 <template>
@@ -185,7 +187,7 @@ onMounted(async () => {
                 title="Unable to load vehicles"
                 :description="error"
                 retryable
-                @retry="loadVehicles()"
+                @retry="loadPage"
             />
 
             <EmptyState

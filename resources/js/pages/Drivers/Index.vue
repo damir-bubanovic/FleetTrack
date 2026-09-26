@@ -145,9 +145,11 @@ function licenseExpired(driver: Driver): boolean {
     return expiry.getTime() < Date.now();
 }
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
     await Promise.all([loadDrivers(), loadFleets()]);
-});
+}
+
+onMounted(loadPage);
 </script>
 
 <template>
@@ -210,7 +212,7 @@ onMounted(async () => {
                 title="Unable to load drivers"
                 :description="error"
                 retryable
-                @retry="loadDrivers()"
+                @retry="loadPage"
             />
 
             <EmptyState

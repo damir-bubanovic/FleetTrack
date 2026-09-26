@@ -179,9 +179,11 @@ function conditionsLabel(alertRule: AlertRule): string {
     return '—';
 }
 
-onMounted(async () => {
+async function loadPage(): Promise<void> {
     await Promise.all([loadAlertRules(), loadVehicles()]);
-});
+}
+
+onMounted(loadPage);
 </script>
 
 <template>
@@ -246,7 +248,7 @@ onMounted(async () => {
                 title="Unable to load alert rules"
                 :description="error"
                 retryable
-                @retry="loadAlertRules()"
+                @retry="loadPage"
             />
 
             <EmptyState
