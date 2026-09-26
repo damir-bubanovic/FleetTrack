@@ -1,8 +1,11 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Models\AlertRule;
 use App\Models\Company;
+use App\Models\Device;
 use App\Models\Fleet;
+use App\Models\Geofence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\Traits\CreatesCompanies;
@@ -144,5 +147,95 @@ test('super admin cannot delete company with active fleets', function (): void {
     $this->assertDatabaseHas('fleets', [
         'company_id' => $company->id,
         'deleted_at' => null,
+    ]);
+});
+
+test('super admin cannot delete company with active devices', function (): void {
+    $company = $this->createCompany();
+
+    Device::factory()->create([
+        'company_id' => $company->id,
+        'vehicle_id' => null,
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this->deleteJson("/api/v1/companies/{$company->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('companies', [
+        'id' => $company->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('devices', [
+        'company_id' => $company->id,
+        'vehicle_id' => null,
+    ]);
+});
+
+test('super admin cannot delete company with active geofences', function (): void {
+    $company = $this->createCompany();
+
+    Geofence::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this->deleteJson("/api/v1/companies/{$company->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('companies', [
+        'id' => $company->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('geofences', [
+        'company_id' => $company->id,
+    ]);
+});
+
+test('super admin cannot delete company with active alert rules', function (): void {
+    $company = $this->createCompany();
+
+    AlertRule::factory()->create([
+        'company_id' => $company->id,
+        'vehicle_id' => null,
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this->deleteJson("/api/v1/companies/{$company->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('companies', [
+        'id' => $company->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('alert_rules', [
+        'company_id' => $company->id,
+        'vehicle_id' => null,
+    ]);
+});
+
+test('super admin cannot delete company with active users', function (): void {
+    $company = $this->createCompany();
+
+    $this->createCompanyAdmin($company);
+
+    $this->actingAsSuperAdmin();
+
+    $this->deleteJson("/api/v1/companies/{$company->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('companies', [
+        'id' => $company->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('users', [
+        'company_id' => $company->id,
     ]);
 });

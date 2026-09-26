@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Company;
 
 use App\Actions\Company\CreateCompany;
+use App\Actions\Company\DeleteCompany;
 use App\Actions\Company\UpdateCompany;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
@@ -10,7 +11,6 @@ use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
 use App\Http\Resources\Company\CompanyResource;
 use App\Models\Company;
-use App\Actions\Company\DeleteCompany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;

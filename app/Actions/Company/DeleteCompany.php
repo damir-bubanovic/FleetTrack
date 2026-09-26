@@ -17,6 +17,38 @@ class DeleteCompany
             ]);
         }
 
+        if ($company->devices()->exists()) {
+            throw ValidationException::withMessages([
+                'company' => [
+                    'The company cannot be deleted while it has active devices.',
+                ],
+            ]);
+        }
+
+        if ($company->geofences()->exists()) {
+            throw ValidationException::withMessages([
+                'company' => [
+                    'The company cannot be deleted while it has active geofences.',
+                ],
+            ]);
+        }
+
+        if ($company->alertRules()->exists()) {
+            throw ValidationException::withMessages([
+                'company' => [
+                    'The company cannot be deleted while it has active alert rules.',
+                ],
+            ]);
+        }
+
+        if ($company->users()->exists()) {
+            throw ValidationException::withMessages([
+                'company' => [
+                    'The company cannot be deleted while it has active users.',
+                ],
+            ]);
+        }
+
         $company->delete();
     }
 }
