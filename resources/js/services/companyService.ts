@@ -3,11 +3,15 @@ import { apiRequest } from '@/services/apiClient';
 import type { Company } from '@/types/company';
 import type { PaginatedResponse } from '@/types/vehicle';
 
-export function getCompanies(page = 1): Promise<PaginatedResponse<Company>> {
+export function getCompanies(
+    page = 1,
+    perPage?: number,
+): Promise<PaginatedResponse<Company>> {
     return apiRequest<PaginatedResponse<Company>>(
         index.url({
             query: {
                 page,
+                ...(perPage !== undefined ? { per_page: perPage } : {}),
             },
         }),
     );

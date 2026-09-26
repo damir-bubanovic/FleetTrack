@@ -239,3 +239,16 @@ test('super admin cannot delete company with active users', function (): void {
         'company_id' => $company->id,
     ]);
 });
+
+it('allows super admin to request a larger company page size', function () {
+    $this->actingAsSuperAdmin();
+
+    Company::factory()->count(20)->create();
+
+    $response = $this->getJson('/api/v1/companies?per_page=100');
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(20, 'data')
+        ->assertJsonPath('meta.per_page', 100);
+});

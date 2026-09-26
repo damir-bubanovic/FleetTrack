@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Company;
 use App\Models\Driver;
 use App\Models\Fleet;
 use App\Models\Vehicle;
@@ -562,4 +563,22 @@ test('company admin cannot delete fleet with assigned vehicles or drivers', func
     $this->assertDatabaseHas('drivers', [
         'fleet_id' => $fleet->id,
     ]);
+});
+
+it('allows requesting a larger fleet page size', function () {
+    $this->actingAsSuperAdmin();
+
+    $company = Company::factory()->create();
+
+    Fleet::factory()
+        ->count(20)
+        ->for($company)
+        ->create();
+
+    $response = $this->getJson('/api/v1/fleets?per_page=100');
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(20, 'data')
+        ->assertJsonPath('meta.per_page', 100);
 });

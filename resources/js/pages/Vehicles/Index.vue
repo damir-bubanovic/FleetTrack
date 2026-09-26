@@ -54,7 +54,7 @@ async function loadVehicles(page = 1): Promise<void> {
 
 async function loadFleets(): Promise<void> {
     try {
-        const response = await getFleets();
+        const response = await getFleets(1, 100);
 
         fleets.value = response.data;
     } catch (exception) {

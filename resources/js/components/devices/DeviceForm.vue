@@ -115,7 +115,7 @@ async function loadCompanies(): Promise<void> {
     }
 
     try {
-        const response = await getCompanies();
+        const response = await getCompanies(1, 100);
 
         companies.value = response.data;
     } catch (exception) {

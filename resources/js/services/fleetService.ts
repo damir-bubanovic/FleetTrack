@@ -1,40 +1,50 @@
-import { destroy, index, store, update } from '@/routes/fleets';
+import {
+    destroy,
+    index,
+    show,
+    store,
+    update,
+} from '@/actions/App/Http/Controllers/Api/Fleet/FleetController';
 import { apiRequest } from '@/services/apiClient';
 import type { Fleet, PaginatedResponse } from '@/types/fleet';
 
-export type UpdateFleetPayload = {
+export type CreateFleetPayload = {
+    company_id?: number;
     name: string;
     code: string;
-    email?: string | null;
-    phone?: string | null;
-    address?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-    timezone?: string | null;
-    description?: string | null;
-    is_active?: boolean;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    timezone: string | null;
+    description: string | null;
+    is_active: boolean;
 };
 
-export type CreateFleetPayload = UpdateFleetPayload & {
-    company_id?: number;
-};
+export type UpdateFleetPayload = Omit<CreateFleetPayload, 'company_id'>;
 
-export function getFleets(page = 1): Promise<PaginatedResponse<Fleet>> {
+export function getFleets(
+    page = 1,
+    perPage?: number,
+): Promise<PaginatedResponse<Fleet>> {
     return apiRequest<PaginatedResponse<Fleet>>(
         index.url({
             query: {
                 page,
+                ...(perPage !== undefined ? { per_page: perPage } : {}),
             },
         }),
     );
 }
 
+export function getFleet(fleet: Fleet): Promise<Fleet> {
+    return apiRequest<Fleet>(show.url(fleet));
+}
+
 export function createFleet(payload: CreateFleetPayload): Promise<Fleet> {
     return apiRequest<Fleet>(store.url(), {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
     });
 }
@@ -43,17 +53,14 @@ export function updateFleet(
     fleet: Fleet,
     payload: UpdateFleetPayload,
 ): Promise<Fleet> {
-    return apiRequest<Fleet>(update.url(fleet.id), {
+    return apiRequest<Fleet>(update.url(fleet), {
         method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
     });
 }
 
 export function deleteFleet(fleet: Fleet): Promise<void> {
-    return apiRequest<void>(destroy.url(fleet.id), {
+    return apiRequest<void>(destroy.url(fleet), {
         method: 'DELETE',
     });
 }

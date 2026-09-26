@@ -29,10 +29,12 @@ class FleetController extends Controller
     {
         $this->authorize('viewAny', Fleet::class);
 
+        $perPage = min(max($request->integer('per_page', 15), 1), 100);
+
         $fleets = Fleet::query()
             ->visibleTo($request->user())
             ->latest()
-            ->paginate();
+            ->paginate($perPage);
 
         return FleetResource::collection($fleets);
     }

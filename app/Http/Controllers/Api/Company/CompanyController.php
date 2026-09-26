@@ -26,6 +26,7 @@ class CompanyController extends Controller
         $this->authorize('viewAny', Company::class);
 
         $user = $request->user();
+        $perPage = min(max($request->integer('per_page', 15), 1), 100);
 
         $companies = Company::query()
             ->where('slug', '!=', config('fleettrack.system_company_slug'))
@@ -34,7 +35,7 @@ class CompanyController extends Controller
                 fn (Builder $query): Builder => $query->whereKey($user->company_id),
             )
             ->latest()
-            ->paginate();
+            ->paginate($perPage);
 
         return CompanyResource::collection($companies);
     }

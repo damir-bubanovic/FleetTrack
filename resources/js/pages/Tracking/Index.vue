@@ -115,7 +115,7 @@ async function loadFilters(): Promise<void> {
 
     try {
         const [fleetResponse, vehicleResponse] = await Promise.all([
-            getFleets(),
+            getFleets(1, 100),
             getVehicles(1, 100),
         ]);
 
