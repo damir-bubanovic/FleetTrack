@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Device;
 use App\Models\Fleet;
 use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -388,4 +389,33 @@ it('uses zero odometer when updating a vehicle with a null odometer', function (
         ->assertJsonPath('data.odometer', 0);
 
     expect($vehicle->fresh()->odometer)->toBe(0);
+});
+
+test('company admin cannot delete vehicle with assigned device', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    Device::factory()->create([
+        'company_id' => $company->id,
+        'vehicle_id' => $vehicle->id,
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->deleteJson("/api/v1/vehicles/{$vehicle->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('vehicles', [
+        'id' => $vehicle->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('devices', [
+        'vehicle_id' => $vehicle->id,
+    ]);
 });
