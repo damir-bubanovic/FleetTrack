@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Driver;
 
+use App\Enums\UserRole;
 use App\Models\Driver;
+use App\Models\Fleet;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,10 +26,20 @@ class StoreDriverRequest extends FormRequest
      */
     public function rules(): array
     {
-        $companyId = $this->user()->company_id;
+        $user = $this->user();
+
+        $companyId = $user->company_id;
+
+        if (
+            $user->hasRole(UserRole::SuperAdmin->value)
+            && $this->filled('fleet_id')
+        ) {
+            $companyId = Fleet::query()
+                ->whereKey($this->integer('fleet_id'))
+                ->value('company_id');
+        }
 
         return [
-
             'fleet_id' => [
                 'required',
                 'integer',

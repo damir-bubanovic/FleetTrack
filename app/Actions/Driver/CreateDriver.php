@@ -18,22 +18,24 @@ class CreateDriver
     public function handle(User $user, array $data): Driver
     {
         return DB::transaction(function () use ($user, $data): Driver {
+            $isSuperAdmin = $user->hasRole(
+                UserRole::SuperAdmin->value,
+            );
 
-            $isSuperAdmin = $user->hasRole(UserRole::SuperAdmin->value)
-                && $user->company_id === null;
+            $fleetQuery = Fleet::query()
+                ->whereKey($data['fleet_id']);
 
             if (! $isSuperAdmin) {
-                $data['company_id'] = $user->company_id;
+                $fleetQuery->where(
+                    'company_id',
+                    $user->company_id,
+                );
             }
 
             /** @var Fleet $fleet */
-            $fleet = Fleet::query()
-                ->whereKey($data['fleet_id'])
-                ->where('company_id', $data['company_id'])
-                ->firstOrFail();
+            $fleet = $fleetQuery->firstOrFail();
 
             $data['company_id'] = $fleet->company_id;
-
             $data['is_active'] ??= true;
 
             return Driver::create($data);

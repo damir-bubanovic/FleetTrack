@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Driver;
 use App\Models\Fleet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Traits\CreatesCompanies;
@@ -330,4 +331,75 @@ test('company admin cannot delete driver from another company', function (): voi
     $this->assertDatabaseHas('drivers', [
         'id' => $driver->id,
     ]);
+});
+
+test('super admin can create driver for another company fleet', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $response = $this->postJson('/api/v1/drivers', [
+        'fleet_id' => $fleet->id,
+        'employee_number' => 'SA-DRV-001',
+        'first_name' => 'Super',
+        'last_name' => 'Driver',
+        'phone' => '+385911234567',
+        'email' => 'super.driver@example.com',
+        'license_number' => 'SA-LIC-001',
+        'license_category' => 'C',
+        'license_expiry_date' => now()->addYear()->toDateString(),
+        'employment_date' => now()->subYear()->toDateString(),
+        'notes' => null,
+        'is_active' => true,
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('data.company_id', $company->id)
+        ->assertJsonPath('data.fleet_id', $fleet->id);
+
+    $this->assertDatabaseHas('drivers', [
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+        'employee_number' => 'SA-DRV-001',
+    ]);
+});
+
+test('super admin validates driver uniqueness within selected fleet company', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    Driver::factory()->create([
+        'company_id' => $company->id,
+        'fleet_id' => $fleet->id,
+        'employee_number' => 'DRV-001',
+        'license_number' => 'LIC-001',
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $response = $this->postJson('/api/v1/drivers', [
+        'fleet_id' => $fleet->id,
+        'employee_number' => 'DRV-001',
+        'first_name' => 'Duplicate',
+        'last_name' => 'Driver',
+        'license_number' => 'LIC-002',
+        'license_category' => 'B',
+        'license_expiry_date' => now()->addYear()->toDateString(),
+        'employment_date' => now()->subYear()->toDateString(),
+        'is_active' => true,
+    ]);
+
+    $response
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'employee_number',
+        ]);
 });
