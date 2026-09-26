@@ -23,13 +23,14 @@ class DetachGeofenceFromDeviceInTraccar implements ShouldQueue
     public function __construct(
         public readonly int $geofenceId,
         public readonly int $vehicleId,
+        public readonly int $traccarDeviceId,
     ) {}
 
     public function handle(
         TraccarGeofenceService $service,
     ): void {
         $geofence = Geofence::find($this->geofenceId);
-        $vehicle = Vehicle::with('device')->find($this->vehicleId);
+        $vehicle = Vehicle::find($this->vehicleId);
 
         if ($geofence === null || $vehicle === null) {
             return;
@@ -43,24 +44,17 @@ class DetachGeofenceFromDeviceInTraccar implements ShouldQueue
             return;
         }
 
-        $device = $vehicle->device;
-
-        if ($device === null || $device->traccar_device_id === null) {
-            return;
-        }
-
         try {
             $service->detachDevice(
                 geofenceId: $geofence->traccar_geofence_id,
-                deviceId: $device->traccar_device_id,
+                deviceId: $this->traccarDeviceId,
             );
 
             Log::info('Geofence detached from Traccar device.', [
                 'geofence_id' => $geofence->id,
                 'vehicle_id' => $vehicle->id,
-                'device_id' => $device->id,
                 'traccar_geofence_id' => $geofence->traccar_geofence_id,
-                'traccar_device_id' => $device->traccar_device_id,
+                'traccar_device_id' => $this->traccarDeviceId,
             ]);
         } catch (Throwable $exception) {
             Log::error('Failed to detach geofence from Traccar device.', [

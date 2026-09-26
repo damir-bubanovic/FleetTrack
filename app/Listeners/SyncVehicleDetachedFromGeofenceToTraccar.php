@@ -11,9 +11,16 @@ class SyncVehicleDetachedFromGeofenceToTraccar
 {
     public function handle(VehicleDetachedFromGeofence $event): void
     {
+        $traccarDeviceId = $event->vehicle->device?->traccar_device_id;
+
+        if ($traccarDeviceId === null) {
+            return;
+        }
+
         DetachGeofenceFromDeviceInTraccar::dispatch(
             $event->geofence->id,
             $event->vehicle->id,
+            $traccarDeviceId,
         );
     }
 }

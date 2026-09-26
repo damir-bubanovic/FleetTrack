@@ -8,6 +8,7 @@ use App\Events\VehicleAttachedToGeofence;
 use App\Events\VehicleDetachedFromGeofence;
 use App\Jobs\AttachGeofenceToDeviceInTraccar;
 use App\Jobs\DetachGeofenceFromDeviceInTraccar;
+use App\Models\Device;
 use App\Models\Geofence;
 use App\Models\Vehicle;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -228,6 +229,12 @@ test('queues Traccar synchronization when a vehicle is detached', function (): v
         'company_id' => $geofence->company_id,
     ]);
 
+    $device = Device::factory()->create([
+        'company_id' => $geofence->company_id,
+        'vehicle_id' => $vehicle->id,
+        'traccar_device_id' => 456,
+    ]);
+
     $geofence->vehicles()->attach($vehicle->id);
 
     app(DetachVehicleFromGeofence::class)
@@ -236,6 +243,7 @@ test('queues Traccar synchronization when a vehicle is detached', function (): v
     Queue::assertPushed(
         DetachGeofenceFromDeviceInTraccar::class,
         fn (DetachGeofenceFromDeviceInTraccar $job): bool => $job->geofenceId === $geofence->id
-            && $job->vehicleId === $vehicle->id,
+            && $job->vehicleId === $vehicle->id
+            && $job->traccarDeviceId === $device->traccar_device_id,
     );
 });
