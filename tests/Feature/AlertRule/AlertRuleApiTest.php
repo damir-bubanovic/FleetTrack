@@ -11,8 +11,12 @@ use App\Models\Vehicle;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Tests\Traits\CreatesUsers;
 
-uses(RefreshDatabase::class);
+uses(
+    RefreshDatabase::class,
+    CreatesUsers::class,
+);
 
 beforeEach(function (): void {
     $this->seed(PermissionSeeder::class);
@@ -341,5 +345,35 @@ it('forbids deleting another company alert rule', function (): void {
 
     $this->assertDatabaseHas('alert_rules', [
         'id' => $rule->id,
+    ]);
+});
+
+it('super admin changing alert rule company clears incompatible vehicle', function (): void {
+    $companyA = Company::factory()->create();
+    $companyB = Company::factory()->create();
+
+    $vehicle = Vehicle::factory()->create([
+        'company_id' => $companyA->id,
+    ]);
+
+    $rule = AlertRule::factory()->create([
+        'company_id' => $companyA->id,
+        'vehicle_id' => $vehicle->id,
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this
+        ->patchJson("/api/v1/alert-rules/{$rule->id}", [
+            'company_id' => $companyB->id,
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.company_id', $companyB->id)
+        ->assertJsonPath('data.vehicle_id', null);
+
+    $this->assertDatabaseHas('alert_rules', [
+        'id' => $rule->id,
+        'company_id' => $companyB->id,
+        'vehicle_id' => null,
     ]);
 });
