@@ -2,6 +2,7 @@
 
 use App\Enums\UserRole;
 use App\Models\Company;
+use App\Models\Fleet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\Traits\CreatesCompanies;
@@ -120,5 +121,28 @@ test('super admin can delete company', function (): void {
 
     $this->assertSoftDeleted('companies', [
         'id' => $company->id,
+    ]);
+});
+
+test('super admin cannot delete company with active fleets', function (): void {
+    $company = $this->createCompany();
+
+    Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $this->actingAsSuperAdmin();
+
+    $this->deleteJson("/api/v1/companies/{$company->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('companies', [
+        'id' => $company->id,
+        'deleted_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('fleets', [
+        'company_id' => $company->id,
+        'deleted_at' => null,
     ]);
 });

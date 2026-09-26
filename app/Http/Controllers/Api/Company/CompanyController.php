@@ -10,6 +10,7 @@ use App\Http\Requests\Company\StoreCompanyRequest;
 use App\Http\Requests\Company\UpdateCompanyRequest;
 use App\Http\Resources\Company\CompanyResource;
 use App\Models\Company;
+use App\Actions\Company\DeleteCompany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -81,11 +82,13 @@ class CompanyController extends Controller
     /**
      * Remove the specified company.
      */
-    public function destroy(Company $company): Response
-    {
+    public function destroy(
+        Company $company,
+        DeleteCompany $action,
+    ): Response {
         $this->authorize('delete', $company);
 
-        $company->delete();
+        $action->handle($company);
 
         return response()->noContent();
     }
