@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\AlertRule;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,11 @@ final class StoreAlertRuleRequest extends FormRequest
     {
         return [
             'company_id' => [
-                'sometimes',
+                Rule::requiredIf(
+                    fn (): bool => $this->user()?->hasRole(
+                        UserRole::SuperAdmin->value,
+                    ) ?? false,
+                ),
                 'integer',
                 'exists:companies,id',
             ],

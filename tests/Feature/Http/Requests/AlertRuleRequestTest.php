@@ -10,12 +10,16 @@ use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Tests\Traits\CreatesUsers;
 
 /**
  * @property Company $company
  * @property User $user
  */
-uses(RefreshDatabase::class);
+uses(
+    RefreshDatabase::class,
+    CreatesUsers::class,
+);
 
 beforeEach(function (): void {
     $this->seed(PermissionSeeder::class);
@@ -198,5 +202,23 @@ it('requires a speed limit when changing a rule to overspeed', function (): void
         ->assertUnprocessable()
         ->assertJsonValidationErrors([
             'conditions.speed_limit_kmh',
+        ]);
+});
+
+it('requires company for super admin when creating an alert rule', function (): void {
+    $superAdmin = $this->actingAsSuperAdmin();
+
+    $this
+        ->actingAs($superAdmin)
+        ->postJson('/api/v1/alert-rules', [
+            'name' => 'Offline rule',
+            'type' => 'device_offline',
+            'severity' => 'warning',
+            'conditions' => [],
+            'is_active' => true,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'company_id',
         ]);
 });
