@@ -51,7 +51,8 @@ const combinedReport = ref<VehicleCombinedReport[]>([]);
 
 const loadingVehicles = ref(true);
 const loadingReport = ref(false);
-const error = ref<string | null>(null);
+const vehiclesError = ref<string | null>(null);
+const reportError = ref<string | null>(null);
 const hasGeneratedReport = ref(false);
 
 const selectedVehicle = computed(() => {
@@ -100,7 +101,7 @@ function toApiDateTime(value: string): string {
 
 async function loadVehicles(): Promise<void> {
     loadingVehicles.value = true;
-    error.value = null;
+    vehiclesError.value = null;
 
     try {
         const response = await getVehicles(1, 100);
@@ -111,7 +112,7 @@ async function loadVehicles(): Promise<void> {
             selectedVehicleId.value = vehicles.value[0].id;
         }
     } catch (exception) {
-        error.value =
+        vehiclesError.value =
             exception instanceof Error
                 ? exception.message
                 : 'Unable to load vehicles.';
@@ -126,7 +127,7 @@ async function generateReport(): Promise<void> {
     }
 
     loadingReport.value = true;
-    error.value = null;
+    reportError.value = null;
 
     const range: ReportDateRange = {
         from: toApiDateTime(from.value),
@@ -165,7 +166,7 @@ async function generateReport(): Promise<void> {
 
         hasGeneratedReport.value = true;
     } catch (exception) {
-        error.value =
+        reportError.value =
             exception instanceof Error
                 ? exception.message
                 : 'Unable to generate report.';
@@ -358,9 +359,17 @@ onMounted(loadVehicles);
         />
 
         <ErrorState
-            v-else-if="error"
+            v-else-if="vehiclesError"
+            title="Unable to load vehicles"
+            :description="vehiclesError"
+            retryable
+            @retry="loadVehicles"
+        />
+
+        <ErrorState
+            v-else-if="reportError"
             title="Unable to generate report"
-            :description="error"
+            :description="reportError"
             retryable
             @retry="generateReport"
         />

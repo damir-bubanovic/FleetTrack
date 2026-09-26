@@ -32,6 +32,7 @@ const selectedVehicleId = ref('');
 
 const loading = ref(true);
 const filtersLoading = ref(true);
+const filtersError = ref<string | null>(null);
 const error = ref<string | null>(null);
 
 const historyVehicleId = ref('');
@@ -110,6 +111,7 @@ const canLoadHistory = computed(() => {
 
 async function loadFilters(): Promise<void> {
     filtersLoading.value = true;
+    filtersError.value = null;
 
     try {
         const [fleetResponse, vehicleResponse] = await Promise.all([
@@ -119,6 +121,11 @@ async function loadFilters(): Promise<void> {
 
         fleets.value = fleetResponse.data;
         vehicles.value = vehicleResponse.data;
+    } catch (exception) {
+        filtersError.value =
+            exception instanceof Error
+                ? exception.message
+                : 'Unable to load tracking filters.';
     } finally {
         filtersLoading.value = false;
     }
@@ -319,7 +326,16 @@ onBeforeUnmount(() => {
             />
         </div>
 
-        <AppCard class="mb-6">
+        <ErrorState
+            v-if="filtersError"
+            class="mb-6"
+            title="Unable to load tracking filters"
+            :description="filtersError"
+            retryable
+            @retry="loadFilters"
+        />
+
+        <AppCard v-else class="mb-6">
             <div class="grid gap-4 md:grid-cols-2">
                 <AppSelect
                     v-model="selectedFleetId"
