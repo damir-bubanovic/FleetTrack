@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Jobs\DeleteGeofenceFromTraccar;
+use App\Models\Geofence;
 use App\Services\Traccar\TraccarGeofenceService;
 use Illuminate\Support\Facades\Http;
+use Mockery\MockInterface;
 
 beforeEach(function (): void {
     config([
@@ -37,4 +39,24 @@ test('deletes a geofence from traccar', function (): void {
     });
 
     Http::assertSentCount(1);
+});
+
+test('does nothing when the geofence still exists', function (): void {
+    $geofence = Geofence::factory()->create([
+        'traccar_geofence_id' => 123,
+    ]);
+
+    $service = $this->mock(
+        TraccarGeofenceService::class,
+        function (MockInterface $mock): void {
+            $mock->shouldNotReceive('delete');
+        },
+    );
+
+    $job = new DeleteGeofenceFromTraccar(
+        geofenceId: $geofence->id,
+        traccarGeofenceId: 123,
+    );
+
+    $job->handle($service);
 });

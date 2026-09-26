@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\Geofence;
 use App\Services\Traccar\TraccarGeofenceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -26,6 +27,10 @@ class DeleteGeofenceFromTraccar implements ShouldQueue
     public function handle(
         TraccarGeofenceService $traccarGeofenceService,
     ): void {
+        if (Geofence::query()->whereKey($this->geofenceId)->exists()) {
+            return;
+        }
+
         $traccarGeofenceService->delete(
             $this->traccarGeofenceId,
         );
