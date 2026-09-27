@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Tracking;
 
 use Carbon\CarbonImmutable;
+use Throwable;
 
 final class VehicleOnlineStatus
 {
@@ -12,25 +13,35 @@ final class VehicleOnlineStatus
 
     public static function isOnline(?string $fixTime): bool
     {
-        if ($fixTime === null) {
+        $parsedFixTime = self::parseFixTime($fixTime);
+
+        if ($parsedFixTime === null) {
             return false;
         }
 
         $now = now();
 
-        return CarbonImmutable::parse($fixTime)
-            ->betweenIncluded(
-                $now->copy()->subMinutes(self::ONLINE_THRESHOLD_MINUTES),
-                $now,
-            );
+        return $parsedFixTime->betweenIncluded(
+            $now->copy()->subMinutes(self::ONLINE_THRESHOLD_MINUTES),
+            $now,
+        );
     }
 
     public static function lastSeenAt(?string $fixTime): ?string
+    {
+        return self::parseFixTime($fixTime)?->toISOString();
+    }
+
+    private static function parseFixTime(?string $fixTime): ?CarbonImmutable
     {
         if ($fixTime === null) {
             return null;
         }
 
-        return CarbonImmutable::parse($fixTime)->toISOString();
+        try {
+            return CarbonImmutable::parse($fixTime);
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

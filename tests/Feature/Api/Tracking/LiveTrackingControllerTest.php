@@ -1438,3 +1438,36 @@ test('live position reports vehicle as offline when gps fix is in the future', f
             '2026-08-20T10:00:00.000000Z'
         );
 });
+
+test('live position reports vehicle as offline when gps fix time is invalid', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => 'invalid-date',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions')
+        ->assertOk()
+        ->assertJsonPath('data.0.status.online', false)
+        ->assertJsonPath('data.0.status.last_seen_at', null);
+});
