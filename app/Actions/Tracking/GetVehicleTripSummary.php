@@ -53,6 +53,25 @@ class GetVehicleTripSummary
             ];
         }
 
+        usort(
+            $positions,
+            static function (array $left, array $right): int {
+                $leftFixTime = $left['fixTime'] ?? null;
+                $rightFixTime = $right['fixTime'] ?? null;
+
+                if (! is_string($leftFixTime)) {
+                    return 1;
+                }
+
+                if (! is_string($rightFixTime)) {
+                    return -1;
+                }
+
+                return CarbonImmutable::parse($leftFixTime)->getTimestamp()
+                    <=> CarbonImmutable::parse($rightFixTime)->getTimestamp();
+            },
+        );
+
         $first = $positions[0];
         $last = $positions[array_key_last($positions)];
 

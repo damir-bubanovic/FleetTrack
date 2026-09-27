@@ -1176,3 +1176,63 @@ test('combined report returns empty collection for vehicle without synced device
 
     Http::assertNothingSent();
 });
+
+test('trip summary orders positions by fix time before calculating metrics', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'deviceId' => 101,
+                'fixTime' => '2026-08-18T09:00:00+00:00',
+                'latitude' => 45.8250,
+                'longitude' => 16.0000,
+                'speed' => 20.0,
+            ],
+            [
+                'deviceId' => 101,
+                'fixTime' => '2026-08-18T08:00:00+00:00',
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'speed' => 10.0,
+            ],
+            [
+                'deviceId' => 101,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+                'latitude' => 45.8200,
+                'longitude' => 15.9900,
+                'speed' => 0.0,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonPath(
+            'data.started_at',
+            '2026-08-18T08:00:00+00:00',
+        )
+        ->assertJsonPath(
+            'data.ended_at',
+            '2026-08-18T09:00:00+00:00',
+        )
+        ->assertJsonPath('data.duration_seconds', 3600)
+        ->assertJsonPath('data.moving_seconds', 1800)
+        ->assertJsonPath('data.stopped_seconds', 1800);
+});
