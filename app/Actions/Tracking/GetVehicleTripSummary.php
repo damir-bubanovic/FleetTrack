@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Throwable;
 
 class GetVehicleTripSummary
 {
@@ -39,6 +40,25 @@ class GetVehicleTripSummary
             $to,
         );
 
+        $positions = array_values(array_filter(
+            $positions,
+            static function (array $position): bool {
+                $fixTime = $position['fixTime'] ?? null;
+
+                if (! is_string($fixTime)) {
+                    return false;
+                }
+
+                try {
+                    CarbonImmutable::parse($fixTime);
+
+                    return true;
+                } catch (Throwable) {
+                    return false;
+                }
+            },
+        ));
+
         if ($positions === []) {
             return [
                 'position_count' => 0,
@@ -55,40 +75,18 @@ class GetVehicleTripSummary
 
         usort(
             $positions,
-            static function (array $left, array $right): int {
-                $leftFixTime = $left['fixTime'] ?? null;
-                $rightFixTime = $right['fixTime'] ?? null;
-
-                if (! is_string($leftFixTime)) {
-                    return 1;
-                }
-
-                if (! is_string($rightFixTime)) {
-                    return -1;
-                }
-
-                return CarbonImmutable::parse($leftFixTime)->getTimestamp()
-                    <=> CarbonImmutable::parse($rightFixTime)->getTimestamp();
-            },
+            static fn (array $left, array $right): int => CarbonImmutable::parse($left['fixTime'])->getTimestamp()
+                <=> CarbonImmutable::parse($right['fixTime'])->getTimestamp(),
         );
 
         $first = $positions[0];
         $last = $positions[array_key_last($positions)];
 
-        $startedAt = isset($first['fixTime'])
-            ? (string) $first['fixTime']
-            : null;
+        $startedAt = (string) $first['fixTime'];
+        $endedAt = (string) $last['fixTime'];
 
-        $endedAt = isset($last['fixTime'])
-            ? (string) $last['fixTime']
-            : null;
-
-        $durationSeconds = null;
-
-        if ($startedAt !== null && $endedAt !== null) {
-            $durationSeconds = (int) CarbonImmutable::parse($startedAt)
-                ->diffInSeconds(CarbonImmutable::parse($endedAt));
-        }
+        $durationSeconds = (int) CarbonImmutable::parse($startedAt)
+            ->diffInSeconds(CarbonImmutable::parse($endedAt));
 
         $speeds = collect($positions)
             ->pluck('speed')
@@ -165,14 +163,6 @@ class GetVehicleTripSummary
         for ($index = 1; $index < count($positions); $index++) {
             $previous = $positions[$index - 1];
             $current = $positions[$index];
-
-            if (
-                ! isset($previous['fixTime'], $current['fixTime'])
-                || ! is_string($previous['fixTime'])
-                || ! is_string($current['fixTime'])
-            ) {
-                continue;
-            }
 
             $seconds = (int) CarbonImmutable::parse($previous['fixTime'])
                 ->diffInSeconds(
