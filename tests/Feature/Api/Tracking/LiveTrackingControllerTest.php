@@ -1559,3 +1559,38 @@ test('trip summary ignores distance between positions with invalid coordinates',
         ->assertOk()
         ->assertJsonPath('data.distance_km', 0);
 });
+
+test('live positions ignore malformed traccar position entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $device = $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-position',
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson('/api/v1/tracking/positions')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.device.id', $device->id)
+        ->assertJsonPath('data.0.position.device_id', 101);
+});

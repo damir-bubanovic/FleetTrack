@@ -27,7 +27,7 @@ class GetLivePositions
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $positions */
+        /** @var array<int, mixed> $positions */
         $positions = $response->json();
 
         $devices = Device::query()
@@ -50,11 +50,14 @@ class GetLivePositions
 
         return collect($positions)
             ->filter(
-                fn (array $position): bool => isset($position['deviceId'])
-                    && $devices->has($position['deviceId'])
+                fn (mixed $position): bool => is_array($position)
+                    && $position !== []
+                    && isset($position['deviceId'])
+                    && is_numeric($position['deviceId'])
+                    && $devices->has((int) $position['deviceId'])
             )
             ->map(function (array $position) use ($devices): array {
-                $device = $devices->get($position['deviceId']);
+                $device = $devices->get((int) $position['deviceId']);
 
                 return [
                     'device' => $device,
