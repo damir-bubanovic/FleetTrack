@@ -38,19 +38,21 @@ class GetVehicleLivePosition
 
         $response->throw();
 
-        /** @var array<int, non-empty-array<string, mixed>> $positions */
+        /** @var array<int, mixed> $positions */
         $positions = $response->json();
 
         $position = collect($positions)
             ->first(
-                fn (array $position): bool => ($position['deviceId'] ?? null)
-                    === $device->traccar_device_id
+                fn (mixed $position): bool => is_array($position)
+                    && $position !== []
+                    && ($position['deviceId'] ?? null) === $device->traccar_device_id
             );
 
-        if ($position === null) {
+        if (! is_array($position) || $position === []) {
             return null;
         }
 
+        /** @var non-empty-array<string, mixed> $position */
         return [
             'device' => $device,
             'position' => $position,
