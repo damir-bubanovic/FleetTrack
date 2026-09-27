@@ -86,3 +86,50 @@ it('does not change an already acknowledged alert', function (): void {
 
     Carbon::setTestNow();
 });
+
+it('does not overwrite an acknowledgement when given stale alert state', function (): void {
+    $company = Company::factory()->create();
+
+    $firstUser = User::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $secondUser = User::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $alert = Alert::factory()->create([
+        'company_id' => $company->id,
+        'acknowledged_at' => null,
+        'acknowledged_by' => null,
+    ]);
+
+    $staleAlert = Alert::query()->findOrFail($alert->id);
+
+    Carbon::setTestNow('2026-09-13 10:30:00');
+
+    app(AcknowledgeAlert::class)->execute(
+        alert: $alert,
+        user: $firstUser,
+    );
+
+    Carbon::setTestNow('2026-09-13 10:31:00');
+
+    $result = app(AcknowledgeAlert::class)->execute(
+        alert: $staleAlert,
+        user: $secondUser,
+    );
+
+    expect($result->acknowledged_at->toDateTimeString())
+        ->toBe('2026-09-13 10:30:00')
+        ->and($result->acknowledged_by)
+        ->toBe($firstUser->id);
+
+    $this->assertDatabaseHas('alerts', [
+        'id' => $alert->id,
+        'acknowledged_by' => $firstUser->id,
+        'acknowledged_at' => '2026-09-13 10:30:00',
+    ]);
+
+    Carbon::setTestNow();
+});
