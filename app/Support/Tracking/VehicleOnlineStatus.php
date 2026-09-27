@@ -16,9 +16,12 @@ final class VehicleOnlineStatus
             return false;
         }
 
+        $now = now();
+
         return CarbonImmutable::parse($fixTime)
-            ->greaterThanOrEqualTo(
-                now()->subMinutes(self::ONLINE_THRESHOLD_MINUTES),
+            ->betweenIncluded(
+                $now->copy()->subMinutes(self::ONLINE_THRESHOLD_MINUTES),
+                $now,
             );
     }
 
