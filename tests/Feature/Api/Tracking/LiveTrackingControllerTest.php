@@ -1722,3 +1722,36 @@ test('vehicle live position ignores malformed traccar position entries', functio
         ->assertJsonPath('data.position.id', 1001)
         ->assertJsonPath('data.position.device_id', 101);
 });
+
+test('vehicle live position accepts numeric string traccar device id', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => '101',
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson("/api/v1/tracking/vehicles/{$vehicle->id}")
+        ->assertOk()
+        ->assertJsonPath('data.position.id', 1001)
+        ->assertJsonPath('data.position.device_id', '101');
+});

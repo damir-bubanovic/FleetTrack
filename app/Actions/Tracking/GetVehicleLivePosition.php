@@ -45,7 +45,9 @@ class GetVehicleLivePosition
             ->first(
                 fn (mixed $position): bool => is_array($position)
                     && $position !== []
-                    && ($position['deviceId'] ?? null) === $device->traccar_device_id
+                    && isset($position['deviceId'])
+                    && is_numeric($position['deviceId'])
+                    && (int) $position['deviceId'] === $device->traccar_device_id
             );
 
         if (! is_array($position) || $position === []) {
