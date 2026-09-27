@@ -419,3 +419,32 @@ test('company admin cannot delete vehicle with assigned device', function (): vo
         'vehicle_id' => $vehicle->id,
     ]);
 });
+
+test('cannot update vehicle with values exceeding creation limits', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->putJson("/api/v1/vehicles/{$vehicle->id}", [
+        'fleet_id' => $fleet->id,
+        'registration_number' => str_repeat('A', 51),
+        'vin' => $vehicle->vin,
+        'manufacturer' => str_repeat('B', 101),
+        'model' => str_repeat('C', 101),
+        'year' => $vehicle->year,
+        'fuel_type' => $vehicle->fuel_type,
+        'transmission' => $vehicle->transmission,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'registration_number',
+            'manufacturer',
+            'model',
+        ]);
+});

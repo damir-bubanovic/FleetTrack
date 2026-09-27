@@ -35,7 +35,7 @@ class UpdateVehicleRequest extends FormRequest
             'registration_number' => [
                 'required',
                 'string',
-                'max:255',
+                'max:50',
             ],
 
             'vin' => [
@@ -48,13 +48,13 @@ class UpdateVehicleRequest extends FormRequest
             'manufacturer' => [
                 'required',
                 'string',
-                'max:255',
+                'max:100',
             ],
 
             'model' => [
                 'required',
                 'string',
-                'max:255',
+                'max:100',
             ],
 
             'year' => [
