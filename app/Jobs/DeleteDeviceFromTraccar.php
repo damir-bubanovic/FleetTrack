@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs;
 
+use App\Models\Device;
 use App\Services\Traccar\TraccarDeviceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -21,12 +24,13 @@ class DeleteDeviceFromTraccar implements ShouldQueue
         public readonly int $traccarDeviceId,
     ) {}
 
-    /**
-     * Execute the job.
-     */
     public function handle(
         TraccarDeviceService $traccarDeviceService,
     ): void {
+        if (Device::query()->whereKey($this->deviceId)->exists()) {
+            return;
+        }
+
         $traccarDeviceService->delete(
             $this->traccarDeviceId,
         );
@@ -37,9 +41,6 @@ class DeleteDeviceFromTraccar implements ShouldQueue
         ]);
     }
 
-    /**
-     * Handle a job failure.
-     */
     public function failed(Throwable $exception): void
     {
         Log::error('Failed to delete device from Traccar.', [
