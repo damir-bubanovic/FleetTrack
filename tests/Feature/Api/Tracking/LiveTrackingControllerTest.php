@@ -1514,3 +1514,48 @@ test('trip summary ignores positions with invalid gps fix times', function (): v
         .'&to=2026-08-19T10:00:00Z',
     )->assertOk();
 });
+
+test('trip summary ignores distance between positions with invalid coordinates', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 'invalid-coordinate',
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-19T09:00:00+00:00',
+                'speed' => 10,
+            ],
+            [
+                'id' => 1002,
+                'deviceId' => 101,
+                'latitude' => 45.8160,
+                'longitude' => 15.9829,
+                'fixTime' => '2026-08-19T09:05:00+00:00',
+                'speed' => 10,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trip-summary"
+        .'?from=2026-08-19T08:00:00Z'
+        .'&to=2026-08-19T10:00:00Z',
+    )
+        ->assertOk()
+        ->assertJsonPath('data.distance_km', 0);
+});

@@ -136,6 +136,10 @@ class GetVehicleTripSummary
                     $current['latitude'],
                     $current['longitude'],
                 )
+                || ! is_numeric($previous['latitude'])
+                || ! is_numeric($previous['longitude'])
+                || ! is_numeric($current['latitude'])
+                || ! is_numeric($current['longitude'])
             ) {
                 continue;
             }
