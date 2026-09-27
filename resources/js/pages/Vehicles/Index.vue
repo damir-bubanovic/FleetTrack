@@ -109,7 +109,13 @@ async function handleDeleteVehicle(vehicle: Vehicle): Promise<void> {
             cancelVehicleForm();
         }
 
-        await loadVehicles(vehiclesResponse.value?.meta.current_page ?? 1);
+        const currentPage = vehiclesResponse.value?.meta.current_page ?? 1;
+        const page =
+            vehicles.value.length === 1 && currentPage > 1
+                ? currentPage - 1
+                : currentPage;
+
+        await loadVehicles(page);
     } catch (exception) {
         error.value =
             exception instanceof Error

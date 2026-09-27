@@ -183,7 +183,13 @@ async function handleDeleteGeofence(geofence: Geofence): Promise<void> {
             selectedGeofenceId.value = null;
         }
 
-        await loadGeofences(geofencesResponse.value?.meta.current_page ?? 1);
+        const currentPage = geofencesResponse.value?.meta.current_page ?? 1;
+        const page =
+            geofences.value.length === 1 && currentPage > 1
+                ? currentPage - 1
+                : currentPage;
+
+        await loadGeofences(page);
     } catch (exception) {
         error.value =
             exception instanceof Error

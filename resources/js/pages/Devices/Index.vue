@@ -110,7 +110,13 @@ async function handleDeleteDevice(device: Device): Promise<void> {
             cancelDeviceForm();
         }
 
-        await loadDevices(devicesResponse.value?.meta.current_page ?? 1);
+        const currentPage = devicesResponse.value?.meta.current_page ?? 1;
+        const page =
+            devices.value.length === 1 && currentPage > 1
+                ? currentPage - 1
+                : currentPage;
+
+        await loadDevices(page);
     } catch (exception) {
         error.value =
             exception instanceof Error

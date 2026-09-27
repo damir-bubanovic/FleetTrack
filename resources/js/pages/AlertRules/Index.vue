@@ -115,7 +115,13 @@ async function handleDeleteAlertRule(alertRule: AlertRule): Promise<void> {
             cancelAlertRuleForm();
         }
 
-        await loadAlertRules(alertRulesResponse.value?.meta.current_page ?? 1);
+        const currentPage = alertRulesResponse.value?.meta.current_page ?? 1;
+        const page =
+            alertRules.value.length === 1 && currentPage > 1
+                ? currentPage - 1
+                : currentPage;
+
+        await loadAlertRules(page);
     } catch (exception) {
         error.value =
             exception instanceof Error

@@ -86,7 +86,13 @@ async function handleDeleteFleet(fleet: Fleet): Promise<void> {
             cancelFleetForm();
         }
 
-        await loadFleets(fleetsResponse.value?.meta.current_page ?? 1);
+        const currentPage = fleetsResponse.value?.meta.current_page ?? 1;
+        const page =
+            fleets.value.length === 1 && currentPage > 1
+                ? currentPage - 1
+                : currentPage;
+
+        await loadFleets(page);
     } catch (exception) {
         error.value =
             exception instanceof Error

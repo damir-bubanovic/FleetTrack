@@ -110,7 +110,13 @@ async function handleDeleteDriver(driver: Driver): Promise<void> {
             cancelDriverForm();
         }
 
-        await loadDrivers(driversResponse.value?.meta.current_page ?? 1);
+        const currentPage = driversResponse.value?.meta.current_page ?? 1;
+        const page =
+            drivers.value.length === 1 && currentPage > 1
+                ? currentPage - 1
+                : currentPage;
+
+        await loadDrivers(page);
     } catch (exception) {
         error.value =
             exception instanceof Error
