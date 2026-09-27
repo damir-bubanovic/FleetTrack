@@ -47,9 +47,17 @@ final readonly class GetVehicleCombinedReport
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $report */
+        /** @var array<int, mixed> $report */
         $report = $response->json();
 
-        return collect($report);
+        /** @var Collection<int, array<string, mixed>> $filteredReport */
+        $filteredReport = collect($report)
+            ->filter(
+                fn (mixed $item): bool => is_array($item)
+                    && $item !== []
+            )
+            ->values();
+
+        return $filteredReport;
     }
 }

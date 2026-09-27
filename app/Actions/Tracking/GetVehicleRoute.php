@@ -47,9 +47,17 @@ final readonly class GetVehicleRoute
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $positions */
+        /** @var array<int, mixed> $positions */
         $positions = $response->json();
 
-        return collect($positions);
+        /** @var Collection<int, array<string, mixed>> $filteredPositions */
+        $filteredPositions = collect($positions)
+            ->filter(
+                fn (mixed $position): bool => is_array($position)
+                    && $position !== []
+            )
+            ->values();
+
+        return $filteredPositions;
     }
 }

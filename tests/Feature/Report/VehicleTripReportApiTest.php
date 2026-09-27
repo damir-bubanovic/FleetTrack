@@ -1236,3 +1236,245 @@ test('trip summary orders positions by fix time before calculating metrics', fun
         ->assertJsonPath('data.moving_seconds', 1800)
         ->assertJsonPath('data.stopped_seconds', 1800);
 });
+
+test('vehicle stops ignore malformed traccar stop entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-stop',
+            [
+                'deviceId' => 101,
+                'startTime' => '2026-08-18T08:00:00+00:00',
+                'endTime' => '2026-08-18T08:30:00+00:00',
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'duration' => 1800000,
+                'address' => 'Stop address',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/stops"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.device_id', 101);
+});
+
+test('vehicle events ignore malformed traccar event entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-event',
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'type' => 'deviceOnline',
+                'eventTime' => '2026-08-18T08:30:00+00:00',
+                'positionId' => 2001,
+                'geofenceId' => 0,
+                'maintenanceId' => 0,
+                'attributes' => [],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/events"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', 1001)
+        ->assertJsonPath('data.0.device_id', 101);
+});
+
+test('vehicle route ignores malformed traccar position entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-position',
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+                'speed' => 35.5,
+                'attributes' => [],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/route"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', 1001)
+        ->assertJsonPath('data.0.device_id', 101);
+});
+
+test('vehicle summary ignores malformed traccar summary entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-summary',
+            [
+                'deviceId' => 101,
+                'distance' => 12500,
+                'averageSpeed' => 18.5,
+                'maxSpeed' => 32,
+                'spentFuel' => 1.5,
+                'engineHours' => 3600000,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/summary"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.device_id', 101);
+});
+
+test('vehicle hours ignore malformed traccar hours entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-hours',
+            [
+                'deviceId' => 101,
+                'engineHours' => 3600000,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/hours"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.device_id', 101);
+});
+
+test('combined report ignores malformed traccar entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-report',
+            [
+                'deviceId' => 101,
+                'deviceName' => 'Vehicle 101',
+                'distance' => 12500.5,
+                'averageSpeed' => 20.5,
+                'maxSpeed' => 42.0,
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/reports/vehicles/{$vehicle->id}/combined"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.deviceId', 101)
+        ->assertJsonPath('data.0.deviceName', 'Vehicle 101');
+});

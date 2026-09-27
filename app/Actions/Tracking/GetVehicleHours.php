@@ -47,9 +47,17 @@ final readonly class GetVehicleHours
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $hours */
+        /** @var array<int, mixed> $hours */
         $hours = $response->json();
 
-        return collect($hours);
+        /** @var Collection<int, array<string, mixed>> $filteredHours */
+        $filteredHours = collect($hours)
+            ->filter(
+                fn (mixed $item): bool => is_array($item)
+                    && $item !== []
+            )
+            ->values();
+
+        return $filteredHours;
     }
 }

@@ -47,9 +47,17 @@ final readonly class GetVehicleEvents
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $events */
+        /** @var array<int, mixed> $events */
         $events = $response->json();
 
-        return collect($events);
+        /** @var Collection<int, array<string, mixed>> $filteredEvents */
+        $filteredEvents = collect($events)
+            ->filter(
+                fn (mixed $event): bool => is_array($event)
+                    && $event !== []
+            )
+            ->values();
+
+        return $filteredEvents;
     }
 }

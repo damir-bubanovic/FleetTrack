@@ -41,9 +41,15 @@ class GetVehicleTrips
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $trips */
+        /** @var array<int, mixed> $trips */
         $trips = $response->json();
 
-        return $trips;
+        return collect($trips)
+            ->filter(
+                fn (mixed $trip): bool => is_array($trip)
+                    && $trip !== []
+            )
+            ->values()
+            ->all();
     }
 }

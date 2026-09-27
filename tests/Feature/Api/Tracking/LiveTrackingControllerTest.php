@@ -1594,3 +1594,96 @@ test('live positions ignore malformed traccar position entries', function (): vo
         ->assertJsonPath('data.0.device.id', $device->id)
         ->assertJsonPath('data.0.position.device_id', 101);
 });
+
+test('position history ignores malformed traccar position entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-position',
+            [
+                'id' => 1001,
+                'deviceId' => 101,
+                'latitude' => 45.8150,
+                'longitude' => 15.9819,
+                'speed' => 35.5,
+                'fixTime' => '2026-08-18T08:30:00+00:00',
+                'attributes' => [
+                    'ignition' => true,
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/positions"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', 1001)
+        ->assertJsonPath('data.0.device_id', 101);
+});
+
+test('trips ignore malformed traccar trip entries', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle, [
+        'traccar_device_id' => 101,
+    ]);
+
+    Http::fake([
+        '*' => Http::response([
+            null,
+            'invalid-trip',
+            [
+                'deviceId' => 101,
+                'driverUniqueId' => 'driver-123',
+                'startTime' => '2026-08-18T08:00:00+00:00',
+                'endTime' => '2026-08-18T09:00:00+00:00',
+                'startLat' => 45.8150,
+                'startLon' => 15.9819,
+                'endLat' => 45.8250,
+                'endLon' => 16.0000,
+                'distance' => 12500,
+                'duration' => 3600000,
+                'averageSpeed' => 18.5,
+                'maxSpeed' => 32,
+                'startAddress' => 'Start address',
+                'endAddress' => 'End address',
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->getJson(
+        "/api/v1/tracking/vehicles/{$vehicle->id}/trips"
+        .'?from=2026-08-18T08:00:00Z'
+        .'&to=2026-08-18T10:00:00Z'
+    )
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.device_id', 101)
+        ->assertJsonPath('data.0.driver_id', 'driver-123');
+});

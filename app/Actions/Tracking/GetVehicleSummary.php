@@ -47,9 +47,17 @@ final readonly class GetVehicleSummary
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $summary */
+        /** @var array<int, mixed> $summary */
         $summary = $response->json();
 
-        return collect($summary);
+        /** @var Collection<int, array<string, mixed>> $filteredSummary */
+        $filteredSummary = collect($summary)
+            ->filter(
+                fn (mixed $item): bool => is_array($item)
+                    && $item !== []
+            )
+            ->values();
+
+        return $filteredSummary;
     }
 }

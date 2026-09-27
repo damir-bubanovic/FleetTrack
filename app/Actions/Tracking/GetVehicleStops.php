@@ -47,9 +47,17 @@ final readonly class GetVehicleStops
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $stops */
+        /** @var array<int, mixed> $stops */
         $stops = $response->json();
 
-        return collect($stops);
+        /** @var Collection<int, array<string, mixed>> $filteredStops */
+        $filteredStops = collect($stops)
+            ->filter(
+                fn (mixed $stop): bool => is_array($stop)
+                    && $stop !== []
+            )
+            ->values();
+
+        return $filteredStops;
     }
 }

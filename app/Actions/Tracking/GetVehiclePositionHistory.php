@@ -41,9 +41,15 @@ class GetVehiclePositionHistory
 
         $response->throw();
 
-        /** @var array<int, array<string, mixed>> $positions */
+        /** @var array<int, mixed> $positions */
         $positions = $response->json();
 
-        return $positions;
+        return collect($positions)
+            ->filter(
+                fn (mixed $position): bool => is_array($position)
+                    && $position !== []
+            )
+            ->values()
+            ->all();
     }
 }
