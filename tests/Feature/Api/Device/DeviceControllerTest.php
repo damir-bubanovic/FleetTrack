@@ -27,9 +27,11 @@ test('super admin can list devices', function (): void {
         'company_id' => $company->id,
     ]);
 
-    $vehicle = $this->createVehicle($company, $fleet);
+    for ($index = 0; $index < 3; $index++) {
+        $vehicle = $this->createVehicle($company, $fleet);
 
-    $this->createDevices($company, $vehicle, 3);
+        $this->createDevice($company, $vehicle);
+    }
 
     $this->actingAsSuperAdmin();
 
@@ -53,11 +55,17 @@ test('company admin only sees devices from own company', function (): void {
         'company_id' => $companyB->id,
     ]);
 
-    $vehicleA = $this->createVehicle($companyA, $fleetA);
-    $vehicleB = $this->createVehicle($companyB, $fleetB);
+    for ($index = 0; $index < 3; $index++) {
+        $vehicle = $this->createVehicle($companyA, $fleetA);
 
-    $this->createDevices($companyA, $vehicleA, 3);
-    $this->createDevices($companyB, $vehicleB, 2);
+        $this->createDevice($companyA, $vehicle);
+    }
+
+    for ($index = 0; $index < 2; $index++) {
+        $vehicle = $this->createVehicle($companyB, $fleetB);
+
+        $this->createDevice($companyB, $vehicle);
+    }
 
     $this->actingAsCompanyAdmin($companyA);
 
@@ -394,4 +402,67 @@ test('company admin cannot update device from another company', function (): voi
         'unique_id' => $device->unique_id,
         'status' => DeviceStatus::ACTIVE->value,
     ])->assertForbidden();
+});
+
+test('cannot assign a second device to the same vehicle', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $vehicle = $this->createVehicle($company, $fleet);
+
+    $this->createDevice($company, $vehicle);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->postJson('/api/v1/devices', [
+        'vehicle_id' => $vehicle->id,
+        'name' => 'Second GPS Device',
+        'unique_id' => 'SECOND-DEVICE-123',
+        'status' => DeviceStatus::ACTIVE->value,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'vehicle_id',
+        ]);
+
+    $this->assertDatabaseMissing('devices', [
+        'unique_id' => 'SECOND-DEVICE-123',
+    ]);
+});
+
+test('cannot assign a device to a vehicle that already has another device', function (): void {
+    $company = $this->createCompany();
+
+    $fleet = Fleet::factory()->create([
+        'company_id' => $company->id,
+    ]);
+
+    $firstVehicle = $this->createVehicle($company, $fleet);
+    $secondVehicle = $this->createVehicle($company, $fleet);
+
+    $firstDevice = $this->createDevice($company, $firstVehicle);
+    $secondDevice = $this->createDevice($company, $secondVehicle);
+
+    $this->actingAsCompanyAdmin($company);
+
+    $this->putJson("/api/v1/devices/{$secondDevice->id}", [
+        'vehicle_id' => $firstVehicle->id,
+        'name' => $secondDevice->name,
+        'unique_id' => $secondDevice->unique_id,
+        'model' => $secondDevice->model,
+        'phone' => $secondDevice->phone,
+        'status' => $secondDevice->status->value,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'vehicle_id',
+        ]);
+
+    $this->assertDatabaseHas('devices', [
+        'id' => $secondDevice->id,
+        'vehicle_id' => $secondVehicle->id,
+    ]);
 });

@@ -32,7 +32,9 @@ class StoreDeviceRequest extends FormRequest
 
             'vehicle_id' => [
                 'nullable',
+                'integer',
                 'exists:vehicles,id',
+                Rule::unique('devices', 'vehicle_id'),
             ],
 
             'name' => [

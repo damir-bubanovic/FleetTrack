@@ -34,7 +34,9 @@ class UpdateDeviceRequest extends FormRequest
 
             'vehicle_id' => [
                 'nullable',
+                'integer',
                 'exists:vehicles,id',
+                Rule::unique('devices', 'vehicle_id')->ignore($device),
             ],
 
             'name' => [
