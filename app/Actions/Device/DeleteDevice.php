@@ -1,19 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Device;
 
 use App\Events\DeviceDeleted;
 use App\Models\Device;
 
-class DeleteDevice
+final class DeleteDevice
 {
-    /**
-     * Delete the specified device.
-     */
     public function handle(Device $device): void
     {
-        event(new DeviceDeleted($device));
-
         $device->delete();
+
+        DeviceDeleted::dispatch($device);
     }
 }

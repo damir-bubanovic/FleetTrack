@@ -8,14 +8,16 @@ use App\Events\GeofenceDeleted;
 use App\Models\Geofence;
 use Illuminate\Support\Facades\DB;
 
-class DeleteGeofence
+final class DeleteGeofence
 {
     public function handle(Geofence $geofence): void
     {
         DB::transaction(function () use ($geofence): void {
-            GeofenceDeleted::dispatch($geofence);
+            $geofence->vehicles()->detach();
 
             $geofence->delete();
         });
+
+        GeofenceDeleted::dispatch($geofence);
     }
 }
