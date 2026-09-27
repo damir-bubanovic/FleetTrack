@@ -31,7 +31,7 @@ test('dispatches device update and geofence reconciliation jobs', function (): v
     Queue::assertPushed(
         UpdateDeviceInTraccar::class,
         function (UpdateDeviceInTraccar $job) use ($device): bool {
-            return $job->device->id === $device->id;
+            return $job->deviceId === $device->id;
         },
     );
 

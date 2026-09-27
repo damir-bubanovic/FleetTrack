@@ -44,7 +44,7 @@ test('syncs an unsynced device to Traccar', function (): void {
         },
     );
 
-    $job = new SyncDeviceToTraccar($device);
+    $job = new SyncDeviceToTraccar($device->id);
 
     $job->handle($service);
 
@@ -66,7 +66,7 @@ test('does nothing when the device is already synced', function (): void {
         },
     );
 
-    $job = new SyncDeviceToTraccar($device);
+    $job = new SyncDeviceToTraccar($device->id);
 
     $job->handle($service);
 
@@ -78,7 +78,7 @@ test('does nothing when the device no longer exists', function (): void {
         'traccar_device_id' => null,
     ]);
 
-    $job = new SyncDeviceToTraccar($device);
+    $deviceId = $device->id;
 
     $device->delete();
 
@@ -88,6 +88,8 @@ test('does nothing when the device no longer exists', function (): void {
             $mock->shouldNotReceive('create');
         },
     );
+
+    $job = new SyncDeviceToTraccar($deviceId);
 
     $job->handle($service);
 });
@@ -132,7 +134,7 @@ test('queues association synchronization for vehicle geofences after device sync
         },
     );
 
-    $job = new SyncDeviceToTraccar($device);
+    $job = new SyncDeviceToTraccar($device->id);
 
     $job->handle($service);
 
@@ -178,7 +180,7 @@ test('syncs a device without a vehicle without queuing association synchronizati
         },
     );
 
-    $job = new SyncDeviceToTraccar($device);
+    $job = new SyncDeviceToTraccar($device->id);
 
     $job->handle($service);
 

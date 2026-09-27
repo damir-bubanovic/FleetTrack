@@ -21,7 +21,7 @@ class SyncDeviceUpdatedToTraccar
      */
     public function handle(DeviceUpdated $event): void
     {
-        UpdateDeviceInTraccar::dispatch($event->device);
+        UpdateDeviceInTraccar::dispatch($event->device->id);
         ReconcileDeviceGeofencesInTraccar::dispatch(
             deviceId: $event->device->id,
             previousVehicleId: $event->previousVehicleId,

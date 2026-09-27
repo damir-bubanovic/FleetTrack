@@ -38,7 +38,7 @@ test('updates a synced device in Traccar', function (): void {
         },
     );
 
-    $job = new UpdateDeviceInTraccar($device);
+    $job = new UpdateDeviceInTraccar($device->id);
 
     $job->handle($service);
 
@@ -58,7 +58,7 @@ test('does nothing when the device is not synced with Traccar', function (): voi
         },
     );
 
-    $job = new UpdateDeviceInTraccar($device);
+    $job = new UpdateDeviceInTraccar($device->id);
 
     $job->handle($service);
 
@@ -70,7 +70,7 @@ test('does nothing when the device no longer exists', function (): void {
         'traccar_device_id' => 123,
     ]);
 
-    $job = new UpdateDeviceInTraccar($device);
+    $deviceId = $device->id;
 
     $device->delete();
 
@@ -80,6 +80,8 @@ test('does nothing when the device no longer exists', function (): void {
             $mock->shouldNotReceive('update');
         },
     );
+
+    $job = new UpdateDeviceInTraccar($deviceId);
 
     $job->handle($service);
 });
@@ -98,7 +100,7 @@ test('rethrows Traccar exceptions so the queue can retry the job', function (): 
         },
     );
 
-    $job = new UpdateDeviceInTraccar($device);
+    $job = new UpdateDeviceInTraccar($device->id);
 
     expect(
         fn () => $job->handle($service),

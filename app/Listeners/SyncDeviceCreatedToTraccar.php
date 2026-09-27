@@ -20,6 +20,6 @@ class SyncDeviceCreatedToTraccar
      */
     public function handle(DeviceCreated $event): void
     {
-        SyncDeviceToTraccar::dispatch($event->device);
+        SyncDeviceToTraccar::dispatch($event->device->id);
     }
 }

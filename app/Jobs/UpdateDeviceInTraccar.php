@@ -18,7 +18,7 @@ class UpdateDeviceInTraccar implements ShouldQueue
     public int $backoff = 30;
 
     public function __construct(
-        public readonly Device $device,
+        public readonly int $deviceId,
     ) {}
 
     /**
@@ -27,7 +27,7 @@ class UpdateDeviceInTraccar implements ShouldQueue
     public function handle(
         TraccarDeviceService $traccarDeviceService,
     ): void {
-        $device = $this->device->fresh();
+        $device = Device::query()->find($this->deviceId);
 
         if ($device === null) {
             return;
@@ -65,8 +65,7 @@ class UpdateDeviceInTraccar implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         Log::error('Failed to update device in Traccar.', [
-            'device_id' => $this->device->id,
-            'traccar_device_id' => $this->device->traccar_device_id,
+            'device_id' => $this->deviceId,
             'exception' => $exception->getMessage(),
         ]);
 
