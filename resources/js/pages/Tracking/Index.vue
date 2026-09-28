@@ -48,6 +48,7 @@ const refreshInterval = 30_000;
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let positionsRequestPending = false;
+let positionsReloadPending = false;
 
 const onlineCount = computed(
     () => positions.value.filter((item) => item.status.online).length,
@@ -133,6 +134,8 @@ async function loadFilters(): Promise<void> {
 
 async function loadPositions(showLoading = true): Promise<void> {
     if (positionsRequestPending) {
+        positionsReloadPending = true;
+
         return;
     }
 
@@ -165,6 +168,12 @@ async function loadPositions(showLoading = true): Promise<void> {
 
         if (showLoading) {
             loading.value = false;
+        }
+
+        if (positionsReloadPending) {
+            positionsReloadPending = false;
+
+            await loadPositions(showLoading);
         }
     }
 }
