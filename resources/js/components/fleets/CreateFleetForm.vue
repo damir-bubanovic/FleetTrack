@@ -9,7 +9,7 @@ import AppTextarea from '@/components/ui/AppTextarea.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { ApiError } from '@/services/apiClient';
 import { authState } from '@/services/authState';
-import { getCompanies } from '@/services/companyService';
+import { getAllCompanies } from '@/services/companyService';
 import { createFleet, updateFleet } from '@/services/fleetService';
 import type {
     CreateFleetPayload,
@@ -122,9 +122,7 @@ async function loadCompanies(): Promise<void> {
     }
 
     try {
-        const response = await getCompanies(1, 100);
-
-        companies.value = response.data;
+        companies.value = await getAllCompanies();
     } catch (exception) {
         error.value =
             exception instanceof Error

@@ -13,7 +13,7 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import VehicleForm from '@/components/vehicles/VehicleForm.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { getFleets } from '@/services/fleetService';
+import { getAllFleets } from '@/services/fleetService';
 import { deleteVehicle, getVehicles } from '@/services/vehicleService';
 import type { Fleet } from '@/types/fleet';
 import type { PaginatedResponse, Vehicle } from '@/types/vehicle';
@@ -54,9 +54,7 @@ async function loadVehicles(page = 1): Promise<void> {
 
 async function loadFleets(): Promise<void> {
     try {
-        const response = await getFleets(1, 100);
-
-        fleets.value = response.data;
+        fleets.value = await getAllFleets();
     } catch (exception) {
         error.value =
             exception instanceof Error

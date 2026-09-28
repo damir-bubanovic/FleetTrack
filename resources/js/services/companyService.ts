@@ -16,3 +16,16 @@ export function getCompanies(
         }),
     );
 }
+
+export async function getAllCompanies(): Promise<Company[]> {
+    const firstPage = await getCompanies(1, 100);
+    const companies = [...firstPage.data];
+
+    for (let page = 2; page <= firstPage.meta.last_page; page += 1) {
+        const response = await getCompanies(page, 100);
+
+        companies.push(...response.data);
+    }
+
+    return companies;
+}

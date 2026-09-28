@@ -16,7 +16,7 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { deleteGeofence, getGeofences } from '@/services/geofenceService';
-import { getVehicles } from '@/services/vehicleService';
+import { getAllVehicles } from '@/services/vehicleService';
 import type { Geofence } from '@/types/geofence';
 import type { PaginatedResponse, Vehicle } from '@/types/vehicle';
 
@@ -68,9 +68,7 @@ async function loadVehicles(): Promise<void> {
     vehicleError.value = null;
 
     try {
-        const response = await getVehicles(1, 100);
-
-        vehicles.value = response.data;
+        vehicles.value = await getAllVehicles();
     } catch (exception) {
         vehicleError.value =
             exception instanceof Error

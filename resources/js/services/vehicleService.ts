@@ -33,6 +33,19 @@ export function getVehicles(
     );
 }
 
+export async function getAllVehicles(): Promise<Vehicle[]> {
+    const firstPage = await getVehicles(1, 100);
+    const vehicles = [...firstPage.data];
+
+    for (let page = 2; page <= firstPage.meta.last_page; page += 1) {
+        const response = await getVehicles(page, 100);
+
+        vehicles.push(...response.data);
+    }
+
+    return vehicles;
+}
+
 export function createVehicle(payload: CreateVehiclePayload): Promise<Vehicle> {
     return apiRequest<Vehicle>(store.url(), {
         method: 'POST',

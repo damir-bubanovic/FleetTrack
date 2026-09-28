@@ -8,8 +8,8 @@ import FormField from '@/components/ui/FormField.vue';
 import { createAlertRule, updateAlertRule } from '@/services/alertRuleService';
 import { ApiError } from '@/services/apiClient';
 import { authState } from '@/services/authState';
-import { getCompanies } from '@/services/companyService';
-import { getVehicles } from '@/services/vehicleService';
+import { getAllCompanies } from '@/services/companyService';
+import { getAllVehicles } from '@/services/vehicleService';
 import type {
     AlertRule,
     AlertRuleFormData,
@@ -164,9 +164,7 @@ async function loadCompanies(): Promise<void> {
     companiesLoading.value = true;
 
     try {
-        const response = await getCompanies(1, 100);
-
-        companies.value = response.data;
+        companies.value = await getAllCompanies();
 
         if (form.company_id === null && companies.value.length === 1) {
             form.company_id = companies.value[0].id;
@@ -181,28 +179,24 @@ async function loadCompanies(): Promise<void> {
     }
 }
 
-async function loadVehicles(): Promise<void> {
+const loadVehicles = async (): Promise<void> => {
     vehiclesLoading.value = true;
 
     try {
-        const response = await getVehicles(1, 100);
+        const allVehicles = await getAllVehicles();
 
         vehicles.value =
-            isSuperAdmin.value && form.company_id !== null
-                ? response.data.filter(
-                      (vehicle) =>
-                          vehicle.company_id === Number(form.company_id),
+            isSuperAdmin.value && form.company_id
+                ? allVehicles.filter(
+                      (vehicle) => vehicle.company_id === form.company_id,
                   )
-                : response.data;
-    } catch (exception) {
-        error.value =
-            exception instanceof Error
-                ? exception.message
-                : 'Unable to load vehicles.';
+                : allVehicles;
+    } catch {
+        vehicles.value = [];
     } finally {
         vehiclesLoading.value = false;
     }
-}
+};
 
 watch(
     () => form.company_id,

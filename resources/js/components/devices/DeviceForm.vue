@@ -7,7 +7,7 @@ import AppSelect from '@/components/ui/AppSelect.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { ApiError } from '@/services/apiClient';
 import { authState } from '@/services/authState';
-import { getCompanies } from '@/services/companyService';
+import { getAllCompanies } from '@/services/companyService';
 import { createDevice, updateDevice } from '@/services/deviceService';
 import type { UpdateDevicePayload } from '@/services/deviceService';
 import type { Company } from '@/types/company';
@@ -115,9 +115,7 @@ async function loadCompanies(): Promise<void> {
     }
 
     try {
-        const response = await getCompanies(1, 100);
-
-        companies.value = response.data;
+        companies.value = await getAllCompanies();
     } catch (exception) {
         error.value =
             exception instanceof Error

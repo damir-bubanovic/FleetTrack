@@ -20,7 +20,7 @@ import {
     getVehicleTrips,
     getVehicleTripSummary,
 } from '@/services/reportService';
-import { getVehicles } from '@/services/vehicleService';
+import { getAllVehicles } from '@/services/vehicleService';
 import type {
     ReportDateRange,
     VehicleCombinedReport,
@@ -104,9 +104,7 @@ async function loadVehicles(): Promise<void> {
     vehiclesError.value = null;
 
     try {
-        const response = await getVehicles(1, 100);
-
-        vehicles.value = response.data;
+        vehicles.value = await getAllVehicles();
 
         if (selectedVehicleId.value === null && vehicles.value.length > 0) {
             selectedVehicleId.value = vehicles.value[0].id;

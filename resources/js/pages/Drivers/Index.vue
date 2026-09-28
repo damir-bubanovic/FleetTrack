@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { deleteDriver, getDrivers } from '@/services/driverService';
-import { getFleets } from '@/services/fleetService';
+import { getAllFleets } from '@/services/fleetService';
 import type { Driver } from '@/types/driver';
 import type { Fleet } from '@/types/fleet';
 import type { PaginatedResponse } from '@/types/vehicle';
@@ -55,9 +55,7 @@ async function loadDrivers(page = 1): Promise<void> {
 
 async function loadFleets(): Promise<void> {
     try {
-        const response = await getFleets(1, 100);
-
-        fleets.value = response.data;
+        fleets.value = await getAllFleets();
     } catch (exception) {
         error.value =
             exception instanceof Error

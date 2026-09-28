@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { deleteAlertRule, getAlertRules } from '@/services/alertRuleService';
-import { getVehicles } from '@/services/vehicleService';
+import { getAllVehicles } from '@/services/vehicleService';
 import type {
     AlertRule,
     AlertRuleSeverity,
@@ -64,9 +64,7 @@ async function loadAlertRules(page = 1): Promise<void> {
 
 async function loadVehicles(): Promise<void> {
     try {
-        const response = await getVehicles(1, 100);
-
-        vehicles.value = response.data;
+        vehicles.value = await getAllVehicles();
     } catch (exception) {
         error.value =
             exception instanceof Error

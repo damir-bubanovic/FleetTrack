@@ -38,6 +38,19 @@ export function getFleets(
     );
 }
 
+export async function getAllFleets(): Promise<Fleet[]> {
+    const firstPage = await getFleets(1, 100);
+    const fleets = [...firstPage.data];
+
+    for (let page = 2; page <= firstPage.meta.last_page; page += 1) {
+        const response = await getFleets(page, 100);
+
+        fleets.push(...response.data);
+    }
+
+    return fleets;
+}
+
 export function getFleet(fleet: Fleet): Promise<Fleet> {
     return apiRequest<Fleet>(show.url(fleet));
 }

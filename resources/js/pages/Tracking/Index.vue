@@ -13,12 +13,12 @@ import LoadingState from '@/components/ui/LoadingState.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import StatusBadge from '@/components/ui/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { getFleets } from '@/services/fleetService';
+import { getAllFleets } from '@/services/fleetService';
 import {
     getLivePositions,
     getVehiclePositionHistory,
 } from '@/services/trackingService';
-import { getVehicles } from '@/services/vehicleService';
+import { getAllVehicles } from '@/services/vehicleService';
 import type { Fleet } from '@/types/fleet';
 import type { HistoricalPosition, LivePosition } from '@/types/tracking';
 import type { Vehicle } from '@/types/vehicle';
@@ -114,13 +114,13 @@ async function loadFilters(): Promise<void> {
     filtersError.value = null;
 
     try {
-        const [fleetResponse, vehicleResponse] = await Promise.all([
-            getFleets(1, 100),
-            getVehicles(1, 100),
+        const [allFleets, allVehicles] = await Promise.all([
+            getAllFleets(),
+            getAllVehicles(),
         ]);
 
-        fleets.value = fleetResponse.data;
-        vehicles.value = vehicleResponse.data;
+        fleets.value = allFleets;
+        vehicles.value = allVehicles;
     } catch (exception) {
         filtersError.value =
             exception instanceof Error

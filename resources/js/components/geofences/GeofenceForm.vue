@@ -7,7 +7,7 @@ import AppSelect from '@/components/ui/AppSelect.vue';
 import FormField from '@/components/ui/FormField.vue';
 import { ApiError } from '@/services/apiClient';
 import { authState } from '@/services/authState';
-import { getCompanies } from '@/services/companyService';
+import { getAllCompanies } from '@/services/companyService';
 import { createGeofence, updateGeofence } from '@/services/geofenceService';
 import type { Company } from '@/types/company';
 import type { Geofence, GeofenceFormData } from '@/types/geofence';
@@ -95,9 +95,7 @@ async function loadCompanies(): Promise<void> {
     companiesLoading.value = true;
 
     try {
-        const response = await getCompanies(1, 100);
-
-        companies.value = response.data;
+        companies.value = await getAllCompanies();
 
         if (form.company_id === null && companies.value.length === 1) {
             form.company_id = companies.value[0].id;
