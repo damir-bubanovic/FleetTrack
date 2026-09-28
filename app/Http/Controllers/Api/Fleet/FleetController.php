@@ -34,6 +34,7 @@ class FleetController extends Controller
         $fleets = Fleet::query()
             ->visibleTo($request->user())
             ->latest()
+            ->orderByDesc('id')
             ->paginate($perPage);
 
         return FleetResource::collection($fleets);

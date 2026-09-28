@@ -35,6 +35,7 @@ class CompanyController extends Controller
                 fn (Builder $query): Builder => $query->whereKey($user->company_id),
             )
             ->latest()
+            ->orderByDesc('id')
             ->paginate($perPage);
 
         return CompanyResource::collection($companies);
