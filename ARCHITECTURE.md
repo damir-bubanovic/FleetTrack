@@ -1,6 +1,6 @@
 # FleetTrack Architecture
 
-This document describes the architecture present in the source snapshot supplied on 2026-09-25. Source code remains authoritative.
+This document describes the architecture present in the audited source snapshot supplied on 2026-09-28. Source code remains authoritative.
 
 ## 1. System boundary
 
@@ -61,15 +61,17 @@ Fleet
 └── Drivers
 ```
 
+A Vehicle has at most one Device. The database unique constraint on nullable `devices.vehicle_id` enforces this invariant while preserving unassigned Devices.
+
 The system company is used for system administration and is intentionally excluded from operational development seed data.
 
 ## 6. Traccar boundary
 
 FleetTrack stores local business entities and nullable Traccar identifiers. Synchronization is explicit rather than treating Traccar as the application database.
 
-Device and Geofence synchronization use the existing service/job infrastructure. `traccar_*_id` and `last_sync_at` represent synchronization state. Geofence ↔ Vehicle relationships are translated to Traccar device/geofence permissions when external IDs are available. Async jobs verify current desired state to avoid stale writes.
+Device and Geofence synchronization use the existing service/job infrastructure. `traccar_*_id` and `last_sync_at` represent synchronization state. Geofence ↔ Vehicle relationships are translated to Traccar device/geofence permissions when external IDs are available. Async jobs verify current desired state to avoid stale writes. Delete synchronization is dispatched only after the corresponding local delete succeeds, and queued device/geofence relationship work preserves enough identity to avoid applying stale permissions after reassignment/deletion.
 
-Tracking/report reads are synchronous because callers need current external results; FleetTrack authorization runs before external access.
+Tracking/report reads are synchronous because callers need current external results; FleetTrack authorization runs before external access. Collection-style Traccar responses are treated as untrusted external data: malformed entries are filtered before transformation, numeric device identifiers are normalized for matching, and invalid timestamps/coordinates are rejected where they affect online state or trip calculations.
 
 ## 7. Local Traccar development boundary
 
@@ -98,7 +100,7 @@ Alerts are persistent FleetTrack entities and can be acknowledged. Alert rules c
 
 `LiveTrackingController` exposes current positions, single-vehicle position, position history, trip summary, and trips.
 
-Frontend `/tracking` uses `trackingService.ts`, `LiveTrackingMap.vue`, and `HistoricalTrackingMap.vue`. It combines Fleet and Vehicle APIs for filters with the tracking positions endpoint for current data. The page polls every 30 seconds, prevents overlapping live-position requests, and supports manual refresh.
+Frontend `/tracking` uses `trackingService.ts`, `LiveTrackingMap.vue`, and `HistoricalTrackingMap.vue`. It combines Fleet and Vehicle APIs for filters with the tracking positions endpoint for current data. The page polls every 30 seconds, prevents overlapping live-position requests, and supports manual refresh. If another reload is requested while a positions request is pending, one follow-up reload is queued so a fleet/vehicle filter change cannot be lost behind the in-flight request.
 
 `LiveTrackingMap.vue` owns the live Leaflet map/marker lifecycle. It fits bounds on initial render or when the vehicle set changes, avoiding unwanted viewport resets when the same vehicles merely move. Markers expose online/offline styling, tooltips, and popups.
 
@@ -158,7 +160,13 @@ Application components: `AppLogo`, `AppHeader`, `AppSidebar`, `AppFooter`, and `
 
 Shared UI includes buttons, cards, inputs, selects, textareas, tables, pagination, status badges, form fields, page headers, loading/error/empty states, and icons. Semantic design tokens are centralized in `resources/css/app.css`.
 
-## 15. Wayfinder
+## 15. Pagination and lookup loading
+
+Management indexes remain server-paginated. `AppPagination` disables navigation while the current page request is loading, and delete flows step back to the previous page when the deleted record was the only item on a later page.
+
+Selectors that require the complete accessible Company/Fleet/Vehicle collection use `getAllCompanies()`, `getAllFleets()`, and `getAllVehicles()` to traverse every API page. This is intentionally separate from table pagination. Company and Fleet index queries use deterministic newest-first ordering with `id DESC` as the tie-breaker after `created_at DESC`.
+
+## 16. Wayfinder
 
 Laravel route/action helpers under `resources/js/routes` and `resources/js/actions` are generated artifacts. Laravel route definitions are authoritative. After route changes:
 
@@ -168,7 +176,7 @@ sail artisan wayfinder:generate
 
 Generated files are not hand-edited.
 
-## 16. Error boundaries
+## 17. Error boundaries
 
 - Laravel Form Requests own user-correctable request validation.
 - Frontend `ApiError` preserves `422` field errors.
@@ -178,7 +186,7 @@ Generated files are not hand-edited.
 - External Traccar failures remain behind service/action boundaries.
 - Tenant checks happen before external reads.
 
-## 17. Database and seed architecture
+## 18. Database and seed architecture
 
 Expected fresh-seed totals:
 
@@ -195,7 +203,7 @@ Expected fresh-seed totals:
 
 Each customer company has two fleets with five vehicles and five drivers per fleet. Each vehicle gets one local device. Geofences receive overlapping vehicle assignments. Rules and alerts cover representative event types and acknowledgement states. Fake external Traccar IDs are intentionally not seeded.
 
-## 18. Testing and quality gates
+## 19. Testing and quality gates
 
 The project has feature/unit coverage across authentication, CRUD APIs, policies, requests, tracking, Traccar services/jobs, geofence associations, alert rules, event listeners/actions, reports, and dashboard overview.
 
@@ -211,22 +219,24 @@ sail artisan test
 Frontend gate:
 
 ```bash
-npm run format
-npm run format:check
-npm run lint:check
-npm run types:check
-npm run build
+sail npm run format
+sail npm run format:check
+sail npm run lint:check
+sail npm run types:check
+sail npm run build
 ```
 
 Browser verification is required for user-facing work.
 
-## 19. Current architectural checkpoint
+## 20. Current architectural checkpoint
 
 Completed active frontend domains: Dashboard overview, Fleets, Vehicles, Drivers, Devices, Live Tracking with position history, Geofences with vehicle assignments/map rendering, Alert Rules, Alerts, and Reports.
 
-The previously identified backend-backed frontend gaps are implemented. Remaining work is product-scope dependent rather than an established frontend backlog; examples include interactive Geofence drawing/editing, report exports, standalone Company administration, additional tracking/trip UX, or a deliberate real-Traccar development/demo workflow.
+The 2026-09-28 project-wide audit is complete. Concrete correctness findings across tenancy, Traccar synchronization, deletion/reassignment races, malformed external payloads, tracking freshness, selector pagination, frontend pagination, and acknowledgement concurrency have been addressed, and the final backend/frontend quality gates were reported green.
 
-## 20. Architectural principles
+There is no established backlog beyond the documented scope. Further product-facing work is scope-dependent and should begin from explicit requirements.
+
+## 21. Architectural principles
 
 - FleetTrack owns business semantics; Traccar is an external tracking engine.
 - Authorization/tenancy precedes external access.

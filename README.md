@@ -4,7 +4,7 @@ FleetTrack is a multi-tenant fleet-management and GPS-tracking application built
 
 Laravel owns the business domain, tenancy, authorization, alerts, reporting contracts, and application UI. Traccar is the external GPS engine for live positions, position history, trips, stops, geofences, devices, and supported tracking events.
 
-## Current checkpoint — 2026-09-25
+## Current checkpoint — 2026-09-28
 
 ### Backend
 
@@ -13,14 +13,15 @@ Implemented and covered by the current API/test suite:
 - Sanctum authentication and authenticated-user endpoints.
 - Company-scoped authorization with Spatie Permission teams.
 - Companies, fleets, drivers, vehicles, devices, geofences, and alert-rule CRUD APIs.
-- Device synchronization with Traccar.
+- Device synchronization with Traccar, including one-device-per-vehicle enforcement and reassignment/geofence reconciliation.
 - Geofence synchronization and geofence ↔ vehicle association.
 - Live positions, single-vehicle position, position history, trip summary, and trips.
 - Traccar webhook ingestion for supported events.
-- Persistent alerts, acknowledgement, and custom alert-rule resolution.
+- Persistent alerts, atomic acknowledgement, and custom alert-rule resolution.
 - Vehicle reports: trips, trip summary, stops, events, route, summary, hours, and combined report.
 - Dashboard overview API.
 - API authentication failures render JSON rather than attempting the web login route.
+- Defensive Traccar payload handling for malformed collection entries, invalid/future GPS timestamps, numeric-string device IDs, and invalid trip coordinates/timestamps.
 
 ### Frontend
 
@@ -33,8 +34,10 @@ Implemented web modules:
 - Vehicles: API-backed list/create/edit/delete, fleet selection, validation, pagination, and responsive states.
 - Drivers: API-backed list/create/edit/delete, fleet assignment, validation, pagination, and responsive states.
 - Devices: API-backed list/create/edit/delete, vehicle assignment, device status, synchronization metadata, validation, pagination, and responsive states.
-- Live Tracking: API-backed fleet/vehicle filters, current-position/status cards, online/offline totals, Leaflet/OpenStreetMap live map, manual refresh, 30-second polling, plus vehicle/date-range position history with route trail, start/end markers, and selected-position details.
+- Live Tracking: API-backed fleet/vehicle filters, current-position/status cards, online/offline totals, Leaflet/OpenStreetMap live map, manual refresh, 30-second polling with queued follow-up reloads for in-flight filter changes, plus vehicle/date-range position history with route trail, start/end markers, and selected-position details.
 - Geofences: API-backed list/create/edit/delete, pagination, validation, status/synchronization metadata, Super Admin company selection, vehicle assignments, and interactive Leaflet map rendering/selection.
+
+Cross-cutting frontend reliability includes complete Company/Fleet/Vehicle selector loading across paginated APIs, disabled pagination controls while a page request is pending, and previous-page recovery after deleting the sole record on a later page. Company/Fleet backend pagination is deterministic for equal creation timestamps.
 
 Current web routes:
 
@@ -52,7 +55,7 @@ Current web routes:
 /reports     Reports
 ```
 
-The previously identified backend-backed frontend gaps are now implemented. Further work should follow explicit product requirements; currently undefined/scope-dependent areas include interactive Geofence boundary drawing/editing, report exports, standalone Company administration, additional tracking/trip UX, and a deliberate real-Traccar development/demo workflow.
+The 2026-09-28 project-wide audit is complete and the final backend/frontend quality gates were reported green. The previously identified backend-backed frontend gaps are implemented. There is no established backlog beyond the documented scope; further work should follow explicit product requirements.
 
 ## Technology stack
 
@@ -92,12 +95,12 @@ Prettier
 ```bash
 composer install
 ./vendor/bin/sail up -d
-npm install
+sail npm install
 cp .env.example .env
 sail artisan key:generate
 sail artisan migrate:fresh --seed
 sail artisan wayfinder:generate
-npm run dev
+sail npm run dev
 ```
 
 If `sail` is configured as a shell alias, use `sail ...` as shown throughout the project.
@@ -238,11 +241,11 @@ sail artisan test
 For frontend work:
 
 ```bash
-npm run format
-npm run format:check
-npm run lint:check
-npm run types:check
-npm run build
+sail npm run format
+sail npm run format:check
+sail npm run lint:check
+sail npm run types:check
+sail npm run build
 ```
 
 Run the checks relevant to the changed slice before committing. Browser verification is also required for user-facing frontend work.

@@ -767,7 +767,7 @@ Fully integrated user-facing feature
 
 ## Context
 
-FleetTrack has historically completed backend/API contracts before their corresponding Vue modules. At the 2026-09-25 checkpoint, the previously identified backend-backed frontend gaps have been integrated.
+FleetTrack has historically completed backend/API contracts before their corresponding Vue modules. By the audited 2026-09-28 checkpoint, the previously identified backend-backed frontend gaps have been integrated.
 
 ## Consequences
 
@@ -833,11 +833,11 @@ sail artisan test
 Frontend gate:
 
 ``` bash
-npm run format
-npm run format:check
-npm run lint:check
-npm run types:check
-npm run build
+sail npm run format
+sail npm run format:check
+sail npm run lint:check
+sail npm run types:check
+sail npm run build
 ```
 
 ## Consequences
@@ -982,17 +982,81 @@ In the `local` environment, `AppServiceProvider` registers `LocalTraccarServiceP
 
 ------------------------------------------------------------------------
 
+# ADR-043 --- Enforce One Device Per Vehicle at the Database Boundary
+
+## Decision
+
+A Vehicle may have at most one assigned Device. FleetTrack enforces this with a unique constraint on nullable `devices.vehicle_id`; unassigned Devices remain valid because `vehicle_id` may be null. Request/action validation provides user-facing protection, while the database remains the concurrency-safe invariant.
+
+## Consequences
+
+- Device create/update flows must not assign a second Device to an occupied Vehicle.
+- Unassigning a Device remains supported.
+- Device reassignment must reconcile Traccar geofence permissions for the previous/current Vehicle relationship.
+- Code must not rely on validation alone to enforce the one-to-one invariant under concurrent requests.
+
+------------------------------------------------------------------------
+
+# ADR-044 --- Treat Traccar Read Payloads as Untrusted External Data
+
+## Decision
+
+Tracking/report actions validate the portions of Traccar collection payloads required for FleetTrack calculations/transformation instead of assuming every returned entry has the expected shape.
+
+## Consequences
+
+- Malformed/non-array/empty collection entries are ignored before Resource transformation.
+- Live-position device matching accepts numeric identifiers represented as numbers or numeric strings.
+- Invalid or future GPS fix timestamps do not mark a Vehicle online.
+- Trip-summary ordering/calculation excludes malformed timestamps and invalid coordinates where those values are required.
+- FleetTrack does not invent replacement tracking values for malformed external data.
+
+------------------------------------------------------------------------
+
+# ADR-045 --- Complete Lookup Collections Independently of Table Pagination
+
+## Decision
+
+Frontend selectors that require all accessible Companies, Fleets, or Vehicles traverse every page of the existing paginated API through `getAllCompanies()`, `getAllFleets()`, and `getAllVehicles()`. Management tables remain paginated.
+
+## Consequences
+
+- Valid selector choices are not silently truncated at the API page-size cap.
+- The backend does not need an unbounded list endpoint for these lookups.
+- Table pagination and selector loading remain separate concerns.
+- Company/Fleet newest-first pagination uses an `id DESC` tie-breaker so page traversal is deterministic when creation timestamps are equal.
+
+------------------------------------------------------------------------
+
+# ADR-046 --- Preserve the Latest Requested Live-Tracking Filter State
+
+## Decision
+
+The Tracking page allows only one live-position request at a time, but an attempted reload during an in-flight request records one pending reload. When the active request finishes, the pending reload runs using the current filter state.
+
+## Consequences
+
+- Polling/manual/filter-triggered requests do not run concurrently.
+- A fleet/vehicle filter change is not dropped merely because polling was already in flight.
+- Background polling still avoids replacing the whole page with a loading state.
+
+------------------------------------------------------------------------
+
+# ADR-047 --- Alert Acknowledgement Is an Atomic State Transition
+
+## Decision
+
+Acknowledging an Alert conditionally updates only rows whose `acknowledged_at` is still null, then returns refreshed state.
+
+## Consequences
+
+- Concurrent acknowledgement requests cannot independently transition the same Alert from unacknowledged twice.
+- The database update is the authoritative concurrency boundary; the frontend disabled/loading state remains a UX safeguard.
+
+------------------------------------------------------------------------
+
 # Current Decision-Driven Development Direction
 
-Completed active frontend work now includes:
+The 2026-09-28 project-wide audit is complete. Active product domains are implemented and the final backend/frontend quality gates were reported green. Recent decisions formalize the data-integrity and reliability behavior already present in source rather than creating a new feature backlog.
 
-```text
-Fleets → Vehicles → Drivers → Devices
-→ Live Tracking + position history
-→ Geofences + vehicle assignments + map rendering
-→ Alert Rules → Alerts → Reports → Dashboard overview integration
-```
-
-The previously identified backend-backed frontend gaps are complete. The next product-facing work should be selected from explicit requirements rather than the old backlog. Scope-dependent candidates include interactive Geofence boundary drawing/editing, report exports, standalone Company administration, additional tracking/trip UX, and a deliberate real-Traccar development/demo workflow.
-
-Every new frontend module continues to reuse `AppLayout`, shared UI components, semantic design tokens, `authState`, `apiRequest()`, feature services/types, Wayfinder routes, and existing Laravel authorization/API contracts.
+There is no established product-facing backlog beyond the documented scope. New work should begin from explicit requirements and continue to reuse `AppLayout`, shared UI components, semantic design tokens, `authState`, `apiRequest()`, feature services/types, Wayfinder routes, and existing Laravel authorization/API contracts.
