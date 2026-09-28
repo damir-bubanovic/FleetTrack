@@ -527,6 +527,7 @@ onMounted(async () => {
                     :from="geofencesResponse.meta.from"
                     :to="geofencesResponse.meta.to"
                     :total="geofencesResponse.meta.total"
+                    :disabled="loading"
                     item-label="geofences"
                     @change="loadGeofences"
                 />

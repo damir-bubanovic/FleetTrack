@@ -8,6 +8,7 @@ defineProps<{
     to: number | null;
     total: number;
     itemLabel?: string;
+    disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -33,7 +34,7 @@ const emit = defineEmits<{
                 <AppButton
                     variant="secondary"
                     size="sm"
-                    :disabled="currentPage <= 1"
+                    :disabled="disabled || currentPage <= 1"
                     @click="emit('change', currentPage - 1)"
                 >
                     Previous
@@ -42,7 +43,7 @@ const emit = defineEmits<{
                 <AppButton
                     variant="secondary"
                     size="sm"
-                    :disabled="currentPage >= lastPage"
+                    :disabled="disabled || currentPage >= lastPage"
                     @click="emit('change', currentPage + 1)"
                 >
                     Next

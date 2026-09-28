@@ -343,6 +343,7 @@ onMounted(loadPage);
                     :from="vehiclesResponse.meta.from"
                     :to="vehiclesResponse.meta.to"
                     :total="vehiclesResponse.meta.total"
+                    :disabled="loading"
                     item-label="vehicles"
                     @change="loadVehicles"
                 />

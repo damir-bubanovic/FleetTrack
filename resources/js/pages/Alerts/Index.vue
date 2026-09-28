@@ -336,6 +336,7 @@ onMounted(loadPage);
                     :from="alertsResponse.meta.from"
                     :to="alertsResponse.meta.to"
                     :total="alertsResponse.meta.total"
+                    :disabled="loading"
                     item-label="alerts"
                     @change="loadAlerts"
                 />

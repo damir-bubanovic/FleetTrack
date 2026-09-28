@@ -382,6 +382,7 @@ onMounted(loadPage);
                     :from="driversResponse.meta.from"
                     :to="driversResponse.meta.to"
                     :total="driversResponse.meta.total"
+                    :disabled="loading"
                     item-label="drivers"
                     @change="loadDrivers"
                 />

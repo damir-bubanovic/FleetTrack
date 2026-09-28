@@ -373,6 +373,7 @@ onMounted(loadPage);
                     :from="devicesResponse.meta.from"
                     :to="devicesResponse.meta.to"
                     :total="devicesResponse.meta.total"
+                    :disabled="loading"
                     item-label="devices"
                     @change="loadDevices"
                 />

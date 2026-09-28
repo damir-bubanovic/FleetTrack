@@ -323,6 +323,7 @@ onMounted(() => {
                     :from="fleetsResponse.meta.from"
                     :to="fleetsResponse.meta.to"
                     :total="fleetsResponse.meta.total"
+                    :disabled="loading"
                     item-label="fleets"
                     @change="loadFleets"
                 />

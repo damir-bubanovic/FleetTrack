@@ -397,6 +397,7 @@ onMounted(loadPage);
                     :from="alertRulesResponse.meta.from"
                     :to="alertRulesResponse.meta.to"
                     :total="alertRulesResponse.meta.total"
+                    :disabled="loading"
                     item-label="alert rules"
                     @change="loadAlertRules"
                 />
